@@ -75,12 +75,6 @@
             const [rawLongTermGains, setRawLongTermGains] = React.useState(0);
             const [rawItemizedDeductions, setRawItemizedDeductions] = React.useState(0);
 
-            // State for LLM features
-            const [taxTips, setTaxTips] = React.useState('');
-            const [capitalGainsExplanation, setCapitalGainsExplanation] = React.useState('');
-            const [isLoadingTips, setIsLoadingTips] = React.useState(false);
-            const [isLoadingExplanation, setIsLoadingExplanation] = React.useState(false);
-
 
             // --- Tax Data Definitions ---
             // Federal Income Tax Brackets (ordinary income and short-term capital gains)
@@ -479,55 +473,6 @@
                 setFormattedState(rawValue === 0 ? '' : rawValue.toString());
             };
 
-            // --- LLM Integration Functions ---
-            const callGeminiAPI = async (prompt) => {
-                let chatHistory = [];
-                chatHistory.push({ role: "user", parts: [{ text: prompt }] });
-                const payload = { contents: chatHistory };
-                const apiKey = "" // If you want to use models other than gemini-2.5-flash-preview-04-17 or imagen-3.0-generate-002, provide an API key here. Otherwise, leave this as-is.
-                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-04-17:generateContent?key=${apiKey}`;
-
-                try {
-                    const response = await fetch(apiUrl, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(payload)
-                    });
-                    const result = await response.json();
-                    if (result.candidates && result.candidates.length > 0 &&
-                        result.candidates[0].content && result.candidates[0].content.parts &&
-                        result.candidates[0].content.parts.length > 0) {
-                        return result.candidates[0].content.parts[0].text;
-                    } else {
-                        console.error('Gemini API returned an unexpected structure:', result);
-                        return 'Could not retrieve information. Please try again.';
-                    }
-                } catch (error) {
-                    console.error('Error calling Gemini API:', error);
-                    return 'Error fetching data from the API.';
-                }
-            };
-
-            const handleGetTaxTips = async () => {
-                setIsLoadingTips(true);
-                setTaxTips(''); // Clear previous tips
-
-                const prompt = `Based on the following (simplified) tax information for tax year ${taxYear}, filing status ${filingStatus}, total taxable income (before capital gains) of $${rawOrdinaryIncome}, short-term capital gains of $${rawShortTermGains}, and long-term capital gains of $${rawLongTermGains}, suggest 3-5 general tax-saving tips related to investments or income. Focus on broad, common strategies that might be relevant. Do not include specific numbers or tax advice, just general tips.`;
-                const tips = await callGeminiAPI(prompt);
-                setTaxTips(tips);
-                setIsLoadingTips(false);
-            };
-
-            const handleExplainCapitalGains = async () => {
-                setIsLoadingExplanation(true);
-                setCapitalGainsExplanation(''); // Clear previous explanation
-
-                const prompt = "Please provide a simple, concise explanation of what long-term and short-term capital gains are in the context of US federal taxes. Include the main difference (holding period) and how they are generally taxed.";
-                const explanation = await callGeminiAPI(prompt);
-                setCapitalGainsExplanation(explanation);
-                setIsLoadingExplanation(false);
-            };
-
 
             return (
                 <div className="bg-white p-8 rounded-xl shadow-lg max-w-2xl w-full">
@@ -652,47 +597,6 @@
                             Calculate Tax
                         </button>
                     </form>
-
-                    {/* LLM Feature Buttons */}
-                    <div className="mt-6 flex flex-col space-y-2">
-                        <button
-                            onClick={handleGetTaxTips}
-                            className="w-full bg-purple-600 text-white py-2 px-4 rounded-md hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition ease-in-out duration-150 shadow-md"
-                            disabled={isLoadingTips}
-                        >
-                            {isLoadingTips ? 'Generating Tips...' : '✨ Get Tax Tips'}
-                        </button>
-                        <button
-                            onClick={handleExplainCapitalGains}
-                            className="w-full bg-purple-600 text-white py-2 px-4 rounded-md hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition ease-in-out duration-150 shadow-md"
-                            disabled={isLoadingExplanation}
-                        >
-                            {isLoadingExplanation ? 'Getting Explanation...' : '✨ Explain Capital Gains'}
-                        </button>
-                    </div>
-
-                    {/* LLM Results Display */}
-                    {(taxTips || capitalGainsExplanation) && (
-                        <div className="mt-8 pt-6 border-t-2 border-gray-200">
-                            <h2 className="text-2xl font-bold text-center text-gray-800 mb-4">AI Insights</h2>
-                            {isLoadingTips && <p className="text-center text-gray-600">Generating tax tips...</p>}
-                            {taxTips && (
-                                <div className="bg-blue-50 border border-blue-200 text-blue-800 p-4 rounded-md mb-4">
-                                    <h3 className="font-semibold text-lg mb-2">Tax Tips for You:</h3>
-                                    <p className="whitespace-pre-wrap">{taxTips}</p>
-                                </div>
-                            )}
-
-                            {isLoadingExplanation && <p className="text-center text-gray-600">Getting capital gains explanation...</p>}
-                            {capitalGainsExplanation && (
-                                <div className="bg-blue-50 border border-blue-200 text-blue-800 p-4 rounded-md">
-                                    <h3 className="font-semibold text-lg mb-2">Understanding Capital Gains:</h3>
-                                    <p className="whitespace-pre-wrap">{capitalGainsExplanation}</p>
-                                </div>
-                            )}
-                        </div>
-                    )}
-
 
                     {/* Results Display */}
                     {showResults && (
