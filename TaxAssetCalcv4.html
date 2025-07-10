@@ -852,7 +852,7 @@
                     { name: 'Cash', pct: parseFloat(cashPct) || 0, amount: calculatedAllocations.cash, color: '#10B981' } // emerald-500
                 ].filter(d => d.pct > 0); // Only show slices with values > 0
 
-                const width = 300;
+                const width = 350;
                 const height = 300;
                 const radius = Math.min(width, height) / 2;
 
@@ -860,7 +860,7 @@
 
                 const svg = d3.select(chartRef.current)
                     .attr("width", width)
-                    .attr("height", height + 120) // Increased height to accommodate the legend and two lines of text, more room for legend
+                    .attr("height", height + 150) // Increased height for better legend visibility
                     .append("g")
                     .attr("transform", `translate(${width / 2}, ${height / 2})`); // Center the pie itself
 
@@ -906,7 +906,7 @@
 
                 // --- Legend positioning ---
                 // Calculate position for the entire legend group
-                const legendContainerY = radius + 60; // Y position for the entire legend container (more space below the pie)
+                const legendContainerY = radius + 80; // Y position for the entire legend container (more space below the pie)
 
                 const legend = svg.append("g")
                     .attr("class", "legend")
@@ -922,23 +922,23 @@
                     .attr("transform", (d, i) => {
                         const itemX = currentXPos;
                         // Estimate width for each item (color box + text + padding)
-                        // This is an approximation. A more precise way would involve measuring text.
-                        const textWidthEstimate = d.name.length * 6; // Rough estimate per char
-                        const itemTotalWidth = 12 + 5 + textWidthEstimate + 20; // Box + padding + text + spacing for next item
+                        // More generous spacing for better visibility
+                        const textWidthEstimate = d.name.length * 7; // Slightly increased per char estimate
+                        const itemTotalWidth = 14 + 6 + textWidthEstimate + 25; // Box + padding + text + spacing for next item
                         currentXPos += itemTotalWidth; // Increment for the next item
                         return `translate(${itemX}, 0)`;
                     });
 
                 legendItems.append("rect")
-                    .attr("width", 12)
-                    .attr("height", 12)
+                    .attr("width", 14)
+                    .attr("height", 14)
                     .attr("fill", d => d.color)
                     .attr("ry", 3); // Rounded corners for legend color box
 
                 legendItems.append("text")
-                    .attr("x", 18) // Position text relative to its rect
-                    .attr("y", 9)  // Vertical alignment
-                    .attr("font-size", "12px")
+                    .attr("x", 20) // Position text relative to its rect
+                    .attr("y", 11)  // Vertical alignment
+                    .attr("font-size", "13px")
                     .attr("fill", "#333")
                     .text(d => d.name);
 
@@ -1088,34 +1088,34 @@
                             </div>
                         )}
 
-                        {/* Allocated Amounts and Pie Chart - Side by Side Layout */}
+                        {/* Allocated Amounts and Pie Chart - Equal Size Side by Side Layout */}
                         <div className="mt-6 pt-4 border-t border-gray-200">
-                            <div className="flex flex-col lg:flex-row items-start lg:items-center gap-8 w-full">
-                                {/* Allocated Amounts - Left Side (Reduced Size) */}
-                                <div className="flex-shrink-0 lg:w-80">
-                                    <h3 className="text-lg font-bold text-gray-800 mb-3">Allocated Amounts:</h3>
-                                    <div className="space-y-2 text-gray-700 text-sm">
-                                        <div className="flex justify-between items-center bg-gray-50 p-2 rounded-md">
+                            <div className="flex flex-col lg:flex-row gap-12 w-full">
+                                {/* Allocated Amounts - Left Side (Equal Size) */}
+                                <div className="flex-1 lg:w-1/2">
+                                    <h3 className="text-xl font-bold text-gray-800 mb-4">Allocated Amounts:</h3>
+                                    <div className="space-y-3 text-gray-700">
+                                        <div className="flex justify-between items-center bg-gray-50 p-3 rounded-md">
                                             <span className="font-medium">Domestic Stocks:</span>
                                             <span className="font-semibold text-green-700">{formatCurrencyInteger(calculatedAllocations.dom)}</span>
                                         </div>
-                                        <div className="flex justify-between items-center bg-gray-50 p-2 rounded-md">
+                                        <div className="flex justify-between items-center bg-gray-50 p-3 rounded-md">
                                             <span className="font-medium">International Stocks:</span>
                                             <span className="font-semibold text-green-700">{formatCurrencyInteger(calculatedAllocations.inter)}</span>
                                         </div>
-                                        <div className="flex justify-between items-center bg-gray-50 p-2 rounded-md">
+                                        <div className="flex justify-between items-center bg-gray-50 p-3 rounded-md">
                                             <span className="font-medium">Bonds:</span>
                                             <span className="font-semibold text-green-700">{formatCurrencyInteger(calculatedAllocations.bonds)}</span>
                                         </div>
-                                        <div className="flex justify-between items-center bg-gray-50 p-2 rounded-md">
+                                        <div className="flex justify-between items-center bg-gray-50 p-3 rounded-md">
                                             <span className="font-medium">Cash:</span>
                                             <span className="font-semibold text-green-700">{formatCurrencyInteger(calculatedAllocations.cash)}</span>
                                         </div>
                                     </div>
                                 </div>
                                 
-                                {/* Pie Chart - Right Side */}
-                                <div className="flex-grow flex justify-center lg:justify-start">
+                                {/* Pie Chart - Right Side (Equal Size) */}
+                                <div className="flex-1 lg:w-1/2 flex justify-center items-start">
                                     <svg ref={chartRef}></svg>
                                 </div>
                             </div>
