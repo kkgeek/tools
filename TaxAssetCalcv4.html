@@ -1118,8 +1118,8 @@
                                 <svg ref={chartRef}></svg>
                             </div>
 
-                            {/* ETF Breakdown Tables Container - Flex for horizontal arrangement */}
-                            <div className="flex flex-wrap justify-center items-start gap-6 w-full"> {/* Removed md:w-auto, w-full ensures it takes available space */}
+                            {/* ETF Breakdown Tables Container - Optimized for horizontal layout */}
+                            <div className="flex flex-wrap justify-center items-start gap-4 w-full xl:gap-6"> {/* Reduced gap on smaller screens, larger gap on xl+ */}
                                     <ETFDeductionTable
                                         title="Domestic Stocks"
                                         etfBreakdown={domesticETFs}
@@ -1153,7 +1153,7 @@
             const [currentView, setCurrentView] = React.useState('tax'); // 'tax' or 'assetAllocation'
 
             return (
-                <div className="bg-white rounded-xl shadow-lg max-w-4xl w-full mx-auto"> {/* This div controls the main frame size */}
+                <div className={`bg-white rounded-xl shadow-lg w-full mx-auto ${currentView === 'assetAllocation' ? 'max-w-7xl' : 'max-w-4xl'}`}> {/* Enlarged frame for Asset Allocation */}
                     <div className="flex justify-center p-4 bg-gray-100 border-b border-gray-200 rounded-t-xl">
                         <button
                             onClick={() => setCurrentView('tax')}
