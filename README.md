@@ -1,4 +1,4 @@
 # Tools
 Repo for tools
 
-/TaxCalcv3.html
+[Tax Calculator](https://kkgeek.github.io/tools/TaxCalcv3.html)
