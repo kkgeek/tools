@@ -1,0 +1,811 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Capital Gains Tax Calculator</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Inter Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        /* Custom scrollbar for better aesthetics */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 flex items-center justify-center min-h-screen py-8">
+    <div id="root"></div>
+
+    <!-- React and ReactDOM CDN -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <!-- Babel for JSX transformation -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <script type="text/babel">
+        // Main React App Component
+        const App = () => {
+            // State variables for user inputs
+            const [taxYear, setTaxYear] = React.useState('2024');
+            const [filingStatus, setFilingStatus] = React.useState('single');
+            const [ordinaryIncome, setOrdinaryIncome] = React.useState('');
+            const [shortTermGains, setShortTermGains] = React.useState('');
+            const [longTermGains, setLongTermGains] = React.useState('');
+            const [itemizedDeductions, setItemizedDeductions] = React.useState('');
+            const [errorMessage, setErrorMessage] = React.useState('');
+
+            // State variables for results
+            const [federalOrdinaryTax, setFederalOrdinaryTax] = React.useState(0);
+            const [federalLTCGTax, setFederalLTCGTax] = React.useState(0);
+            const [federalSTCGTax, setFederalSTCGTax] = React.useState(0); // Short-term is merged into ordinary, kept for clarity
+            const [netInvestmentIncomeTax, setNetInvestmentIncomeTax] = React.useState(0);
+            const [waCapitalGainsTax, setWaCapitalGainsTax] = React.useState(0);
+            const [totalTax, setTotalTax] = React.useState(0);
+            const [showResults, setShowResults] = React.useState(false);
+
+            // New states for detailed breakdown (Federal Ordinary)
+            const [federalOrdinaryBreakdown, setFederalOrdinaryBreakdown] = React.useState([]);
+            const [federalOrdinaryMarginalRate, setFederalOrdinaryMarginalRate] = React.useState(0);
+            const [federalOrdinaryEffectiveRate, setFederalOrdinaryEffectiveRate] = React.useState(0);
+
+            // New states for detailed breakdown (Federal LTCG)
+            const [federalLTCGBreakdown, setFederalLTCGBreakdown] = React.useState([]);
+            const [federalLTCGMarginalRate, setFederalLTCGMarginalRate] = React.useState(0);
+            const [federalLTCGEffectiveRate, setFederalLTCGEffectiveRate] = React.useState(0);
+
+            // Internal states to hold raw numbers for calculation, and formatted strings for display
+            const [rawOrdinaryIncome, setRawOrdinaryIncome] = React.useState(0);
+            const [rawShortTermGains, setRawShortTermGains] = React.useState(0);
+            const [rawLongTermGains, setRawLongTermGains] = React.useState(0);
+            const [rawItemizedDeductions, setRawItemizedDeductions] = React.useState(0);
+
+            // State for LLM features
+            const [taxTips, setTaxTips] = React.useState('');
+            const [capitalGainsExplanation, setCapitalGainsExplanation] = React.useState('');
+            const [isLoadingTips, setIsLoadingTips] = React.useState(false);
+            const [isLoadingExplanation, setIsLoadingExplanation] = React.useState(false);
+
+
+            // --- Tax Data Definitions ---
+            // Federal Income Tax Brackets (ordinary income and short-term capital gains)
+            const FEDERAL_INCOME_BRACKETS = {
+                '2024': {
+                    'single': [
+                        { rate: 0.10, min: 0, max: 11600 },
+                        { rate: 0.12, min: 11601, max: 47150 },
+                        { rate: 0.22, min: 47151, max: 100525 },
+                        { rate: 0.24, min: 100526, max: 191950 },
+                        { rate: 0.32, min: 191951, max: 243725 },
+                        { rate: 0.35, min: 243726, max: 609350 },
+                        { rate: 0.37, min: 609351, max: Infinity }
+                    ],
+                    'married': [
+                        { rate: 0.10, min: 0, max: 23200 },
+                        { rate: 0.12, min: 23201, max: 94300 },
+                        { rate: 0.22, min: 94301, max: 201050 },
+                        { rate: 0.24, min: 201051, max: 383900 },
+                        { rate: 0.32, min: 383901, max: 487450 },
+                        { rate: 0.35, min: 487451, max: 731200 },
+                        { rate: 0.37, min: 731201, max: Infinity }
+                    ]
+                },
+                '2025': {
+                    'single': [
+                        { rate: 0.10, min: 0, max: 11925 },
+                        { rate: 0.12, min: 11926, max: 48475 },
+                        { rate: 0.22, min: 48476, max: 103350 },
+                        { rate: 0.24, min: 103351, max: 197300 },
+                        { rate: 0.32, min: 197301, max: 250525 },
+                        { rate: 0.35, min: 250526, max: 626350 },
+                        { rate: 0.37, min: 626351, max: Infinity }
+                    ],
+                    'married': [
+                        { rate: 0.10, min: 0, max: 23850 },
+                        { rate: 0.12, min: 23851, max: 96950 },
+                        { rate: 0.22, min: 96951, max: 206700 },
+                        { rate: 0.24, min: 206701, max: 394600 },
+                        { rate: 0.32, min: 394601, max: 501050 },
+                        { rate: 0.35, min: 501051, max: 751600 },
+                        { rate: 0.37, min: 751601, max: Infinity }
+                    ]
+                }
+            };
+
+            // Federal Long-Term Capital Gains Tax Brackets
+            const FEDERAL_LTCG_BRACKETS = {
+                '2024': {
+                    'single': [
+                        { rate: 0.00, min: 0, max: 47025 },
+                        { rate: 0.15, min: 47026, max: 518900 },
+                        { rate: 0.20, min: 518901, max: Infinity }
+                    ],
+                    'married': [
+                        { rate: 0.00, min: 0, max: 94050 },
+                        { rate: 0.15, min: 94051, max: 583750 },
+                        { rate: 0.20, min: 583751, max: Infinity }
+                    ]
+                },
+                '2025': {
+                    'single': [
+                        { rate: 0.00, min: 0, max: 48350 },
+                        { rate: 0.15, min: 48351, max: 533400 },
+                        { rate: 0.20, min: 533401, max: Infinity }
+                    ],
+                    'married': [
+                        { rate: 0.00, min: 0, max: 96700 },
+                        { rate: 0.15, min: 96701, max: 600050 },
+                        { rate: 0.20, min: 600051, max: Infinity }
+                    ]
+                }
+            };
+
+            // Standard Deduction Amounts
+            const STANDARD_DEDUCTIONS = {
+                '2024': {
+                    'single': 14600,
+                    'married': 29200
+                },
+                '2025': {
+                    'single': 15000,
+                    'married': 30000
+                }
+            };
+
+            // Washington State Capital Gains Tax Rules
+            const WA_CAPITAL_GAINS_RULES = {
+                '2024': {
+                    exemption: 270000,
+                    tiers: [
+                        { rate: 0.07, minThreshold: 270000, maxThreshold: Infinity } // In 2024, only one tier after exemption
+                    ]
+                },
+                '2025': { // Based on information that a 2.9% surcharge applies for gains over $1M above exemption
+                    exemption: 278000, // Estimated for 2025, adjust if official figure changes
+                    tiers: [
+                        { rate: 0.07, minThreshold: 278000, maxThreshold: 278000 + 1000000 },
+                        { rate: 0.099, minThreshold: 278000 + 1000001, maxThreshold: Infinity } // 7% + 2.9% = 9.9%
+                    ]
+                }
+            };
+
+            // NIIT Thresholds (Net Investment Income Tax)
+            const NIIT_THRESHOLDS = {
+                'single': 200000,
+                'married': 250000
+            };
+
+            // --- Calculation Functions ---
+
+            // Helper function to calculate progressive tax and provide breakdown
+            const calculateProgressiveTax = (income, brackets) => {
+                let tax = 0;
+                let remainingIncome = income;
+                const breakdown = [];
+                let marginalRate = 0; // Initialize marginal rate
+
+                for (let i = 0; i < brackets.length; i++) {
+                    const bracket = brackets[i];
+                    const bracketLowerBound = bracket.min;
+                    const bracketUpperBound = bracket.max;
+
+                    // Calculate the portion of income that falls into this bracket
+                    // Ensure we don't tax more than what's left of the income, nor more than the bracket's capacity
+                    const incomeInCurrentBracket = Math.min(remainingIncome, bracketUpperBound - bracketLowerBound + 1);
+
+                    if (incomeInCurrentBracket > 0) {
+                        const taxInCurrentBracket = incomeInCurrentBracket * bracket.rate;
+                        tax += taxInCurrentBracket;
+                        breakdown.push({
+                            rate: bracket.rate,
+                            min: bracket.min,
+                            max: bracket.max,
+                            incomeInBracket: incomeInCurrentBracket,
+                            taxInBracket: taxInCurrentBracket
+                        });
+                        marginalRate = bracket.rate; // Update marginal rate to the current bracket's rate
+                        remainingIncome -= incomeInCurrentBracket;
+                    }
+
+                    if (remainingIncome <= 0) break; // All income has been taxed
+                }
+                return {
+                    totalTax: tax,
+                    breakdown: breakdown,
+                    marginalRate: marginalRate,
+                    taxableIncome: income // This is the income passed into the function, which is already after deductions.
+                };
+            };
+
+            // Function to calculate federal long-term capital gains tax and provide breakdown
+            const calculateFederalLTCGTax = (totalTaxableIncome, ltCGains, ltCGBrackets) => {
+                let ltCGTax = 0;
+                let remainingLTCG = ltCGains;
+                const breakdown = [];
+                let marginalRate = 0;
+                let effectiveRate = 0;
+
+                // The amount of ordinary income that fills up the lower brackets before LTCG starts
+                let ordinaryIncomeTaxableAmount = totalTaxableIncome - ltCGains;
+                if (ordinaryIncomeTaxableAmount < 0) ordinaryIncomeTaxableAmount = 0;
+
+                // Iterate through LTCG brackets
+                for (let i = 0; i < ltCGBrackets.length; i++) {
+                    const bracket = ltCGBrackets[i];
+                    const bracketStart = bracket.min;
+                    const bracketEnd = bracket.max; // This is the total taxable income level where this LTCG rate applies
+
+                    // Determine the actual start point of this LTCG bracket considering ordinary income
+                    // If ordinary income already pushes us past this bracket's start, we start from ordinary income
+                    // Otherwise, we start from the bracket's actual start (if LTCG begins before it)
+                    const actualLTCGBeginningForThisBracket = Math.max(ordinaryIncomeTaxableAmount, bracketStart);
+
+                    // If the actual beginning point is already beyond our total taxable income,
+                    // or beyond where our LTCG ends, then this bracket (and higher) doesn't apply to this LTCG.
+                    if (actualLTCGBeginningForThisBracket >= totalTaxableIncome || remainingLTCG <= 0) {
+                        break;
+                    }
+
+                    // Calculate the maximum income within this bracket that can be filled by LTCG
+                    const incomePotentialInBracket = Math.min(
+                        remainingLTCG,
+                        Math.max(0, bracketEnd - actualLTCGBeginningForThisBracket + 1), // How much income this bracket *could* hold from its start to end
+                        Math.max(0, totalTaxableIncome - actualLTCGBeginningForThisBracket) // How much of the total taxable income is left for this bracket starting from actualLTCGBeginningForThisBracket
+                    );
+
+                    if (incomePotentialInBracket > 0) {
+                        const taxInCurrentBracket = incomePotentialInBracket * bracket.rate;
+                        ltCGTax += taxInCurrentBracket;
+                        breakdown.push({
+                            rate: bracket.rate,
+                            min: bracket.min, // This is the federal LTCG bracket min, not the actual taxable income min
+                            max: bracket.max, // This is the federal LTCG bracket max, not the actual taxable income max
+                            incomeInBracket: incomePotentialInBracket, // This is the portion of LTCG that falls into this bracket
+                            taxInBracket: taxInCurrentBracket
+                        });
+                        marginalRate = bracket.rate; // The last rate applied is the marginal rate
+                        remainingLTCG -= incomePotentialInBracket;
+                    }
+                }
+
+                // Calculate effective rate for LTCG if there were gains
+                if (ltCGains > 0) {
+                    effectiveRate = ltCGTax / ltCGains;
+                }
+
+                return {
+                    totalTax: ltCGTax,
+                    breakdown: breakdown,
+                    marginalRate: marginalRate,
+                    effectiveRate: effectiveRate
+                };
+            };
+
+
+            // Function to calculate Washington State capital gains tax
+            const calculateWACapitalGainsTax = (ltCGains, year) => {
+                const rules = WA_CAPITAL_GAINS_RULES[year];
+                if (!rules) return 0; // No rules for this year or not applicable
+
+                let tax = 0;
+                // WA tax is on long-term capital gains *after* the state-specific exemption
+                let taxableLTCG = Math.max(0, ltCGains - rules.exemption);
+
+                if (taxableLTCG <= 0) return 0; // No tax if below exemption
+
+                // WA tiers are applied on the *taxable portion* of gains after exemption.
+                // We need to adjust the tier thresholds to be relative to the amount *above* the exemption.
+                for (let i = 0; i < rules.tiers.length; i++) {
+                    const tier = rules.tiers[i];
+                    // The 'minThreshold' in rules.tiers defines the start of the rate *after* the global exemption.
+                    // So, if tier.minThreshold is 270000, and exemption is 270000, it effectively means 0 income above exemption for the first tier.
+                    // For the second tier, if minThreshold is 1270001 for 9.9% in 2025,
+                    // and exemption is 278000, then the actual income above exemption for this tier is (1270001 - 278000)
+                    const tierStartRelativeToExemption = Math.max(0, tier.minThreshold - rules.exemption);
+                    const tierEndRelativeToExemption = tier.maxThreshold === Infinity ? Infinity : tier.maxThreshold - rules.exemption;
+
+                    // Calculate the portion of `taxableLTCG` that falls into this tier
+                    const incomeInThisTier = Math.min(taxableLTCG, tierEndRelativeToExemption) - tierStartRelativeToExemption;
+
+                    if (incomeInThisTier > 0) {
+                        tax += incomeInThisTier * tier.rate;
+                    }
+                    // Subtract the portion already taxed from remaining taxableLTCG for the next iteration
+                    taxableLTCG -= incomeInThisTier;
+                    if (taxableLTCG <= 0) break;
+                }
+                return tax;
+            };
+
+
+            // Main calculation function
+            const handleCalculate = (e) => {
+                e.preventDefault(); // Prevent default form submission
+
+                setErrorMessage(''); // Clear previous error messages
+                setShowResults(false); // Hide previous results
+
+                // Parse inputs from raw state numbers
+                const parsedOrdinaryIncome = rawOrdinaryIncome || 0;
+                const parsedShortTermGains = rawShortTermGains || 0;
+                const parsedLongTermGains = rawLongTermGains || 0;
+                const parsedItemizedDeductions = rawItemizedDeductions || 0;
+
+                // Input validation
+                if (parsedOrdinaryIncome < 0 || parsedShortTermGains < 0 || parsedLongTermGains < 0 || parsedItemizedDeductions < 0) {
+                    setErrorMessage('Please enter non-negative values for all income and deduction fields.');
+                    return;
+                }
+
+                // Get relevant tax data for the selected year and filing status
+                const currentFederalIncomeBrackets = FEDERAL_INCOME_BRACKETS[taxYear][filingStatus];
+                const currentFederalLTCGBrackets = FEDERAL_LTCG_BRACKETS[taxYear][filingStatus];
+                const currentStandardDeduction = STANDARD_DEDUCTIONS[taxYear][filingStatus];
+                const currentNIITThreshold = NIIT_THRESHOLDS[filingStatus];
+
+                // 1. Calculate Adjusted Gross Income (AGI)
+                // For simplicity, we'll consider ordinary income + all capital gains as AGI for NIIT
+                // In real tax, AGI is more complex, but this is a good approximation for the calculator's scope
+                const adjustedGrossIncome = parsedOrdinaryIncome + parsedShortTermGains + parsedLongTermGains;
+
+                // 2. Determine applicable deductions
+                const totalDeductions = Math.max(currentStandardDeduction, parsedItemizedDeductions);
+
+                // 3. Calculate Taxable Income (for ordinary income and long-term capital gains)
+                // Short-term capital gains are taxed at ordinary income rates, so they are part of the 'ordinary income' for federal calculation
+                const taxableOrdinaryIncomeFederal = parsedOrdinaryIncome + parsedShortTermGains - totalDeductions;
+                const taxableIncomeForFederalRates = Math.max(0, taxableOrdinaryIncomeFederal);
+
+                // 4. Federal Ordinary Income & Short-Term Capital Gains Tax with Breakdown
+                const {
+                    totalTax: calculatedFederalOrdinaryTax,
+                    breakdown: ordinaryTaxBreakdown,
+                    marginalRate: ordinaryMarginalRate,
+                    taxableIncome: ordinaryTaxableIncomeUsed
+                } = calculateProgressiveTax(taxableIncomeForFederalRates, currentFederalIncomeBrackets);
+
+                setFederalOrdinaryTax(calculatedFederalOrdinaryTax);
+                setFederalOrdinaryBreakdown(ordinaryTaxBreakdown);
+                setFederalOrdinaryMarginalRate(ordinaryMarginalRate);
+
+                // Calculate Federal Ordinary Effective Tax Rate on the income amount used for this calculation
+                const calculatedFederalOrdinaryEffectiveRate = ordinaryTaxableIncomeUsed > 0
+                    ? calculatedFederalOrdinaryTax / ordinaryTaxableIncomeUsed
+                    : 0;
+                setFederalOrdinaryEffectiveRate(calculatedFederalOrdinaryEffectiveRate);
+
+                setFederalSTCGTax(0); // Short-term is part of ordinary income calculation
+
+                // 5. Federal Long-Term Capital Gains Tax with Breakdown
+                // LTCG is taxed based on your total taxable income. It sits on top of your ordinary income.
+                const {
+                    totalTax: calculatedFederalLTCGTax,
+                    breakdown: ltcgTaxBreakdown,
+                    marginalRate: ltcgMarginalRate,
+                    effectiveRate: ltcgEffectiveRate
+                } = calculateFederalLTCGTax(taxableIncomeForFederalRates + parsedLongTermGains, parsedLongTermGains, currentFederalLTCGBrackets);
+
+                setFederalLTCGTax(calculatedFederalLTCGTax);
+                setFederalLTCGBreakdown(ltcgTaxBreakdown);
+                setFederalLTCGMarginalRate(ltcgMarginalRate);
+                setFederalLTCGEffectiveRate(ltcgEffectiveRate);
+
+
+                // 6. Net Investment Income Tax (NIIT)
+                let calculatedNIIT = 0;
+                if (adjustedGrossIncome > currentNIITThreshold) {
+                    // NIIT is 3.8% of the lesser of:
+                    // a) Net investment income (parsedShortTermGains + parsedLongTermGains for this simplified app)
+                    // b) The amount AGI exceeds the threshold
+                    const netInvestmentIncome = parsedShortTermGains + parsedLongTermGains;
+                    const agiOverThreshold = adjustedGrossIncome - currentNIITThreshold;
+                    calculatedNIIT = Math.min(netInvestmentIncome, agiOverThreshold) * 0.038;
+                }
+                setNetInvestmentIncomeTax(calculatedNIIT);
+
+                // 7. Washington State Capital Gains Tax
+                const calculatedWaCapitalGainsTax = calculateWACapitalGainsTax(parsedLongTermGains, taxYear);
+                setWaCapitalGainsTax(calculatedWaCapitalGainsTax);
+
+                // 8. Total Tax
+                const totalCalculatedTax = calculatedFederalOrdinaryTax + calculatedFederalLTCGTax + calculatedNIIT + calculatedWaCapitalGainsTax;
+                setTotalTax(totalCalculatedTax);
+
+                setShowResults(true); // Show results section
+            };
+
+            // Helper to format currency
+            const formatCurrency = (amount) => {
+                if (amount === '' || amount === null || isNaN(amount)) return '';
+                return new Intl.NumberFormat('en-US', {
+                    style: 'currency',
+                    currency: 'USD',
+                    minimumFractionDigits: 0, // No cents for input fields
+                    maximumFractionDigits: 0
+                }).format(amount);
+            };
+
+            // Helper to format currency with cents for display
+            const formatCurrencyWithCents = (amount) => {
+                return new Intl.NumberFormat('en-US', {
+                    style: 'currency',
+                    currency: 'USD',
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2
+                }).format(amount);
+            };
+
+
+            // Helper to format percentage
+            const formatPercentage = (rate) => {
+                return new Intl.NumberFormat('en-US', {
+                    style: 'percent',
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2
+                }).format(rate);
+            };
+
+            // Event handlers for formatted input fields
+            const handleInputChange = (e, setRawState, setFormattedState) => {
+                const value = e.target.value;
+                // Remove non-numeric characters for raw value storage
+                const rawValue = parseFloat(value.replace(/[^0-9.]/g, '')) || 0;
+                setRawState(rawValue);
+                setFormattedState(value); // Keep input as typed until blur
+            };
+
+            const handleInputBlur = (setFormattedState, rawValue) => {
+                // Format the value on blur
+                setFormattedState(formatCurrency(rawValue));
+            };
+
+            const handleInputFocus = (setFormattedState, rawValue) => {
+                // Remove formatting on focus to allow easy editing
+                setFormattedState(rawValue === 0 ? '' : rawValue.toString());
+            };
+
+            // --- LLM Integration Functions ---
+            const callGeminiAPI = async (prompt) => {
+                let chatHistory = [];
+                chatHistory.push({ role: "user", parts: [{ text: prompt }] });
+                const payload = { contents: chatHistory };
+                const apiKey = "" // If you want to use models other than gemini-2.5-flash-preview-04-17 or imagen-3.0-generate-002, provide an API key here. Otherwise, leave this as-is.
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-04-17:generateContent?key=${apiKey}`;
+
+                try {
+                    const response = await fetch(apiUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                    const result = await response.json();
+                    if (result.candidates && result.candidates.length > 0 &&
+                        result.candidates[0].content && result.candidates[0].content.parts &&
+                        result.candidates[0].content.parts.length > 0) {
+                        return result.candidates[0].content.parts[0].text;
+                    } else {
+                        console.error('Gemini API returned an unexpected structure:', result);
+                        return 'Could not retrieve information. Please try again.';
+                    }
+                } catch (error) {
+                    console.error('Error calling Gemini API:', error);
+                    return 'Error fetching data from the API.';
+                }
+            };
+
+            const handleGetTaxTips = async () => {
+                setIsLoadingTips(true);
+                setTaxTips(''); // Clear previous tips
+
+                const prompt = `Based on the following (simplified) tax information for tax year ${taxYear}, filing status ${filingStatus}, total taxable income (before capital gains) of $${rawOrdinaryIncome}, short-term capital gains of $${rawShortTermGains}, and long-term capital gains of $${rawLongTermGains}, suggest 3-5 general tax-saving tips related to investments or income. Focus on broad, common strategies that might be relevant. Do not include specific numbers or tax advice, just general tips.`;
+                const tips = await callGeminiAPI(prompt);
+                setTaxTips(tips);
+                setIsLoadingTips(false);
+            };
+
+            const handleExplainCapitalGains = async () => {
+                setIsLoadingExplanation(true);
+                setCapitalGainsExplanation(''); // Clear previous explanation
+
+                const prompt = "Please provide a simple, concise explanation of what long-term and short-term capital gains are in the context of US federal taxes. Include the main difference (holding period) and how they are generally taxed.";
+                const explanation = await callGeminiAPI(prompt);
+                setCapitalGainsExplanation(explanation);
+                setIsLoadingExplanation(false);
+            };
+
+
+            return (
+                <div className="bg-white p-8 rounded-xl shadow-lg max-w-2xl w-full">
+                    <h1 className="text-3xl font-bold text-center text-gray-800 mb-6">Capital Gains Tax Calculator</h1>
+
+                    {errorMessage && (
+                        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-md mb-4" role="alert">
+                            {errorMessage}
+                        </div>
+                    )}
+
+                    <form onSubmit={handleCalculate} className="space-y-4">
+                        {/* Tax Year Selection */}
+                        <div>
+                            <label htmlFor="taxYear" className="block text-sm font-medium text-gray-700 mb-1">Select Tax Year:</label>
+                            <select
+                                id="taxYear"
+                                value={taxYear}
+                                onChange={(e) => setTaxYear(e.target.value)}
+                                className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md shadow-sm"
+                            >
+                                <option value="2024">2024</option>
+                                <option value="2025">2025</option>
+                            </select>
+                        </div>
+
+                        {/* Filing Status Selection */}
+                        <div>
+                            <span className="block text-sm font-medium text-gray-700 mb-1">Filing Status:</span>
+                            <div className="mt-1 flex space-x-4">
+                                <label className="inline-flex items-center">
+                                    <input
+                                        type="radio"
+                                        className="form-radio text-indigo-600"
+                                        name="filingStatus"
+                                        value="single"
+                                        checked={filingStatus === 'single'}
+                                        onChange={(e) => setFilingStatus(e.target.value)}
+                                    />
+                                    <span className="ml-2 text-gray-700">Single</span>
+                                </label>
+                                <label className="inline-flex items-center">
+                                    <input
+                                        type="radio"
+                                        className="form-radio text-indigo-600"
+                                        name="filingStatus"
+                                        value="married"
+                                        checked={filingStatus === 'married'}
+                                        onChange={(e) => setFilingStatus(e.target.value)}
+                                    />
+                                    <span className="ml-2 text-gray-700">Married Filing Jointly</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        {/* Income and Gains Inputs */}
+                        <div>
+                            <label htmlFor="ordinaryIncome" className="block text-sm font-medium text-gray-700 mb-1">Total Taxable Income (before capital gains):</label>
+                            <input
+                                type="text" // Change to text to allow formatting
+                                id="ordinaryIncome"
+                                value={ordinaryIncome}
+                                onChange={(e) => handleInputChange(e, setRawOrdinaryIncome, setOrdinaryIncome)}
+                                onBlur={() => handleInputBlur(setOrdinaryIncome, rawOrdinaryIncome)}
+                                onFocus={() => handleInputFocus(setOrdinaryIncome, rawOrdinaryIncome)}
+                                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                                placeholder="e.g., $75,000"
+                            />
+                        </div>
+
+                        <div>
+                            <label htmlFor="shortTermGains" className="block text-sm font-medium text-gray-700 mb-1">Short-Term Capital Gains (assets held ≤ 1 year):</label>
+                            <input
+                                type="text" // Change to text to allow formatting
+                                id="shortTermGains"
+                                value={shortTermGains}
+                                onChange={(e) => handleInputChange(e, setRawShortTermGains, setShortTermGains)}
+                                onBlur={() => handleInputBlur(setShortTermGains, rawShortTermGains)}
+                                onFocus={() => handleInputFocus(setShortTermGains, rawShortTermGains)}
+                                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                                placeholder="e.g., $5,000"
+                            />
+                        </div>
+
+                        <div>
+                            <label htmlFor="longTermGains" className="block text-sm font-medium text-gray-700 mb-1">Long-Term Capital Gains (assets held > 1 year):</label>
+                            <input
+                                type="text" // Change to text to allow formatting
+                                id="longTermGains"
+                                value={longTermGains}
+                                onChange={(e) => handleInputChange(e, setRawLongTermGains, setLongTermGains)}
+                                onBlur={() => handleInputBlur(setLongTermGains, rawLongTermGains)}
+                                onFocus={() => handleInputFocus(setLongTermGains, rawLongTermGains)}
+                                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                                placeholder="e.g., $10,000"
+                            />
+                        </div>
+
+                        <div>
+                            <label htmlFor="itemizedDeductions" className="block text-sm font-medium text-gray-700 mb-1">Total Itemized Deductions (optional, enter if greater than standard deduction):</label>
+                            <input
+                                type="text" // Change to text to allow formatting
+                                id="itemizedDeductions"
+                                value={itemizedDeductions}
+                                onChange={(e) => handleInputChange(e, setRawItemizedDeductions, setItemizedDeductions)}
+                                onBlur={() => handleInputBlur(setItemizedDeductions, rawItemizedDeductions)}
+                                onFocus={() => handleInputFocus(setItemizedDeductions, rawItemizedDeductions)}
+                                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                                placeholder="e.g., $20,000"
+                            />
+                            <p className="mt-1 text-xs text-gray-500">
+                                Standard deduction for {taxYear} ({filingStatus === 'single' ? 'Single' : 'Married Filing Jointly'}): {formatCurrencyWithCents(STANDARD_DEDUCTIONS[taxYear][filingStatus])}.
+                                The calculator will automatically use the higher of standard or your itemized deductions.
+                            </p>
+                        </div>
+
+                        {/* Calculate Button */}
+                        <button
+                            type="submit"
+                            className="w-full bg-indigo-600 text-white py-2 px-4 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition ease-in-out duration-150 shadow-md"
+                        >
+                            Calculate Tax
+                        </button>
+                    </form>
+
+                    {/* LLM Feature Buttons */}
+                    <div className="mt-6 flex flex-col space-y-2">
+                        <button
+                            onClick={handleGetTaxTips}
+                            className="w-full bg-purple-600 text-white py-2 px-4 rounded-md hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition ease-in-out duration-150 shadow-md"
+                            disabled={isLoadingTips}
+                        >
+                            {isLoadingTips ? 'Generating Tips...' : '✨ Get Tax Tips'}
+                        </button>
+                        <button
+                            onClick={handleExplainCapitalGains}
+                            className="w-full bg-purple-600 text-white py-2 px-4 rounded-md hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition ease-in-out duration-150 shadow-md"
+                            disabled={isLoadingExplanation}
+                        >
+                            {isLoadingExplanation ? 'Getting Explanation...' : '✨ Explain Capital Gains'}
+                        </button>
+                    </div>
+
+                    {/* LLM Results Display */}
+                    {(taxTips || capitalGainsExplanation) && (
+                        <div className="mt-8 pt-6 border-t-2 border-gray-200">
+                            <h2 className="text-2xl font-bold text-center text-gray-800 mb-4">AI Insights</h2>
+                            {isLoadingTips && <p className="text-center text-gray-600">Generating tax tips...</p>}
+                            {taxTips && (
+                                <div className="bg-blue-50 border border-blue-200 text-blue-800 p-4 rounded-md mb-4">
+                                    <h3 className="font-semibold text-lg mb-2">Tax Tips for You:</h3>
+                                    <p className="whitespace-pre-wrap">{taxTips}</p>
+                                </div>
+                            )}
+
+                            {isLoadingExplanation && <p className="text-center text-gray-600">Getting capital gains explanation...</p>}
+                            {capitalGainsExplanation && (
+                                <div className="bg-blue-50 border border-blue-200 text-blue-800 p-4 rounded-md">
+                                    <h3 className="font-semibold text-lg mb-2">Understanding Capital Gains:</h3>
+                                    <p className="whitespace-pre-wrap">{capitalGainsExplanation}</p>
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+
+                    {/* Results Display */}
+                    {showResults && (
+                        <div className="mt-8 pt-6 border-t-2 border-gray-200">
+                            <h2 className="text-2xl font-bold text-center text-gray-800 mb-4">Tax Calculation Results</h2>
+                            <div className="space-y-2 text-gray-700">
+                                <div className="flex justify-between items-center bg-gray-50 p-3 rounded-md">
+                                    <span className="font-medium">Federal Ordinary Income & Short-Term Capital Gains Tax:</span>
+                                    <span className="font-semibold text-lg text-green-700">{formatCurrencyWithCents(federalOrdinaryTax)}</span>
+                                </div>
+                                <div className="flex justify-between items-center bg-gray-50 p-3 rounded-md">
+                                    <span className="font-medium">Federal Long-Term Capital Gains Tax:</span>
+                                    <span className="font-semibold text-lg text-green-700">{formatCurrencyWithCents(federalLTCGTax)}</span>
+                                </div>
+                                <div className="flex justify-between items-center bg-gray-50 p-3 rounded-md">
+                                    <span className="font-medium">Federal Net Investment Income Tax (NIIT):</span>
+                                    <span className="font-semibold text-lg text-green-700">{formatCurrencyWithCents(netInvestmentIncomeTax)}</span>
+                                </div>
+                                <div className="flex justify-between items-center bg-gray-50 p-3 rounded-md">
+                                    <span className="font-medium">Washington State Capital Gains Tax:</span>
+                                    <span className="font-semibold text-lg text-green-700">{formatCurrencyWithCents(waCapitalGainsTax)}</span>
+                                </div>
+
+                                {/* Federal Ordinary Tax Breakdown Table */}
+                                {federalOrdinaryBreakdown.length > 0 && (
+                                    <div className="bg-gray-50 p-3 rounded-md mt-4">
+                                        <h3 className="text-md font-semibold text-gray-800 mb-2">Federal Ordinary Income Tax Breakdown:</h3>
+                                        <table className="min-w-full divide-y divide-gray-200">
+                                            <thead className="bg-gray-100">
+                                                <tr>
+                                                    <th scope="col" className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider rounded-tl-md">Tax Rate</th>
+                                                    <th scope="col" className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tax Range</th>
+                                                    <th scope="col" className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Income in Bracket</th>
+                                                    <th scope="col" className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider rounded-tr-md">Tax in Bracket</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="bg-white divide-y divide-gray-200">
+                                                {federalOrdinaryBreakdown.map((item, index) => (
+                                                    <tr key={index}>
+                                                        <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900">{formatPercentage(item.rate)}</td>
+                                                        <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900">
+                                                            {formatCurrencyWithCents(item.min)} - {item.max === Infinity ? 'And up' : formatCurrencyWithCents(item.max)}
+                                                        </td>
+                                                        <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900">{formatCurrencyWithCents(item.incomeInBracket)}</td>
+                                                        <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900">{formatCurrencyWithCents(item.taxInBracket)}</td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                        <div className="mt-2 text-sm text-gray-700 flex justify-between items-center">
+                                            <span className="font-medium">Marginal Tax Rate:</span>
+                                            <span className="font-semibold">{formatPercentage(federalOrdinaryMarginalRate)}</span>
+                                        </div>
+                                        <div className="mt-1 text-sm text-gray-700 flex justify-between items-center">
+                                            <span className="font-medium">Effective Tax Rate (on taxable ordinary income):</span>
+                                            <span className="font-semibold">{formatPercentage(federalOrdinaryEffectiveRate)}</span>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Federal Long-Term Capital Gains Tax Breakdown Table */}
+                                {federalLTCGBreakdown.length > 0 && (
+                                    <div className="bg-gray-50 p-3 rounded-md mt-4">
+                                        <h3 className="text-md font-semibold text-gray-800 mb-2">Federal Long-Term Capital Gains Tax Breakdown:</h3>
+                                        <table className="min-w-full divide-y divide-gray-200">
+                                            <thead className="bg-gray-100">
+                                                <tr>
+                                                    <th scope="col" className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider rounded-tl-md">Tax Rate</th>
+                                                    <th scope="col" className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tax Range</th>
+                                                    <th scope="col" className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Income in Bracket</th>
+                                                    <th scope="col" className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider rounded-tr-md">Tax in Bracket</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="bg-white divide-y divide-gray-200">
+                                                {federalLTCGBreakdown.map((item, index) => (
+                                                    <tr key={index}>
+                                                        <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900">{formatPercentage(item.rate)}</td>
+                                                        <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900">
+                                                            {formatCurrencyWithCents(item.min)} - {item.max === Infinity ? 'And up' : formatCurrencyWithCents(item.max)}
+                                                        </td>
+                                                        <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900">{formatCurrencyWithCents(item.incomeInBracket)}</td>
+                                                        <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900">{formatCurrencyWithCents(item.taxInBracket)}</td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                        <div className="mt-2 text-sm text-gray-700 flex justify-between items-center">
+                                            <span className="font-medium">Marginal Tax Rate (LTCG):</span>
+                                            <span className="font-semibold">{formatPercentage(federalLTCGMarginalRate)}</span>
+                                        </div>
+                                        <div className="mt-1 text-sm text-gray-700 flex justify-between items-center">
+                                            <span className="font-medium">Effective Tax Rate (on LTCG):</span>
+                                            <span className="font-semibold">{formatPercentage(federalLTCGEffectiveRate)}</span>
+                                        </div>
+                                    </div>
+                                )}
+
+                                <div className="flex justify-between items-center bg-indigo-100 p-4 rounded-md mt-4 border-t border-indigo-200">
+                                    <span className="text-xl font-bold text-indigo-800">Total Estimated Tax Owed:</span>
+                                    <span className="text-xl font-bold text-indigo-800">{formatCurrencyWithCents(totalTax)}</span>
+                                </div>
+                                <p className="text-sm text-gray-500 mt-4 italic">
+                                    Disclaimer: This calculator provides estimates based on publicly available tax information for the specified years. It is not financial or tax advice. For accurate tax planning, please consult with a qualified tax professional. Tax laws are complex and subject to change.
+                                </p>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        };
+
+        // Render the App component into the root div
+        ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+    </script>
+</body>
+</html>
