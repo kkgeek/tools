@@ -187,6 +187,9 @@ const buildTaxData = () => {
 let TAX_DATA = buildTaxData();
 const YEARS = Array.from({length: 18}, (_, i) => 2024 + i);  // 2024–2041
 
+// Companion data file in the same repo — update irs-rates.json each October when IRS publishes new rates
+const IRS_SYNC_URL = 'https://raw.githubusercontent.com/kkgeek/tools/main/irs-rates.json';
+
 // Fixed thresholds (not inflation-adjusted by statute)
 const NIIT_THRESHOLD     = {single: 200000, mfj: 250000};
 const ADDL_MED_THRESHOLD = {single: 200000, mfj: 250000};
@@ -923,9 +926,12 @@ const YearCompare = ({baseInputs}) => {
 // IRS DATA ADMIN PANEL
 // ================================================================
 const AdminPanel = ({onUpdate}) => {
-  const [yr,   setYr]   = React.useState('2026');
-  const [json, setJson] = React.useState('');
-  const [msg,  setMsg]  = React.useState('');
+  const [yr,      setYr]      = React.useState('2026');
+  const [json,    setJson]    = React.useState('');
+  const [msg,     setMsg]     = React.useState('');
+  const [syncing, setSyncing] = React.useState(false);
+  const [syncMsg, setSyncMsg] = React.useState('');
+  const [syncMeta, setSyncMeta] = React.useState(null);
 
   const toJson   = data => JSON.stringify(data,   (k,v) => v === Infinity ? 'Infinity' : v, 2);
   const fromJson = s    => JSON.parse(s,           (k,v) => v === 'Infinity' ? Infinity : v);
@@ -950,15 +956,89 @@ const AdminPanel = ({onUpdate}) => {
     onUpdate();
   };
 
+  const handleSync = async () => {
+    setSyncing(true);
+    setSyncMsg('');
+    setSyncMeta(null);
+    try {
+      const resp = await fetch(IRS_SYNC_URL + '?t=' + Date.now(), {cache: 'no-cache'});
+      if (!resp.ok) throw new Error(`Server returned HTTP ${resp.status}`);
+      const data = await resp.json();
+      const updatedYears = [];
+      const skippedYears = [];
+      for (const [fetchedYr, yrData] of Object.entries(data.years || {})) {
+        const yNum = Number(fetchedYr);
+        if (YEARS.includes(yNum)) {
+          const wasConfirmed = TAX_DATA[yNum]?.status === 'confirmed';
+          TAX_DATA[yNum] = {...yrData, status: 'confirmed'};
+          updatedYears.push(fetchedYr);
+          if (wasConfirmed) skippedYears.push(fetchedYr);
+        }
+      }
+      if (updatedYears.length === 0) {
+        setSyncMsg('✓ Already up to date — no new data found in irs-rates.json');
+      } else {
+        const newYears = updatedYears.filter(y => !skippedYears.includes(y));
+        const parts = [];
+        if (newYears.length)    parts.push(`${newYears.join(', ')} newly confirmed`);
+        if (skippedYears.length) parts.push(`${skippedYears.join(', ')} refreshed`);
+        setSyncMsg(`✓ Synced: ${parts.join(' · ')}`);
+      }
+      setSyncMeta(data.meta || null);
+      if (updatedYears.includes(yr)) setJson(toJson(TAX_DATA[yr]));
+      onUpdate();
+    } catch(e) {
+      setSyncMsg(`✗ Sync failed: ${e.message}`);
+    } finally {
+      setSyncing(false);
+    }
+  };
+
   const yrOpts = YEARS.map(y => ({v: String(y), l: `${y} — ${TAX_DATA[y].status}`}));
 
   return (
     <div className="max-w-3xl">
       <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-4 text-sm text-amber-800 leading-relaxed">
         <strong>IRS Data Admin</strong> — Projected years (2026–2041) use 2.5% annual COLA from 2025 confirmed data.
-        When the IRS publishes new rates, paste the corrected JSON below and click <em>Save & Confirm</em> to lock in the official rates.
-        Brackets use contiguous boundaries (max of bracket N = min of bracket N+1; size = max − min).
+        Click <strong>Sync from IRS Data</strong> to pull the latest confirmed rates from the companion <code className="bg-amber-100 px-1 rounded">irs-rates.json</code> file in the repo.
+        To add a new confirmed year, update <code className="bg-amber-100 px-1 rounded">irs-rates.json</code> in GitHub, then Sync.
+        Or paste JSON directly below and click <em>Save &amp; Confirm</em>.
       </div>
+
+      {/* ---- IRS Sync button ---- */}
+      <button
+        onClick={handleSync}
+        disabled={syncing}
+        className="w-full flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 disabled:bg-emerald-300 disabled:cursor-not-allowed text-white rounded-xl py-3 text-sm font-bold transition shadow-sm mb-3"
+      >
+        {syncing
+          ? <><span className="inline-block animate-spin text-base">↻</span> Fetching latest IRS data…</>
+          : <><span className="text-base">↻</span> Sync from IRS Data Source</>
+        }
+      </button>
+
+      {/* Sync result feedback */}
+      {syncMsg && (
+        <div className={`mb-4 p-3 rounded-xl text-sm border ${
+          syncMsg.startsWith('✓')
+            ? 'bg-emerald-50 border-emerald-200 text-emerald-700'
+            : 'bg-red-50 border-red-200 text-red-700'
+        }`}>
+          <p className="font-semibold">{syncMsg}</p>
+          {syncMeta && (
+            <div className="mt-2 text-xs text-emerald-600 space-y-0.5">
+              <p>Source: {syncMeta.source}</p>
+              <p>File last updated: {syncMeta.lastUpdated}</p>
+              {syncMeta.irsRP && <p>IRS Revenue Procedure: {syncMeta.irsRP}</p>}
+            </div>
+          )}
+          {syncMsg.startsWith('✗') && (
+            <p className="mt-1 text-xs text-red-500">
+              Check that <code>irs-rates.json</code> exists in the repo root, or update tax data manually below.
+            </p>
+          )}
+        </div>
+      )}
 
       <Card>
         <Sel label="Select Year to Edit" value={yr} onChange={setYr} options={yrOpts} />

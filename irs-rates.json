@@ -1,0 +1,122 @@
+{
+  "meta": {
+    "source": "IRS.gov Revenue Procedures",
+    "lastUpdated": "2024-11-09",
+    "irsRP": "Rev. Proc. 2024-40 (2025 rates), Rev. Proc. 2023-34 (2024 rates)",
+    "notes": "Update this file each October when IRS publishes inflation-adjusted brackets. The IRS Sync button in the app fetches from this raw GitHub URL. Brackets use contiguous boundaries: max of bracket N equals min of bracket N+1; bracket size = max - min.",
+    "irsLinks": {
+      "2024": "https://www.irs.gov/pub/irs-drop/rp-23-34.pdf",
+      "2025": "https://www.irs.gov/pub/irs-drop/rp-24-40.pdf"
+    }
+  },
+  "years": {
+    "2024": {
+      "status": "confirmed",
+      "brackets": {
+        "single": [
+          {"rate": 0.10, "min": 0,      "max": 11600},
+          {"rate": 0.12, "min": 11600,  "max": 47150},
+          {"rate": 0.22, "min": 47150,  "max": 100525},
+          {"rate": 0.24, "min": 100525, "max": 191950},
+          {"rate": 0.32, "min": 191950, "max": 243725},
+          {"rate": 0.35, "min": 243725, "max": 609350},
+          {"rate": 0.37, "min": 609350, "max": "Infinity"}
+        ],
+        "mfj": [
+          {"rate": 0.10, "min": 0,      "max": 23200},
+          {"rate": 0.12, "min": 23200,  "max": 94300},
+          {"rate": 0.22, "min": 94300,  "max": 201050},
+          {"rate": 0.24, "min": 201050, "max": 383900},
+          {"rate": 0.32, "min": 383900, "max": 487450},
+          {"rate": 0.35, "min": 487450, "max": 731200},
+          {"rate": 0.37, "min": 731200, "max": "Infinity"}
+        ]
+      },
+      "ltcg": {
+        "single": [
+          {"rate": 0.00, "min": 0,      "max": 47025},
+          {"rate": 0.15, "min": 47025,  "max": 518900},
+          {"rate": 0.20, "min": 518900, "max": "Infinity"}
+        ],
+        "mfj": [
+          {"rate": 0.00, "min": 0,      "max": 94050},
+          {"rate": 0.15, "min": 94050,  "max": 583750},
+          {"rate": 0.20, "min": 583750, "max": "Infinity"}
+        ]
+      },
+      "standardDeduction": {"single": 14600, "mfj": 29200},
+      "ssWageBase": 168600,
+      "ssRate": 0.062,
+      "medicareBaseRate": 0.0145,
+      "medicareAddlRate": 0.009,
+      "niitRate": 0.038,
+      "amt": {
+        "single": {"exemption": 85700,  "phaseout": 609350},
+        "mfj":    {"exemption": 137000, "phaseout": 1237450}
+      },
+      "amtBreakpoint": 232600,
+      "k401Limit": 23000,
+      "k401Catchup50": 7500,
+      "k401Catchup60_63": 7500,
+      "hsaSelf": 4150,
+      "hsaFamily": 8300,
+      "hsaCatchup55": 1000,
+      "waCgtThreshold": 270000,
+      "waCgtRate": 0.07
+    },
+    "2025": {
+      "status": "confirmed",
+      "brackets": {
+        "single": [
+          {"rate": 0.10, "min": 0,      "max": 11925},
+          {"rate": 0.12, "min": 11925,  "max": 48475},
+          {"rate": 0.22, "min": 48475,  "max": 103350},
+          {"rate": 0.24, "min": 103350, "max": 197300},
+          {"rate": 0.32, "min": 197300, "max": 250525},
+          {"rate": 0.35, "min": 250525, "max": 626350},
+          {"rate": 0.37, "min": 626350, "max": "Infinity"}
+        ],
+        "mfj": [
+          {"rate": 0.10, "min": 0,      "max": 23850},
+          {"rate": 0.12, "min": 23850,  "max": 96950},
+          {"rate": 0.22, "min": 96950,  "max": 206700},
+          {"rate": 0.24, "min": 206700, "max": 394600},
+          {"rate": 0.32, "min": 394600, "max": 501050},
+          {"rate": 0.35, "min": 501050, "max": 751600},
+          {"rate": 0.37, "min": 751600, "max": "Infinity"}
+        ]
+      },
+      "ltcg": {
+        "single": [
+          {"rate": 0.00, "min": 0,      "max": 48350},
+          {"rate": 0.15, "min": 48350,  "max": 533400},
+          {"rate": 0.20, "min": 533400, "max": "Infinity"}
+        ],
+        "mfj": [
+          {"rate": 0.00, "min": 0,      "max": 96700},
+          {"rate": 0.15, "min": 96700,  "max": 600050},
+          {"rate": 0.20, "min": 600050, "max": "Infinity"}
+        ]
+      },
+      "standardDeduction": {"single": 15000, "mfj": 30000},
+      "ssWageBase": 176100,
+      "ssRate": 0.062,
+      "medicareBaseRate": 0.0145,
+      "medicareAddlRate": 0.009,
+      "niitRate": 0.038,
+      "amt": {
+        "single": {"exemption": 88100,  "phaseout": 626350},
+        "mfj":    {"exemption": 140300, "phaseout": 1252700}
+      },
+      "amtBreakpoint": 239100,
+      "k401Limit": 23500,
+      "k401Catchup50": 7500,
+      "k401Catchup60_63": 11250,
+      "hsaSelf": 4300,
+      "hsaFamily": 8550,
+      "hsaCatchup55": 1000,
+      "waCgtThreshold": 278000,
+      "waCgtRate": 0.07
+    }
+  }
+}
