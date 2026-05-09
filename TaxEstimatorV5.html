@@ -1,0 +1,1232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tax Estimator Suite</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    body { font-family: 'Inter', sans-serif; }
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: #f1f5f9; }
+    ::-webkit-scrollbar-thumb { background: #94a3b8; border-radius: 3px; }
+  </style>
+</head>
+<body class="bg-slate-50">
+<div id="root"></div>
+<script type="text/babel">
+
+// ================================================================
+// TAX DATA  2024–2041
+// Brackets use contiguous boundaries: max of bracket N == min of bracket N+1
+// size of bracket = max - min  (do NOT add 1)
+// ================================================================
+const buildTaxData = () => {
+  const D = {};
+
+  // ---- 2024 CONFIRMED ----
+  D[2024] = {
+    status: 'confirmed',
+    brackets: {
+      single: [
+        {rate:0.10, min:0,      max:11600},
+        {rate:0.12, min:11600,  max:47150},
+        {rate:0.22, min:47150,  max:100525},
+        {rate:0.24, min:100525, max:191950},
+        {rate:0.32, min:191950, max:243725},
+        {rate:0.35, min:243725, max:609350},
+        {rate:0.37, min:609350, max:Infinity}
+      ],
+      mfj: [
+        {rate:0.10, min:0,      max:23200},
+        {rate:0.12, min:23200,  max:94300},
+        {rate:0.22, min:94300,  max:201050},
+        {rate:0.24, min:201050, max:383900},
+        {rate:0.32, min:383900, max:487450},
+        {rate:0.35, min:487450, max:731200},
+        {rate:0.37, min:731200, max:Infinity}
+      ]
+    },
+    ltcg: {
+      single: [
+        {rate:0.00, min:0,      max:47025},
+        {rate:0.15, min:47025,  max:518900},
+        {rate:0.20, min:518900, max:Infinity}
+      ],
+      mfj: [
+        {rate:0.00, min:0,      max:94050},
+        {rate:0.15, min:94050,  max:583750},
+        {rate:0.20, min:583750, max:Infinity}
+      ]
+    },
+    standardDeduction: {single: 14600, mfj: 29200},
+    ssWageBase: 168600,
+    ssRate: 0.062,
+    medicareBaseRate: 0.0145,
+    medicareAddlRate: 0.009,
+    niitRate: 0.038,
+    amt: {
+      single: {exemption: 85700,  phaseout: 609350},
+      mfj:    {exemption: 137000, phaseout: 1237450}
+    },
+    amtBreakpoint: 232600,
+    k401Limit: 23000,
+    k401Catchup50: 7500,
+    k401Catchup60_63: 7500,
+    hsaSelf: 4150, hsaFamily: 8300, hsaCatchup55: 1000,
+    waCgtThreshold: 270000, waCgtRate: 0.07,
+  };
+
+  // ---- 2025 CONFIRMED ----
+  D[2025] = {
+    status: 'confirmed',
+    brackets: {
+      single: [
+        {rate:0.10, min:0,      max:11925},
+        {rate:0.12, min:11925,  max:48475},
+        {rate:0.22, min:48475,  max:103350},
+        {rate:0.24, min:103350, max:197300},
+        {rate:0.32, min:197300, max:250525},
+        {rate:0.35, min:250525, max:626350},
+        {rate:0.37, min:626350, max:Infinity}
+      ],
+      mfj: [
+        {rate:0.10, min:0,      max:23850},
+        {rate:0.12, min:23850,  max:96950},
+        {rate:0.22, min:96950,  max:206700},
+        {rate:0.24, min:206700, max:394600},
+        {rate:0.32, min:394600, max:501050},
+        {rate:0.35, min:501050, max:751600},
+        {rate:0.37, min:751600, max:Infinity}
+      ]
+    },
+    ltcg: {
+      single: [
+        {rate:0.00, min:0,      max:48350},
+        {rate:0.15, min:48350,  max:533400},
+        {rate:0.20, min:533400, max:Infinity}
+      ],
+      mfj: [
+        {rate:0.00, min:0,      max:96700},
+        {rate:0.15, min:96700,  max:600050},
+        {rate:0.20, min:600050, max:Infinity}
+      ]
+    },
+    standardDeduction: {single: 15000, mfj: 30000},
+    ssWageBase: 176100,
+    ssRate: 0.062,
+    medicareBaseRate: 0.0145,
+    medicareAddlRate: 0.009,
+    niitRate: 0.038,
+    amt: {
+      single: {exemption: 88100,  phaseout: 626350},
+      mfj:    {exemption: 140300, phaseout: 1252700}
+    },
+    amtBreakpoint: 239100,
+    k401Limit: 23500,
+    k401Catchup50: 7500,
+    k401Catchup60_63: 11250,
+    hsaSelf: 4300, hsaFamily: 8550, hsaCatchup55: 1000,
+    waCgtThreshold: 278000, waCgtRate: 0.07,
+  };
+
+  // ---- 2026–2041 PROJECTED at 2.5% COLA from 2025 ----
+  const base = D[2025];
+  const r100 = v => Math.round(v / 100) * 100;
+  const r1k  = v => Math.round(v / 1000) * 1000;
+
+  const scaleB = (brackets, f) => brackets.map((b, i, arr) => ({
+    ...b,
+    min: i === 0 ? 0 : r100(arr[i-1].max * f),
+    max: b.max === Infinity ? Infinity : r100(b.max * f),
+  }));
+
+  for (let yr = 2026; yr <= 2041; yr++) {
+    const f = Math.pow(1.025, yr - 2025);
+    D[yr] = {
+      status: 'projected',
+      brackets: {
+        single: scaleB(base.brackets.single, f),
+        mfj:    scaleB(base.brackets.mfj,    f),
+      },
+      ltcg: {
+        single: scaleB(base.ltcg.single, f),
+        mfj:    scaleB(base.ltcg.mfj,    f),
+      },
+      standardDeduction: {
+        single: r100(base.standardDeduction.single * f),
+        mfj:    r100(base.standardDeduction.mfj    * f),
+      },
+      ssWageBase:       r1k(base.ssWageBase * f),
+      ssRate:           0.062,
+      medicareBaseRate: 0.0145,
+      medicareAddlRate: 0.009,
+      niitRate:         0.038,
+      amt: {
+        single: {exemption: r100(base.amt.single.exemption * f), phaseout: r1k(base.amt.single.phaseout * f)},
+        mfj:    {exemption: r100(base.amt.mfj.exemption    * f), phaseout: r1k(base.amt.mfj.phaseout    * f)},
+      },
+      amtBreakpoint:    r100(base.amtBreakpoint    * f),
+      k401Limit:        r100(base.k401Limit        * f),
+      k401Catchup50:    r100(base.k401Catchup50    * f),
+      k401Catchup60_63: r100(base.k401Catchup60_63 * f),
+      hsaSelf:          r100(base.hsaSelf          * f),
+      hsaFamily:        r100(base.hsaFamily        * f),
+      hsaCatchup55:     1000,   // HSA catch-up is not inflation-adjusted
+      waCgtThreshold:   r1k(base.waCgtThreshold    * f),
+      waCgtRate:        0.07,
+    };
+  }
+  return D;
+};
+
+let TAX_DATA = buildTaxData();
+const YEARS = Array.from({length: 18}, (_, i) => 2024 + i);  // 2024–2041
+
+// Fixed thresholds (not inflation-adjusted by statute)
+const NIIT_THRESHOLD     = {single: 200000, mfj: 250000};
+const ADDL_MED_THRESHOLD = {single: 200000, mfj: 250000};
+
+// ================================================================
+// CALCULATOR ENGINE
+// ================================================================
+const calcOrdinaryTax = (income, brackets) => {
+  if (income <= 0) return {tax: 0, breakdown: [], marginalRate: brackets[0].rate};
+  let tax = 0, rem = income;
+  const breakdown = [];
+  let marginalRate = brackets[0].rate;
+  for (const br of brackets) {
+    if (rem <= 0) break;
+    const size  = br.max === Infinity ? rem : Math.max(0, br.max - br.min);
+    const chunk = Math.min(rem, size);
+    if (chunk > 0) {
+      const t = chunk * br.rate;
+      tax += t;
+      breakdown.push({rate: br.rate, min: br.min, max: br.max, income: chunk, tax: t});
+      marginalRate = br.rate;
+      rem -= chunk;
+    }
+  }
+  return {tax, breakdown, marginalRate};
+};
+
+// LTCG stacks on top of ordinary income in the preferential rate brackets
+const calcLTCGTax = (ordinaryTaxable, ltcg, ltcgBrackets) => {
+  if (ltcg <= 0) return {tax: 0, breakdown: [], marginalRate: 0};
+  let tax = 0, rem = ltcg;
+  const breakdown = [];
+  let marginalRate = 0;
+  for (const br of ltcgBrackets) {
+    if (rem <= 0) break;
+    const brStart = Math.max(ordinaryTaxable, br.min);
+    const brEnd   = br.max;
+    if (brEnd !== Infinity && brStart >= brEnd) continue;
+    const avail = brEnd === Infinity ? rem : Math.max(0, brEnd - brStart);
+    const chunk = Math.min(rem, avail);
+    if (chunk > 0) {
+      const t = chunk * br.rate;
+      tax += t;
+      breakdown.push({rate: br.rate, income: chunk, tax: t});
+      marginalRate = br.rate;
+      rem -= chunk;
+    }
+  }
+  return {tax, breakdown, marginalRate};
+};
+
+const getCatchupAmt = (age, td) => {
+  if (!age || age < 50) return 0;
+  if (age >= 60 && age <= 63) return td.k401Catchup60_63;
+  return td.k401Catchup50;
+};
+
+const calculateTaxes = (inputs) => {
+  const yr  = Number(inputs.year);
+  const td  = TAX_DATA[yr] || TAX_DATA[2025];
+  const fs  = inputs.filingStatus;
+  const mfj = fs === 'mfj';
+
+  const s1 = inputs.s1 || {};
+  const s2 = mfj ? (inputs.s2 || {}) : {};
+
+  // ---- W-2 income per spouse ----
+  const s1W2 = (s1.salary||0) + (s1.bonus||0) + (s1.rsu||0);
+  const s2W2 = mfj ? ((s2.salary||0) + (s2.bonus||0) + (s2.rsu||0)) : 0;
+  const totalW2 = s1W2 + s2W2;
+
+  const stcg = inputs.stcg || 0;
+  const ltcg = inputs.ltcg || 0;
+  const grossIncome = totalW2 + stcg + ltcg;
+
+  // ---- 401k limits & contributions ----
+  const s1CatchupAmt = getCatchupAmt(s1.age, td);
+  const s2CatchupAmt = mfj ? getCatchupAmt(s2.age, td) : 0;
+  const s1K401Limit  = td.k401Limit + s1CatchupAmt;
+  const s2K401Limit  = td.k401Limit + s2CatchupAmt;
+  const s1K401Trad   = Math.min(s1.k401Trad||0, s1K401Limit);
+  const s2K401Trad   = mfj ? Math.min(s2.k401Trad||0, s2K401Limit) : 0;
+  const s1K401Roth   = Math.min(s1.k401Roth||0, Math.max(0, s1K401Limit - s1K401Trad));
+  const s2K401Roth   = mfj ? Math.min(s2.k401Roth||0, Math.max(0, s2K401Limit - s2K401Trad)) : 0;
+
+  // ---- HSA (pre-tax; user enters per spouse; combined must not exceed family limit + catch-ups) ----
+  const s1Hsa = s1.hsa || 0;
+  const s2Hsa = mfj ? (s2.hsa || 0) : 0;
+
+  // ---- Employer match (informational only) ----
+  const s1Match = s1.employerMatch || 0;
+  const s2Match = mfj ? (s2.employerMatch || 0) : 0;
+
+  // ---- Aggregated deductions ----
+  const preTaxDed  = s1K401Trad + s2K401Trad + s1Hsa + s2Hsa;
+  const postTaxDed = s1K401Roth + s2K401Roth;
+
+  // ---- AGI ----
+  const agi = Math.max(0, grossIncome - preTaxDed);
+
+  // ---- Standard vs itemized ----
+  const saltCapped     = Math.min(inputs.salt||0, 10000);
+  const itemizedTotal  = (inputs.mortgage||0) + saltCapped + (inputs.charitable||0) + (inputs.otherItemized||0);
+  const stdDed         = td.standardDeduction[fs];
+  const usedDeduction  = inputs.deductionType === 'itemized'
+    ? Math.max(itemizedTotal, stdDed)
+    : stdDed;
+  const usingItemized  = inputs.deductionType === 'itemized' && itemizedTotal > stdDed;
+
+  // ---- Taxable ordinary income ----
+  // Ordinary = W-2 + STCG; subtract pre-tax deductions and standard/itemized
+  const ordinaryGross   = totalW2 + stcg;
+  const taxableOrdinary = Math.max(0, ordinaryGross - preTaxDed - usedDeduction);
+  const taxableTotal    = taxableOrdinary + ltcg;
+
+  // ---- Federal income tax (ordinary brackets) ----
+  const {tax: fedOrdinary, breakdown: fedBreakdown, marginalRate} =
+    calcOrdinaryTax(taxableOrdinary, td.brackets[fs]);
+
+  // ---- Federal LTCG tax ----
+  const {tax: fedLTCG, breakdown: ltcgBreakdown, marginalRate: ltcgMargRate} =
+    calcLTCGTax(taxableOrdinary, ltcg, td.ltcg[fs]);
+
+  // ---- Social Security (6.2%, per-person wage base) ----
+  const ssTaxS1 = Math.min(s1W2, td.ssWageBase) * td.ssRate;
+  const ssTaxS2 = mfj ? Math.min(s2W2, td.ssWageBase) * td.ssRate : 0;
+  const totalSS = ssTaxS1 + ssTaxS2;
+
+  // ---- Medicare (1.45% base on all W-2; 0.9% additional above household threshold) ----
+  const medBaseS1  = s1W2 * td.medicareBaseRate;
+  const medBaseS2  = mfj ? s2W2 * td.medicareBaseRate : 0;
+  const addlMed    = Math.max(0, totalW2 - ADDL_MED_THRESHOLD[fs]) * td.medicareAddlRate;
+  const totalMed   = medBaseS1 + medBaseS2 + addlMed;
+
+  // ---- NIIT 3.8% on net investment income above MAGI threshold ----
+  const nii          = stcg + ltcg;
+  const magiOverNiit = Math.max(0, agi - NIIT_THRESHOLD[fs]);
+  const niit         = Math.min(nii, magiOverNiit) * td.niitRate;
+
+  // ---- AMT (simplified — no preference items beyond taxable income) ----
+  const amtExBase     = td.amt[fs].exemption;
+  const amtPhaseout   = td.amt[fs].phaseout;
+  const phaseReduction = Math.max(0, taxableTotal - amtPhaseout) * 0.25;
+  const amtEx         = Math.max(0, amtExBase - phaseReduction);
+  const amtIncome     = Math.max(0, taxableTotal - amtEx);
+  const bp            = td.amtBreakpoint;
+  const amtTentative  = amtIncome <= bp
+    ? amtIncome * 0.26
+    : bp * 0.26 + (amtIncome - bp) * 0.28;
+  const amtAdditional = Math.max(0, amtTentative - (fedOrdinary + fedLTCG));
+
+  // ---- WA Capital Gains Tax (7% on LTCG exceeding threshold) ----
+  const waCGT = ltcg > td.waCgtThreshold
+    ? (ltcg - td.waCgtThreshold) * td.waCgtRate
+    : 0;
+
+  // ---- Total tax & rates ----
+  const totalTax    = fedOrdinary + fedLTCG + totalSS + totalMed + niit + amtAdditional + waCGT;
+  const effectiveRate = grossIncome > 0 ? totalTax / grossIncome : 0;
+
+  // ---- Take-home ----
+  const takeHomeAnnual  = Math.max(0, grossIncome - totalTax - preTaxDed - postTaxDed);
+  const takeHomeMonthly = takeHomeAnnual / 12;
+
+  // ---- 50/30/20 ----
+  const needs   = takeHomeAnnual * 0.50;
+  const wants   = takeHomeAnnual * 0.30;
+  const savings = takeHomeAnnual * 0.20;
+
+  // ---- Bonus + RSU supplemental withholding gap ----
+  const totalBonus   = (s1.bonus||0) + (mfj ? (s2.bonus||0) : 0);
+  const totalRSU     = (s1.rsu||0)   + (mfj ? (s2.rsu||0)   : 0);
+  const suppTotal    = totalBonus + totalRSU;
+  const suppWithheld = suppTotal * 0.22;       // employer flat rate
+  const suppActual   = suppTotal * marginalRate; // your true rate
+  const suppGap      = Math.max(0, suppActual - suppWithheld);
+
+  // ---- Quarterly estimated taxes ----
+  // Investment income (LTCG, STCG) and WA CGT have no withholding
+  const investmentTax  = fedLTCG + niit + waCGT;
+  const qtrlyTotal     = investmentTax + suppGap;
+  const qtrlyPayment   = qtrlyTotal / 4;
+
+  return {
+    td, yr, fs, mfj,
+    grossIncome, s1W2, s2W2, totalW2, stcg, ltcg,
+    s1K401Trad, s2K401Trad, s1K401Roth, s2K401Roth,
+    s1K401Limit, s2K401Limit, s1Hsa, s2Hsa,
+    preTaxDed, postTaxDed,
+    agi, taxableOrdinary, taxableTotal,
+    usedDeduction, stdDed, itemizedTotal, usingItemized,
+    fedOrdinary, fedBreakdown, marginalRate,
+    fedLTCG, ltcgBreakdown, ltcgMargRate,
+    ssTaxS1, ssTaxS2, totalSS,
+    medBaseS1, medBaseS2, addlMed, totalMed,
+    niit, amtTentative, amtAdditional, waCGT,
+    totalTax, effectiveRate,
+    takeHomeAnnual, takeHomeMonthly,
+    needs, wants, savings,
+    totalBonus, totalRSU, suppTotal, suppWithheld, suppActual, suppGap,
+    investmentTax, qtrlyTotal, qtrlyPayment,
+    s1Match, s2Match, totalMatch: s1Match + s2Match,
+  };
+};
+
+// ================================================================
+// UTILITIES
+// ================================================================
+const fmt    = n => new Intl.NumberFormat('en-US', {style:'currency',currency:'USD',maximumFractionDigits:0}).format(n||0);
+const fmtPct = n => `${((n||0)*100).toFixed(2)}%`;
+const fmtFull= n => new Intl.NumberFormat('en-US', {style:'currency',currency:'USD',minimumFractionDigits:2,maximumFractionDigits:2}).format(n||0);
+
+const parseNum = s => {
+  if (typeof s === 'number') return s;
+  return parseFloat(String(s).replace(/[^0-9.-]/g, '')) || 0;
+};
+
+const exportCSV = (r, inputs) => {
+  const rows = [
+    ['"Tax Estimator Suite — Export"'],
+    [`"Year: ${inputs.year}"`, `"Filing: ${inputs.filingStatus === 'mfj' ? 'Married Filing Jointly' : 'Single'}"`],
+    [],
+    ['"INCOME"', '"Amount"'],
+    ['"Gross Income"',               r.grossIncome.toFixed(2)],
+    ['"Spouse 1 W-2"',              r.s1W2.toFixed(2)],
+    ['"Spouse 2 W-2"',              r.s2W2.toFixed(2)],
+    ['"Short-Term Capital Gains"',  r.stcg.toFixed(2)],
+    ['"Long-Term Capital Gains"',   r.ltcg.toFixed(2)],
+    ['"Adjusted Gross Income"',     r.agi.toFixed(2)],
+    ['"Pre-Tax Deductions (401k+HSA)"', r.preTaxDed.toFixed(2)],
+    ['"Standard/Itemized Deduction"',   r.usedDeduction.toFixed(2)],
+    ['"Federal Taxable Ordinary Income"', r.taxableOrdinary.toFixed(2)],
+    [],
+    ['"TAX BREAKDOWN"', '"Amount"'],
+    ['"Federal Income Tax"',          r.fedOrdinary.toFixed(2)],
+    ['"Federal LTCG Tax"',            r.fedLTCG.toFixed(2)],
+    ['"Social Security — Spouse 1"',  r.ssTaxS1.toFixed(2)],
+    ['"Social Security — Spouse 2"',  r.ssTaxS2.toFixed(2)],
+    ['"Medicare Base (1.45%)"',       (r.medBaseS1+r.medBaseS2).toFixed(2)],
+    ['"Additional Medicare (0.9%)"',  r.addlMed.toFixed(2)],
+    ['"NIIT (3.8%)"',                 r.niit.toFixed(2)],
+    ['"AMT Additional"',              r.amtAdditional.toFixed(2)],
+    ['"WA Capital Gains Tax"',        r.waCGT.toFixed(2)],
+    ['"TOTAL TAX"',                   r.totalTax.toFixed(2)],
+    ['"Effective Tax Rate"',          `"${fmtPct(r.effectiveRate)}"`],
+    ['"Federal Marginal Rate"',       `"${fmtPct(r.marginalRate)}"`],
+    [],
+    ['"TAKE-HOME"', '"Annual"', '"Monthly"'],
+    ['"Gross Income"',       r.grossIncome.toFixed(2),      ''],
+    ['"Annual Take-Home"',   r.takeHomeAnnual.toFixed(2),   r.takeHomeMonthly.toFixed(2)],
+    [],
+    ['"50/30/20 BUDGET"', '"Annual"', '"Monthly"'],
+    ['"Needs (50%)"',   r.needs.toFixed(2),   (r.needs/12).toFixed(2)],
+    ['"Wants (30%)"',   r.wants.toFixed(2),   (r.wants/12).toFixed(2)],
+    ['"Savings (20%)"', r.savings.toFixed(2), (r.savings/12).toFixed(2)],
+    [],
+    ['"BONUS & RSU ANALYSIS"', '"Amount"'],
+    ['"Total Bonus + RSU"',              r.suppTotal.toFixed(2)],
+    ['"Employer Withholding (22%)"',     r.suppWithheld.toFixed(2)],
+    ['"Actual Tax at Marginal Rate"',    r.suppActual.toFixed(2)],
+    ['"Underpayment Gap"',               r.suppGap.toFixed(2)],
+    [],
+    ['"QUARTERLY ESTIMATES"', '"Amount"'],
+    ['"Investment Tax (no withholding)"', r.investmentTax.toFixed(2)],
+    ['"Total to Pay via Estimates"',      r.qtrlyTotal.toFixed(2)],
+    ['"Per Quarter"',                     r.qtrlyPayment.toFixed(2)],
+  ];
+  const csv = rows.map(row => row.join(',')).join('\n');
+  const a = Object.assign(document.createElement('a'), {
+    href: URL.createObjectURL(new Blob([csv], {type:'text/csv'})),
+    download: `tax-estimate-${inputs.year}.csv`,
+  });
+  a.click(); URL.revokeObjectURL(a.href);
+};
+
+// ================================================================
+// UI PRIMITIVES
+// ================================================================
+const CurrencyInput = ({label, value, onChange, hint}) => {
+  const [disp, setDisp] = React.useState(value ? fmt(value) : '');
+  React.useEffect(() => { if (!document.activeElement || document.activeElement.tagName !== 'INPUT') setDisp(value ? fmt(value) : ''); }, [value]);
+  return (
+    <div className="mb-3">
+      <label className="block text-xs font-medium text-slate-600 mb-1">{label}</label>
+      <input type="text"
+        className="w-full border border-slate-300 rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 bg-white"
+        value={disp} placeholder="$0"
+        onChange={e => { setDisp(e.target.value); onChange(parseNum(e.target.value)); }}
+        onBlur={e  => { const n = parseNum(e.target.value); setDisp(n ? fmt(n) : ''); onChange(n); }}
+        onFocus={e => { const n = parseNum(e.target.value); setDisp(n ? String(n) : ''); }}
+      />
+      {hint && <p className="text-xs text-slate-400 mt-0.5">{hint}</p>}
+    </div>
+  );
+};
+
+const NumInput = ({label, value, onChange, min=0, max=120}) => (
+  <div className="mb-3">
+    <label className="block text-xs font-medium text-slate-600 mb-1">{label}</label>
+    <input type="number" min={min} max={max}
+      className="w-full border border-slate-300 rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 bg-white"
+      value={value||''} onChange={e => onChange(parseFloat(e.target.value)||0)}
+    />
+  </div>
+);
+
+const Sel = ({label, value, onChange, options}) => (
+  <div className="mb-3">
+    <label className="block text-xs font-medium text-slate-600 mb-1">{label}</label>
+    <select
+      className="w-full border border-slate-300 rounded-md px-3 py-1.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-400"
+      value={value} onChange={e => onChange(e.target.value)}
+    >
+      {options.map(o => <option key={o.v} value={o.v}>{o.l}</option>)}
+    </select>
+  </div>
+);
+
+const Card = ({title, children, titleCls='text-slate-700'}) => (
+  <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4 mb-4">
+    {title && <h3 className={`text-xs font-bold uppercase tracking-wider mb-3 pb-2 border-b border-slate-100 ${titleCls}`}>{title}</h3>}
+    {children}
+  </div>
+);
+
+const Row = ({label, value, bold, indent, sub, highlight}) => (
+  <div className={[
+    'flex justify-between items-center py-1',
+    indent    ? 'pl-4'              : '',
+    sub       ? 'opacity-60'        : '',
+    highlight ? 'bg-blue-50 -mx-2 px-2 rounded my-0.5' : '',
+  ].join(' ')}>
+    <span className={`text-sm ${bold ? 'font-semibold text-slate-800' : 'text-slate-600'}`}>{label}</span>
+    <span className={`text-sm font-mono tabular-nums ${bold ? 'font-bold text-slate-900' : 'text-slate-700'}`}>{value}</span>
+  </div>
+);
+
+const Divider = () => <div className="my-2 border-t border-slate-100" />;
+
+// ================================================================
+// SPOUSE INPUT CARD
+// ================================================================
+const SpouseCard = ({title, data, onChange, td, mfj, titleCls}) => {
+  const age        = data.age || 0;
+  const catchupAmt = getCatchupAmt(age, td);
+  const k401Limit  = td.k401Limit + catchupAmt;
+  const hsaBase    = mfj ? td.hsaFamily : td.hsaSelf;
+  const hsaLimit   = hsaBase + (age >= 55 ? td.hsaCatchup55 : 0);
+  const set        = k => v => onChange({...data, [k]: v});
+
+  return (
+    <Card title={title} titleCls={titleCls}>
+      <NumInput label="Age" value={data.age} onChange={set('age')} min={18} max={100} />
+      <CurrencyInput label="Salary" value={data.salary} onChange={set('salary')} />
+      <CurrencyInput label="Bonus" value={data.bonus} onChange={set('bonus')}
+        hint="Employer withholds at 22% flat rate — gap shown in Bonus Analysis" />
+      <CurrencyInput label="Vested RSUs" value={data.rsu} onChange={set('rsu')}
+        hint="Treated as W-2 ordinary income at vest; 22% supplemental withholding" />
+
+      <Divider />
+      <div className="flex justify-between items-center mb-1.5">
+        <p className="text-xs font-bold text-slate-500 uppercase tracking-wide">401(k)</p>
+        <span className="text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full font-medium">Limit {fmt(k401Limit)}</span>
+      </div>
+      {age >= 50 && (
+        <div className="mb-2 px-2 py-1 bg-indigo-50 border border-indigo-100 rounded-lg text-xs text-indigo-700 font-medium">
+          {age >= 60 && age <= 63
+            ? `✓ SECURE 2.0 catch-up (age 60–63): +${fmt(catchupAmt)} included in limit`
+            : `✓ Age 50+ catch-up: +${fmt(catchupAmt)} included in limit`}
+        </div>
+      )}
+      <CurrencyInput label="Traditional 401k (pre-tax)" value={data.k401Trad} onChange={set('k401Trad')} />
+      <CurrencyInput label="Roth 401k (post-tax)" value={data.k401Roth} onChange={set('k401Roth')}
+        hint="No current-year tax deduction; counts against combined limit" />
+      <CurrencyInput label="Employer Match (informational)" value={data.employerMatch} onChange={set('employerMatch')}
+        hint="Shown in results only — not tax-deductible to you" />
+
+      <Divider />
+      <div className="flex justify-between items-center mb-1.5">
+        <p className="text-xs font-bold text-slate-500 uppercase tracking-wide">HSA</p>
+        <span className="text-xs bg-teal-50 text-teal-700 px-2 py-0.5 rounded-full font-medium">
+          {mfj ? 'Family' : 'Self'} limit {fmt(hsaLimit)}{age>=55?' (incl. catch-up)':''}
+        </span>
+      </div>
+      {age >= 55 && (
+        <div className="mb-2 px-2 py-1 bg-teal-50 border border-teal-100 rounded-lg text-xs text-teal-700 font-medium">
+          ✓ Age 55+ HSA catch-up: +{fmt(td.hsaCatchup55)}
+        </div>
+      )}
+      <CurrencyInput label="HSA Contribution" value={data.hsa} onChange={set('hsa')} />
+    </Card>
+  );
+};
+
+// ================================================================
+// RESULTS PANEL
+// ================================================================
+const ResultsPanel = ({results: r, inputs, onExport}) => {
+  if (!r) return (
+    <div className="flex flex-col items-center justify-center h-96 text-slate-400 bg-white rounded-xl border border-slate-200">
+      <svg className="w-14 h-14 mb-4 opacity-25" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+          d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 11h.01M12 11h.01M15 11h.01M4 6a2 2 0 012-2h12a2 2 0 012 2v12a2 2 0 01-2 2H6a2 2 0 01-2-2V6z"/>
+      </svg>
+      <p className="text-sm font-medium">Enter your details and click Calculate</p>
+      <p className="text-xs mt-1 text-slate-300">Results will appear here</p>
+    </div>
+  );
+
+  const mfj = r.mfj;
+
+  return (
+    <div>
+      {/* ---- Summary chips ---- */}
+      <div className="grid grid-cols-3 gap-3 mb-4">
+        <div className="bg-red-50 border border-red-100 rounded-xl p-3 text-center">
+          <p className="text-xs font-semibold text-red-400 mb-1">Total Tax</p>
+          <p className="text-xl font-bold text-red-600">{fmt(r.totalTax)}</p>
+          <p className="text-xs text-red-400 mt-0.5">Effective {fmtPct(r.effectiveRate)}</p>
+        </div>
+        <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-3 text-center">
+          <p className="text-xs font-semibold text-emerald-400 mb-1">Take-Home</p>
+          <p className="text-xl font-bold text-emerald-600">{fmt(r.takeHomeAnnual)}</p>
+          <p className="text-xs text-emerald-400 mt-0.5">{fmt(r.takeHomeMonthly)}/mo</p>
+        </div>
+        <div className="bg-blue-50 border border-blue-100 rounded-xl p-3 text-center">
+          <p className="text-xs font-semibold text-blue-400 mb-1">Marginal Rate</p>
+          <p className="text-xl font-bold text-blue-600">{fmtPct(r.marginalRate)}</p>
+          <p className="text-xs text-blue-400 mt-0.5">Federal Ordinary</p>
+        </div>
+      </div>
+
+      {/* ---- Income & AGI ---- */}
+      <Card title="Income & Adjusted Gross Income">
+        <Row label="Gross Income" value={fmt(r.grossIncome)} bold />
+        {mfj
+          ? <><Row label="Spouse 1 W-2" value={fmt(r.s1W2)} indent sub />
+              <Row label="Spouse 2 W-2" value={fmt(r.s2W2)} indent sub /></>
+          : <Row label="W-2 Income" value={fmt(r.s1W2)} indent sub />
+        }
+        {r.stcg > 0 && <Row label="Short-Term Capital Gains" value={fmt(r.stcg)} indent sub />}
+        {r.ltcg > 0 && <Row label="Long-Term Capital Gains" value={fmt(r.ltcg)} indent sub />}
+        <Divider />
+        <Row label="Pre-Tax Deductions (401k Trad + HSA)" value={`(${fmt(r.preTaxDed)})`} indent sub />
+        <Row label="Adjusted Gross Income (AGI)" value={fmt(r.agi)} bold highlight />
+        <Row label={`${r.usingItemized ? 'Itemized' : 'Standard'} Deduction`} value={`(${fmt(r.usedDeduction)})`} indent sub />
+        <Row label="Federal Taxable Ordinary Income" value={fmt(r.taxableOrdinary)} bold />
+        {r.ltcg > 0 && <Row label="Total Taxable (incl. LTCG)" value={fmt(r.taxableTotal)} sub />}
+      </Card>
+
+      {/* ---- Tax Breakdown ---- */}
+      <Card title="Complete Tax Breakdown">
+
+        {/* Federal ordinary */}
+        <Row label="Federal Income Tax" value={fmt(r.fedOrdinary)} bold />
+        {r.fedBreakdown.map((b, i) => (
+          <Row key={i} indent sub
+            label={`${(b.rate*100).toFixed(0)}% bracket  ${fmt(b.min)}–${b.max===Infinity?'∞':fmt(b.max)}`}
+            value={fmt(b.tax)} />
+        ))}
+
+        {/* LTCG */}
+        {r.fedLTCG > 0 && <>
+          <Divider />
+          <Row label="Federal LTCG Tax" value={fmt(r.fedLTCG)} bold />
+          {r.ltcgBreakdown.map((b, i) => (
+            <Row key={i} indent sub
+              label={`${(b.rate*100).toFixed(0)}% rate on ${fmt(b.income)}`}
+              value={fmt(b.tax)} />
+          ))}
+        </>}
+
+        {/* Social Security */}
+        <Divider />
+        <Row label="Social Security Tax (6.2%)" value={fmt(r.totalSS)} bold />
+        <Row indent sub label={`Per-person wage base: ${fmt(r.td.ssWageBase)}`} value="" />
+        {mfj && <Row indent sub label={`Spouse 1 on ${fmt(Math.min(r.s1W2, r.td.ssWageBase))}`} value={fmt(r.ssTaxS1)} />}
+        {mfj && <Row indent sub label={`Spouse 2 on ${fmt(Math.min(r.s2W2, r.td.ssWageBase))}`} value={fmt(r.ssTaxS2)} />}
+
+        {/* Medicare */}
+        <Divider />
+        <Row label="Medicare Tax" value={fmt(r.totalMed)} bold />
+        <Row indent sub label={`Base 1.45% on ${fmt(r.totalW2)}`} value={fmt(r.medBaseS1 + r.medBaseS2)} />
+        {r.addlMed > 0 && (
+          <Row indent sub label={`Additional 0.9% above ${fmt(ADDL_MED_THRESHOLD[r.fs])}`} value={fmt(r.addlMed)} />
+        )}
+
+        {/* NIIT */}
+        {r.niit > 0 && <>
+          <Divider />
+          <Row label="Net Investment Income Tax (3.8%)" value={fmt(r.niit)} bold />
+          <Row indent sub label={`On ${fmt(Math.min(r.stcg+r.ltcg, r.agi - NIIT_THRESHOLD[r.fs]))} (lesser of NII or MAGI excess)`} value="" />
+        </>}
+
+        {/* AMT */}
+        {r.amtAdditional > 0 && <>
+          <Divider />
+          <Row label="Alternative Minimum Tax (additional)" value={fmt(r.amtAdditional)} bold />
+          <Row indent sub label={`AMT tentative: ${fmt(r.amtTentative)} vs regular: ${fmt(r.fedOrdinary + r.fedLTCG)}`} value="" />
+        </>}
+
+        {/* WA CGT */}
+        {r.waCGT > 0 && <>
+          <Divider />
+          <Row label="WA Capital Gains Tax (7%)" value={fmt(r.waCGT)} bold />
+          <Row indent sub label={`${fmt(r.ltcg)} LTCG − ${fmt(r.td.waCgtThreshold)} threshold`} value="" />
+        </>}
+
+        <div className="mt-2 pt-2 border-t-2 border-slate-200" />
+        <Row label="TOTAL TAX" value={fmt(r.totalTax)} bold highlight />
+        <Row label="Effective Tax Rate (total tax ÷ gross)" value={fmtPct(r.effectiveRate)} bold />
+        <Row label="Federal Marginal Rate (ordinary)" value={fmtPct(r.marginalRate)} bold />
+        {r.ltcg > 0 && <Row label="LTCG Marginal Rate" value={fmtPct(r.ltcgMargRate)} sub />}
+      </Card>
+
+      {/* ---- Take-Home ---- */}
+      <Card title="Take-Home Summary" titleCls="text-emerald-700">
+        <Row label="Gross Income" value={fmt(r.grossIncome)} />
+        <Row label="Total Taxes" value={`(${fmt(r.totalTax)})`} indent sub />
+        <Row label="Pre-Tax 401k & HSA" value={`(${fmt(r.preTaxDed)})`} indent sub />
+        <Row label="Post-Tax Roth 401k" value={`(${fmt(r.postTaxDed)})`} indent sub />
+        <Divider />
+        <Row label="Annual Take-Home" value={fmt(r.takeHomeAnnual)} bold highlight />
+        <Row label="Monthly Take-Home" value={fmt(r.takeHomeMonthly)} bold />
+        {r.totalMatch > 0 && (
+          <div className="mt-3 p-2.5 bg-indigo-50 border border-indigo-100 rounded-lg">
+            <p className="text-sm font-semibold text-indigo-700">
+              Employer 401k Match: {fmt(r.totalMatch)}/yr
+            </p>
+            <p className="text-xs text-indigo-400 mt-0.5">Not in take-home — adds directly to retirement balance</p>
+          </div>
+        )}
+      </Card>
+
+      {/* ---- 50/30/20 ---- */}
+      <Card title="50 / 30 / 20 Budget Split" titleCls="text-violet-700">
+        <p className="text-xs text-slate-500 mb-3">
+          Based on {fmt(r.takeHomeAnnual)}/yr after taxes, 401k, and HSA
+        </p>
+        <div className="space-y-2">
+          <div className="bg-blue-50 border border-blue-100 rounded-xl p-3 flex justify-between items-center">
+            <div>
+              <p className="text-sm font-bold text-blue-700">Needs — 50%</p>
+              <p className="text-xs text-slate-500 mt-0.5">Housing, food, transport, utilities</p>
+            </div>
+            <div className="text-right">
+              <p className="text-base font-bold text-blue-700">{fmt(r.needs)}/yr</p>
+              <p className="text-sm text-blue-500">{fmt(r.needs/12)}/mo</p>
+            </div>
+          </div>
+          <div className="bg-amber-50 border border-amber-100 rounded-xl p-3 flex justify-between items-center">
+            <div>
+              <p className="text-sm font-bold text-amber-700">Wants — 30%</p>
+              <p className="text-xs text-slate-500 mt-0.5">Dining, travel, entertainment</p>
+            </div>
+            <div className="text-right">
+              <p className="text-base font-bold text-amber-700">{fmt(r.wants)}/yr</p>
+              <p className="text-sm text-amber-500">{fmt(r.wants/12)}/mo</p>
+            </div>
+          </div>
+          <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-3 flex justify-between items-center">
+            <div>
+              <p className="text-sm font-bold text-emerald-700">Savings — 20%</p>
+              <p className="text-xs text-slate-500 mt-0.5">Emergency fund, investments, extra retirement</p>
+            </div>
+            <div className="text-right">
+              <p className="text-base font-bold text-emerald-700">{fmt(r.savings)}/yr</p>
+              <p className="text-sm text-emerald-500">{fmt(r.savings/12)}/mo</p>
+            </div>
+          </div>
+        </div>
+      </Card>
+
+      {/* ---- Bonus & RSU Analysis ---- */}
+      {r.suppTotal > 0 && (
+        <Card title="Bonus & RSU Tax Analysis" titleCls="text-orange-700">
+          <Row label="Total Bonus + RSU" value={fmt(r.suppTotal)} bold />
+          <Row indent sub label="Employer withholds at 22% flat rate" value={fmt(r.suppWithheld)} />
+          <Row indent sub label={`Actual liability at ${fmtPct(r.marginalRate)} marginal rate`} value={fmt(r.suppActual)} />
+          <Divider />
+          {r.suppGap > 0 ? (
+            <div className="p-3 bg-red-50 border border-red-200 rounded-xl">
+              <p className="text-sm font-bold text-red-700">⚠ Potential underpayment: {fmt(r.suppGap)}</p>
+              <p className="text-xs text-red-500 mt-1">
+                Your marginal rate ({fmtPct(r.marginalRate)}) exceeds the 22% flat withholding.
+                Increase W-4 withholding or include in quarterly estimates to avoid penalty.
+              </p>
+            </div>
+          ) : (
+            <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl">
+              <p className="text-sm font-bold text-emerald-700">✓ 22% withholding covers your marginal rate</p>
+              <p className="text-xs text-emerald-500 mt-1">
+                No underpayment from bonus/RSU. May result in a small refund from this portion.
+              </p>
+            </div>
+          )}
+        </Card>
+      )}
+
+      {/* ---- Quarterly Estimates ---- */}
+      <Card title="Quarterly Estimated Tax Payments" titleCls="text-indigo-700">
+        <p className="text-xs text-slate-500 mb-3">
+          For income without automatic withholding — due Apr 15, Jun 16, Sep 15, Jan 15
+        </p>
+        <Row label="Investment Tax (LTCG + NIIT + WA CGT)" value={fmt(r.investmentTax)} />
+        {r.suppGap > 0 && <Row label="Bonus/RSU underpayment" value={fmt(r.suppGap)} />}
+        <Divider />
+        <Row label="Total to Pay via Estimates" value={fmt(r.qtrlyTotal)} bold />
+        {r.qtrlyTotal > 0 ? (
+          <div className="mt-3 grid grid-cols-2 gap-2">
+            {[['Q1','Apr 15'],['Q2','Jun 16'],['Q3','Sep 15'],['Q4','Jan 15 next yr']].map(([q,d]) => (
+              <div key={q} className="bg-indigo-50 border border-indigo-100 rounded-lg p-2.5 text-center">
+                <p className="text-xs font-semibold text-indigo-500">{q} — {d}</p>
+                <p className="text-lg font-bold text-indigo-700">{fmt(r.qtrlyPayment)}</p>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="mt-2 p-2.5 bg-emerald-50 border border-emerald-100 rounded-lg text-xs text-emerald-600 font-medium">
+            No quarterly payments estimated — withholding likely covers your full liability.
+          </div>
+        )}
+        <p className="text-xs text-slate-400 mt-3 leading-relaxed">
+          Safe harbor: pay 100% of prior-year tax (110% if prior-year AGI &gt; $150k) to avoid underpayment penalty. Verify actual withholding from your pay stubs.
+        </p>
+      </Card>
+
+      <button onClick={onExport}
+        className="w-full bg-slate-700 hover:bg-slate-800 text-white rounded-xl py-2.5 text-sm font-bold transition shadow-sm mb-6">
+        ↓ Export to CSV
+      </button>
+    </div>
+  );
+};
+
+// ================================================================
+// YEAR COMPARISON TAB
+// ================================================================
+const YearCompare = ({baseInputs}) => {
+  const [yrA, setYrA] = React.useState(String(baseInputs.year));
+  const [yrB, setYrB] = React.useState(String(Math.min(Number(baseInputs.year)+1, 2041)));
+
+  const rA = React.useMemo(() => { try { return calculateTaxes({...baseInputs, year: yrA}); } catch { return null; } }, [yrA, JSON.stringify(baseInputs)]);
+  const rB = React.useMemo(() => { try { return calculateTaxes({...baseInputs, year: yrB}); } catch { return null; } }, [yrB, JSON.stringify(baseInputs)]);
+
+  const fs   = baseInputs.filingStatus;
+  const yrOpts = YEARS.map(y => ({v: String(y), l: `${y}${TAX_DATA[y]?.status==='projected'?' (proj.)':''}`}));
+
+  const rows = [
+    {lbl:'Gross Income',              fn:r=>r.grossIncome},
+    {lbl:'Adjusted Gross Income',     fn:r=>r.agi},
+    {lbl:'Federal Taxable Ordinary',  fn:r=>r.taxableOrdinary},
+    {lbl:'Standard Deduction',        fn:r=>r.td.standardDeduction[fs]},
+    {lbl:'SS Wage Base',              fn:r=>r.td.ssWageBase},
+    {lbl:'401k Employee Limit',       fn:r=>r.td.k401Limit},
+    {sep:true},
+    {lbl:'Federal Income Tax',        fn:r=>r.fedOrdinary},
+    {lbl:'Federal LTCG Tax',          fn:r=>r.fedLTCG},
+    {lbl:'Social Security',           fn:r=>r.totalSS},
+    {lbl:'Medicare',                  fn:r=>r.totalMed},
+    {lbl:'NIIT (3.8%)',               fn:r=>r.niit},
+    {lbl:'AMT Additional',            fn:r=>r.amtAdditional},
+    {lbl:'WA Capital Gains Tax',      fn:r=>r.waCGT},
+    {lbl:'TOTAL TAX',                 fn:r=>r.totalTax,         bold:true},
+    {lbl:'Effective Rate',            fn:r=>fmtPct(r.effectiveRate), str:true},
+    {lbl:'Federal Marginal Rate',     fn:r=>fmtPct(r.marginalRate),  str:true},
+    {sep:true},
+    {lbl:'Annual Take-Home',          fn:r=>r.takeHomeAnnual,   bold:true},
+    {lbl:'Monthly Take-Home',         fn:r=>r.takeHomeMonthly},
+    {lbl:'Needs (50%)',               fn:r=>r.needs},
+    {lbl:'Wants (30%)',               fn:r=>r.wants},
+    {lbl:'Savings (20%)',             fn:r=>r.savings},
+    {sep:true},
+    {lbl:'Quarterly Est. Payment',    fn:r=>r.qtrlyPayment},
+  ];
+
+  return (
+    <div>
+      <Card>
+        <p className="text-xs text-slate-500 mb-3">Uses your current inputs from the Tax Estimator tab with different year tax data.</p>
+        <div className="grid grid-cols-2 gap-4">
+          <Sel label="Year A" value={yrA} onChange={setYrA} options={yrOpts} />
+          <Sel label="Year B" value={yrB} onChange={setYrB} options={yrOpts} />
+        </div>
+      </Card>
+
+      {rA && rB ? (
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-auto">
+          <table className="w-full text-sm">
+            <thead className="bg-slate-50 border-b border-slate-200">
+              <tr>
+                <th className="text-left p-3 text-xs font-semibold text-slate-600 min-w-48">Item</th>
+                <th className="text-right p-3 text-xs font-semibold text-blue-600">
+                  {yrA}{TAX_DATA[yrA]?.status==='projected'?' (est.)':''}
+                </th>
+                <th className="text-right p-3 text-xs font-semibold text-indigo-600">
+                  {yrB}{TAX_DATA[yrB]?.status==='projected'?' (est.)':''}
+                </th>
+                <th className="text-right p-3 text-xs font-semibold text-slate-500">Diff (B−A)</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((row, i) => {
+                if (row.sep) return <tr key={i}><td colSpan={4} className="h-px bg-slate-100" /></tr>;
+                const vA   = row.fn(rA);
+                const vB   = row.fn(rB);
+                const diff = row.str ? null : vB - vA;
+                return (
+                  <tr key={i} className={`border-t border-slate-50 ${row.bold ? 'bg-slate-50 font-semibold' : 'hover:bg-slate-50'} transition-colors`}>
+                    <td className={`p-3 ${row.bold ? 'font-semibold text-slate-800' : 'text-slate-600'}`}>{row.lbl}</td>
+                    <td className="p-3 text-right font-mono tabular-nums text-blue-700">{row.str ? vA : fmt(vA)}</td>
+                    <td className="p-3 text-right font-mono tabular-nums text-indigo-700">{row.str ? vB : fmt(vB)}</td>
+                    <td className={`p-3 text-right font-mono tabular-nums text-xs ${
+                      diff === null || diff === 0 ? 'text-slate-300' : diff > 0 ? 'text-red-500' : 'text-emerald-600'
+                    }`}>
+                      {diff === null ? '—' : diff === 0 ? '—' : `${diff>0?'+':''}${fmt(diff)}`}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      ) : (
+        <div className="text-center text-slate-400 text-sm py-16 bg-white rounded-xl border border-slate-200">
+          Enter income in the Tax Estimator tab first, then compare years here.
+        </div>
+      )}
+    </div>
+  );
+};
+
+// ================================================================
+// IRS DATA ADMIN PANEL
+// ================================================================
+const AdminPanel = ({onUpdate}) => {
+  const [yr,   setYr]   = React.useState('2026');
+  const [json, setJson] = React.useState('');
+  const [msg,  setMsg]  = React.useState('');
+
+  const toJson   = data => JSON.stringify(data,   (k,v) => v === Infinity ? 'Infinity' : v, 2);
+  const fromJson = s    => JSON.parse(s,           (k,v) => v === 'Infinity' ? Infinity : v);
+
+  React.useEffect(() => { setJson(toJson(TAX_DATA[yr])); setMsg(''); }, [yr]);
+
+  const handleSave = () => {
+    try {
+      const parsed = fromJson(json);
+      TAX_DATA[yr] = {...parsed, status: 'confirmed'};
+      setJson(toJson(TAX_DATA[yr]));
+      setMsg(`✓ ${yr} saved and marked as confirmed`);
+      onUpdate();
+    } catch(e) { setMsg(`✗ JSON parse error: ${e.message}`); }
+  };
+
+  const handleReset = () => {
+    const fresh = buildTaxData();
+    TAX_DATA[yr] = fresh[yr];
+    setJson(toJson(TAX_DATA[yr]));
+    setMsg(`↺ ${yr} reset to 2.5% COLA projection`);
+    onUpdate();
+  };
+
+  const yrOpts = YEARS.map(y => ({v: String(y), l: `${y} — ${TAX_DATA[y].status}`}));
+
+  return (
+    <div className="max-w-3xl">
+      <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-4 text-sm text-amber-800 leading-relaxed">
+        <strong>IRS Data Admin</strong> — Projected years (2026–2041) use 2.5% annual COLA from 2025 confirmed data.
+        When the IRS publishes new rates, paste the corrected JSON below and click <em>Save & Confirm</em> to lock in the official rates.
+        Brackets use contiguous boundaries (max of bracket N = min of bracket N+1; size = max − min).
+      </div>
+
+      <Card>
+        <Sel label="Select Year to Edit" value={yr} onChange={setYr} options={yrOpts} />
+        <div className="flex justify-between items-center mb-2">
+          <span className="text-xs text-slate-500">
+            Status: <span className={`font-bold ${TAX_DATA[yr]?.status==='confirmed' ? 'text-emerald-600' : 'text-amber-600'}`}>
+              {TAX_DATA[yr]?.status}
+            </span>
+          </span>
+          <button onClick={handleReset} className="text-xs text-slate-400 hover:text-slate-600 underline underline-offset-2">
+            Reset to projected default
+          </button>
+        </div>
+        <textarea
+          className="w-full h-96 border border-slate-300 rounded-xl p-3 text-xs font-mono bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-400 resize-y"
+          value={json} onChange={e => setJson(e.target.value)}
+          spellCheck={false}
+        />
+        <div className="flex gap-2 mt-2">
+          <button onClick={handleSave}
+            className="flex-1 bg-blue-600 hover:bg-blue-700 text-white rounded-lg py-2 text-sm font-bold transition">
+            Save &amp; Mark Confirmed
+          </button>
+        </div>
+        {msg && (
+          <p className={`mt-2 text-sm font-semibold ${msg.startsWith('✓') ? 'text-emerald-600' : msg.startsWith('↺') ? 'text-blue-600' : 'text-red-600'}`}>
+            {msg}
+          </p>
+        )}
+      </Card>
+
+      <Card title="All Years — Status Overview">
+        <div className="grid grid-cols-6 gap-1.5 mb-3">
+          {YEARS.map(y => (
+            <button key={y} onClick={() => setYr(String(y))}
+              className={[
+                'rounded-lg py-1.5 text-xs font-semibold transition cursor-pointer',
+                TAX_DATA[y].status === 'confirmed'
+                  ? 'bg-emerald-100 text-emerald-800 border border-emerald-200 hover:bg-emerald-200'
+                  : 'bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100',
+                String(y) === yr ? 'ring-2 ring-blue-400 ring-offset-1' : '',
+              ].join(' ')}>
+              {y}
+            </button>
+          ))}
+        </div>
+        <div className="flex gap-4 text-xs text-slate-500">
+          <span className="flex items-center gap-1.5">
+            <span className="w-3 h-3 bg-emerald-100 border border-emerald-300 rounded inline-block" />Confirmed (IRS official)
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="w-3 h-3 bg-amber-50 border border-amber-300 rounded inline-block" />Projected (2.5% COLA)
+          </span>
+        </div>
+      </Card>
+
+      <Card title="Key Data Fields Reference" titleCls="text-slate-600">
+        <div className="text-xs text-slate-500 space-y-1 font-mono leading-relaxed">
+          <p><span className="text-slate-700 font-semibold">brackets.single / brackets.mfj</span> — array of {'{'}rate, min, max{'}'} (max of bracket N = min of bracket N+1)</p>
+          <p><span className="text-slate-700 font-semibold">ltcg.single / ltcg.mfj</span> — preferential capital gains rate brackets</p>
+          <p><span className="text-slate-700 font-semibold">standardDeduction</span> — {'{'}single, mfj{'}'}</p>
+          <p><span className="text-slate-700 font-semibold">ssWageBase</span> — SS tax wage base (per person)</p>
+          <p><span className="text-slate-700 font-semibold">amt.single / amt.mfj</span> — {'{'}exemption, phaseout{'}'}</p>
+          <p><span className="text-slate-700 font-semibold">amtBreakpoint</span> — income where AMT rate shifts 26%→28%</p>
+          <p><span className="text-slate-700 font-semibold">k401Limit / k401Catchup50 / k401Catchup60_63</span> — employee contribution limits</p>
+          <p><span className="text-slate-700 font-semibold">hsaSelf / hsaFamily / hsaCatchup55</span> — HSA contribution limits</p>
+          <p><span className="text-slate-700 font-semibold">waCgtThreshold / waCgtRate</span> — WA state CGT (7% above threshold)</p>
+        </div>
+      </Card>
+    </div>
+  );
+};
+
+// ================================================================
+// APP ROOT
+// ================================================================
+const DFLT_SPOUSE = {age:'', salary:0, bonus:0, rsu:0, k401Trad:0, k401Roth:0, hsa:0, employerMatch:0};
+const DFLT_INPUTS = {
+  year: '2026', filingStatus: 'mfj',
+  s1: {...DFLT_SPOUSE}, s2: {...DFLT_SPOUSE},
+  stcg: 0, ltcg: 0,
+  deductionType: 'standard', mortgage: 0, salt: 0, charitable: 0, otherItemized: 0,
+};
+
+const App = () => {
+  const [tab,      setTab]      = React.useState('estimator');
+  const [adminVer, setAdminVer] = React.useState(0);
+  const [results,  setResults]  = React.useState(null);
+
+  const [inputs, setInputs] = React.useState(() => {
+    try {
+      const saved = localStorage.getItem('taxSuiteInputs_v2');
+      return saved ? JSON.parse(saved) : DFLT_INPUTS;
+    } catch { return DFLT_INPUTS; }
+  });
+
+  const mfj = inputs.filingStatus === 'mfj';
+  const td  = TAX_DATA[inputs.year] || TAX_DATA[2025];
+
+  const set = k => v => setInputs(p => ({...p, [k]: v}));
+
+  React.useEffect(() => {
+    try { localStorage.setItem('taxSuiteInputs_v2', JSON.stringify(inputs)); } catch {}
+  }, [inputs]);
+
+  const handleCalculate = () => {
+    try { setResults(calculateTaxes(inputs)); }
+    catch(e) { console.error('Calculation error:', e); alert('Calculation error — check console for details.'); }
+  };
+
+  const yrOpts = YEARS.map(y => ({
+    v: String(y),
+    l: `${y}${TAX_DATA[y].status === 'projected' ? ' (projected)' : ' (confirmed)'}`,
+  }));
+
+  const TABS = [
+    {id:'estimator', l:'Tax Estimator'},
+    {id:'compare',   l:'Year Compare'},
+    {id:'admin',     l:'IRS Data Admin'},
+  ];
+
+  return (
+    <div className="min-h-screen bg-slate-50">
+      {/* ---- Header ---- */}
+      <header className="bg-white border-b border-slate-200 sticky top-0 z-20 shadow-sm">
+        <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
+          <div>
+            <h1 className="text-base font-bold text-slate-800 tracking-tight">Tax Estimator Suite</h1>
+            <p className="text-xs text-slate-400">Washington State · 2024–2041 · Federal + FICA + WA CGT</p>
+          </div>
+          <nav className="flex gap-1">
+            {TABS.map(t => (
+              <button key={t.id} onClick={() => setTab(t.id)}
+                className={`px-3 py-1.5 rounded-lg text-sm font-semibold transition ${
+                  tab === t.id
+                    ? 'bg-blue-600 text-white shadow-sm'
+                    : 'text-slate-600 hover:bg-slate-100'
+                }`}>
+                {t.l}
+              </button>
+            ))}
+          </nav>
+        </div>
+      </header>
+
+      <main className="max-w-7xl mx-auto px-4 py-6">
+
+        {/* ======== TAX ESTIMATOR ======== */}
+        {tab === 'estimator' && (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+
+            {/* Input column */}
+            <div>
+              <Card title="Tax Year &amp; Filing Status">
+                <div className="grid grid-cols-2 gap-3">
+                  <Sel label="Tax Year"      value={inputs.year}          onChange={set('year')}          options={yrOpts} />
+                  <Sel label="Filing Status" value={inputs.filingStatus}  onChange={set('filingStatus')} options={[
+                    {v:'single', l:'Single'},
+                    {v:'mfj',    l:'Married Filing Jointly'},
+                  ]} />
+                </div>
+                {TAX_DATA[inputs.year]?.status === 'projected' && (
+                  <div className="mt-2 p-2 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-700">
+                    ⚠ {inputs.year} uses projected rates (2.5% COLA from 2025 IRS data). Update in IRS Data Admin when published.
+                  </div>
+                )}
+              </Card>
+
+              <SpouseCard
+                title={mfj ? 'Spouse 1 — Income &amp; Retirement' : 'Your Income &amp; Retirement'}
+                data={inputs.s1} onChange={set('s1')} td={td} mfj={mfj}
+                titleCls="text-blue-700"
+              />
+
+              {mfj && (
+                <SpouseCard
+                  title="Spouse 2 — Income &amp; Retirement"
+                  data={inputs.s2} onChange={set('s2')} td={td} mfj={mfj}
+                  titleCls="text-indigo-700"
+                />
+              )}
+
+              <Card title="Capital Gains — Household" titleCls="text-orange-700">
+                <CurrencyInput label="Short-Term Capital Gains (held ≤1yr)" value={inputs.stcg} onChange={set('stcg')}
+                  hint="Taxed as ordinary income; subject to NIIT above AGI threshold" />
+                <CurrencyInput label="Long-Term Capital Gains (held >1yr)" value={inputs.ltcg} onChange={set('ltcg')}
+                  hint={`Preferential rates; WA CGT 7% on gains above ${fmt(td.waCgtThreshold)}`} />
+              </Card>
+
+              <Card title="Deductions" titleCls="text-teal-700">
+                <Sel label="Deduction Type" value={inputs.deductionType} onChange={set('deductionType')} options={[
+                  {v:'standard', l:`Standard Deduction — ${fmt(td.standardDeduction[inputs.filingStatus])}`},
+                  {v:'itemized', l:'Itemized Deductions'},
+                ]} />
+                {inputs.deductionType === 'itemized' && (
+                  <>
+                    <CurrencyInput label="Mortgage Interest" value={inputs.mortgage} onChange={set('mortgage')} />
+                    <CurrencyInput label="State &amp; Local Taxes (SALT)" value={inputs.salt} onChange={set('salt')}
+                      hint="Capped at $10,000 per TCJA (applies 2024–2025; projected years may differ)" />
+                    <CurrencyInput label="Charitable Contributions" value={inputs.charitable} onChange={set('charitable')} />
+                    <CurrencyInput label="Other Itemized Deductions" value={inputs.otherItemized} onChange={set('otherItemized')} />
+
+                    {/* Live comparison */}
+                    {(() => {
+                      const itm = (inputs.mortgage||0) + Math.min(inputs.salt||0,10000) + (inputs.charitable||0) + (inputs.otherItemized||0);
+                      const std = td.standardDeduction[inputs.filingStatus];
+                      const useItm = itm > std;
+                      return (
+                        <div className="mt-1 p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-xs">
+                          <div className="flex justify-between mb-1">
+                            <span className="text-slate-500">Itemized total:</span>
+                            <span className="font-semibold text-slate-700">{fmt(itm)}</span>
+                          </div>
+                          <div className="flex justify-between mb-1">
+                            <span className="text-slate-500">Standard deduction:</span>
+                            <span className="font-semibold text-slate-700">{fmt(std)}</span>
+                          </div>
+                          <div className={`flex justify-between font-bold ${useItm ? 'text-teal-700' : 'text-orange-600'}`}>
+                            <span>Will use:</span>
+                            <span>{useItm ? 'Itemized ✓ (higher)' : 'Standard (higher)'}</span>
+                          </div>
+                        </div>
+                      );
+                    })()}
+                  </>
+                )}
+              </Card>
+
+              <button onClick={handleCalculate}
+                className="w-full bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white rounded-xl py-3 text-base font-bold transition shadow-sm mb-2">
+                Calculate Tax Estimate
+              </button>
+              <p className="text-xs text-center text-slate-400 mb-6">
+                Inputs auto-saved to browser. For estimation only — not professional tax advice.
+              </p>
+            </div>
+
+            {/* Results column */}
+            <div>
+              <ResultsPanel
+                results={results}
+                inputs={inputs}
+                onExport={() => results && exportCSV(results, inputs)}
+              />
+            </div>
+          </div>
+        )}
+
+        {/* ======== YEAR COMPARE ======== */}
+        {tab === 'compare' && (
+          <YearCompare key={adminVer} baseInputs={{...inputs, year: Number(inputs.year)}} />
+        )}
+
+        {/* ======== ADMIN ======== */}
+        {tab === 'admin' && (
+          <AdminPanel onUpdate={() => setAdminVer(v => v+1)} />
+        )}
+
+      </main>
+
+      <footer className="border-t border-slate-200 text-center text-xs text-slate-400 py-4 mt-2">
+        Tax Estimator Suite · Estimation only — not professional tax advice · Consult a CPA before filing
+      </footer>
+    </div>
+  );
+};
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>
