@@ -1282,9 +1282,10 @@ const DFLT_INPUTS = {
 };
 
 const App = () => {
-  const [tab,      setTab]      = React.useState('estimator');
-  const [adminVer, setAdminVer] = React.useState(0);
-  const [results,  setResults]  = React.useState(null);
+  const [tab,        setTab]        = React.useState('estimator');
+  const [adminVer,   setAdminVer]   = React.useState(0);
+  const [results,    setResults]    = React.useState(null);
+  const [syncStatus, setSyncStatus] = React.useState('syncing'); // 'syncing' | 'synced' | 'offline'
 
   const [inputs, setInputs] = React.useState(() => {
     try {
@@ -1301,6 +1302,31 @@ const App = () => {
   React.useEffect(() => {
     try { localStorage.setItem('taxSuiteInputs_v2', JSON.stringify(inputs)); } catch {}
   }, [inputs]);
+
+  // Auto-sync confirmed rates from GitHub on every startup so all machines stay current.
+  // irs-rates.json is the source of truth; localStorage is a local cache only.
+  React.useEffect(() => {
+    fetch(IRS_SYNC_URL + '?t=' + Date.now(), {cache: 'no-cache'})
+      .then(r => r.ok ? r.json() : Promise.reject(r.status))
+      .then(data => {
+        let changed = false;
+        const overrides = JSON.parse(localStorage.getItem('taxSuiteConfirmedYears') || '{}');
+        for (const [fetchedYr, yrData] of Object.entries(data.years || {})) {
+          const yNum = Number(fetchedYr);
+          if (YEARS.includes(yNum)) {
+            TAX_DATA[yNum] = fromJson(toJson({...yrData, status: 'confirmed'}));
+            overrides[fetchedYr] = toJson(TAX_DATA[yNum]);
+            changed = true;
+          }
+        }
+        if (changed) {
+          try { localStorage.setItem('taxSuiteConfirmedYears', JSON.stringify(overrides)); } catch {}
+          setAdminVer(v => v + 1);
+        }
+        setSyncStatus('synced');
+      })
+      .catch(() => setSyncStatus('offline'));
+  }, []);
 
   const handleCalculate = () => {
     try { setResults(calculateTaxes(inputs)); }
@@ -1325,7 +1351,20 @@ const App = () => {
         <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
           <div>
             <h1 className="text-base font-bold text-slate-800 tracking-tight">Tax Estimator Suite</h1>
-            <p className="text-xs text-slate-400">Washington State · 2024–2041 · Federal + FICA + WA CGT</p>
+            <p className="text-xs text-slate-400 flex items-center gap-2">
+              Washington State · 2024–2041 · Federal + FICA + WA CGT
+              {syncStatus === 'syncing' && (
+                <span className="flex items-center gap-1 text-slate-400">
+                  <span className="inline-block animate-spin">↻</span> syncing rates…
+                </span>
+              )}
+              {syncStatus === 'synced' && (
+                <span className="text-emerald-500 font-medium">✓ rates current</span>
+              )}
+              {syncStatus === 'offline' && (
+                <span className="text-amber-500 font-medium" title="Could not reach GitHub — using cached rates">⚠ offline</span>
+              )}
+            </p>
           </div>
           <nav className="flex gap-1">
             {TABS.map(t => (
