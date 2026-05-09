@@ -179,6 +179,9 @@ const buildTaxData = () => {
       hsaCatchup55:     1000,   // HSA catch-up is not inflation-adjusted
       waCgtThreshold:   r1k(base.waCgtThreshold    * f),
       waCgtRate:        0.07,
+      // WA CGT second tier enacted 2026: 9.9% on gains above $1M (COLA-projected threshold)
+      waCgtBreakpoint2: 1000000,
+      waCgtRate2:       0.099,
     };
   }
   return D;
@@ -341,10 +344,14 @@ const calculateTaxes = (inputs) => {
     : bp * 0.26 + (amtIncome - bp) * 0.28;
   const amtAdditional = Math.max(0, amtTentative - (fedOrdinary + fedLTCG));
 
-  // ---- WA Capital Gains Tax (7% on LTCG exceeding threshold) ----
-  const waCGT = ltcg > td.waCgtThreshold
-    ? (ltcg - td.waCgtThreshold) * td.waCgtRate
+  // ---- WA Capital Gains Tax (7% up to $1M; 9.9% above — two-tier from 2026) ----
+  const waCGTTier1 = td.waCgtBreakpoint2
+    ? (Math.min(ltcg, td.waCgtBreakpoint2) - td.waCgtThreshold) * td.waCgtRate
+    : (ltcg - td.waCgtThreshold) * td.waCgtRate;
+  const waCGTTier2 = td.waCgtBreakpoint2 && ltcg > td.waCgtBreakpoint2
+    ? (ltcg - td.waCgtBreakpoint2) * (td.waCgtRate2 || 0)
     : 0;
+  const waCGT = ltcg > td.waCgtThreshold ? Math.max(0, waCGTTier1) + waCGTTier2 : 0;
 
   // ---- Total tax & rates ----
   const totalTax    = fedOrdinary + fedLTCG + totalSS + totalMed + niit + amtAdditional + waCGT;
@@ -385,7 +392,7 @@ const calculateTaxes = (inputs) => {
     fedLTCG, ltcgBreakdown, ltcgMargRate,
     ssTaxS1, ssTaxS2, totalSS,
     medBaseS1, medBaseS2, addlMed, totalMed,
-    niit, amtTentative, amtAdditional, waCGT,
+    niit, amtTentative, amtAdditional, waCGT, waCGTTier1, waCGTTier2,
     totalTax, effectiveRate,
     takeHomeAnnual, takeHomeMonthly,
     needs, wants, savings,
@@ -694,8 +701,11 @@ const ResultsPanel = ({results: r, inputs, onExport}) => {
         {/* WA CGT */}
         {r.waCGT > 0 && <>
           <Divider />
-          <Row label="WA Capital Gains Tax (7%)" value={fmt(r.waCGT)} bold />
-          <Row indent sub label={`${fmt(r.ltcg)} LTCG − ${fmt(r.td.waCgtThreshold)} threshold`} value="" />
+          <Row label={`WA Capital Gains Tax`} value={fmt(r.waCGT)} bold />
+          <Row indent sub label={`7% on ${fmt(Math.min(r.ltcg, r.td.waCgtBreakpoint2 || Infinity) - r.td.waCgtThreshold)} (${fmt(r.td.waCgtThreshold)}–${r.td.waCgtBreakpoint2 ? fmt(r.td.waCgtBreakpoint2) : '∞'})`} value={fmt(r.waCGTTier1)} />
+          {r.waCGTTier2 > 0 && (
+            <Row indent sub label={`9.9% on ${fmt(r.ltcg - r.td.waCgtBreakpoint2)} (above ${fmt(r.td.waCgtBreakpoint2)})`} value={fmt(r.waCGTTier2)} />
+          )}
         </>}
 
         <div className="mt-2 pt-2 border-t-2 border-slate-200" />
@@ -1105,7 +1115,8 @@ const AdminPanel = ({onUpdate}) => {
           <p><span className="text-slate-700 font-semibold">amtBreakpoint</span> — income where AMT rate shifts 26%→28%</p>
           <p><span className="text-slate-700 font-semibold">k401Limit / k401Catchup50 / k401Catchup60_63</span> — employee contribution limits</p>
           <p><span className="text-slate-700 font-semibold">hsaSelf / hsaFamily / hsaCatchup55</span> — HSA contribution limits</p>
-          <p><span className="text-slate-700 font-semibold">waCgtThreshold / waCgtRate</span> — WA state CGT (7% above threshold)</p>
+          <p><span className="text-slate-700 font-semibold">waCgtThreshold / waCgtRate</span> — WA CGT first tier (7% above threshold)</p>
+          <p><span className="text-slate-700 font-semibold">waCgtBreakpoint2 / waCgtRate2</span> — WA CGT second tier (9.9% above $1M, enacted 2026; omit for pre-2026 years)</p>
         </div>
       </Card>
     </div>
@@ -1225,7 +1236,7 @@ const App = () => {
                 <CurrencyInput label="Short-Term Capital Gains (held ≤1yr)" value={inputs.stcg} onChange={set('stcg')}
                   hint="Taxed as ordinary income; subject to NIIT above AGI threshold" />
                 <CurrencyInput label="Long-Term Capital Gains (held >1yr)" value={inputs.ltcg} onChange={set('ltcg')}
-                  hint={`Preferential rates; WA CGT 7% on gains above ${fmt(td.waCgtThreshold)}`} />
+                  hint={`Preferential rates; WA CGT 7% above ${fmt(td.waCgtThreshold)}${td.waCgtBreakpoint2 ? `, 9.9% above ${fmt(td.waCgtBreakpoint2)}` : ''}`} />
               </Card>
 
               <Card title="Deductions" titleCls="text-teal-700">
