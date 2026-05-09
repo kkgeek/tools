@@ -77,6 +77,10 @@ const buildTaxData = () => {
     k401Limit: 23000,
     k401Catchup50: 7500,
     k401Catchup60_63: 7500,
+    k415cLimit: 69000,
+    iraLimit: 7000,
+    iraCatchup50: 1000,
+    catchupRothThreshold: 145000,
     hsaSelf: 4150, hsaFamily: 8300, hsaCatchup55: 1000,
     waCgtThreshold: 270000, waCgtRate: 0.07,
   };
@@ -130,6 +134,10 @@ const buildTaxData = () => {
     k401Limit: 23500,
     k401Catchup50: 7500,
     k401Catchup60_63: 11250,
+    k415cLimit: 70000,
+    iraLimit: 7000,
+    iraCatchup50: 1000,
+    catchupRothThreshold: 150000,
     hsaSelf: 4300, hsaFamily: 8550, hsaCatchup55: 1000,
     waCgtThreshold: 278000, waCgtRate: 0.07,
   };
@@ -174,6 +182,10 @@ const buildTaxData = () => {
       k401Limit:        r100(base.k401Limit        * f),
       k401Catchup50:    r100(base.k401Catchup50    * f),
       k401Catchup60_63: r100(base.k401Catchup60_63 * f),
+      k415cLimit:       r1k(base.k415cLimit * f),
+      iraLimit:         Math.round(base.iraLimit * f / 500) * 500,
+      iraCatchup50:     1000,    // not inflation-indexed per IRS (small increments)
+      catchupRothThreshold: r1k(base.catchupRothThreshold * f),
       hsaSelf:          r100(base.hsaSelf          * f),
       hsaFamily:        r100(base.hsaFamily        * f),
       hsaCatchup55:     1000,   // HSA catch-up is not inflation-adjusted
@@ -283,15 +295,31 @@ const calculateTaxes = (inputs) => {
   const ltcg = inputs.ltcg || 0;
   const grossIncome = totalW2 + stcg + ltcg;
 
-  // ---- 401k limits & contributions ----
-  const s1CatchupAmt = getCatchupAmt(s1.age, td);
-  const s2CatchupAmt = mfj ? getCatchupAmt(s2.age, td) : 0;
-  const s1K401Limit  = td.k401Limit + s1CatchupAmt;
-  const s2K401Limit  = td.k401Limit + s2CatchupAmt;
-  const s1K401Trad   = Math.min(s1.k401Trad||0, s1K401Limit);
-  const s2K401Trad   = mfj ? Math.min(s2.k401Trad||0, s2K401Limit) : 0;
-  const s1K401Roth   = Math.min(s1.k401Roth||0, Math.max(0, s1K401Limit - s1K401Trad));
-  const s2K401Roth   = mfj ? Math.min(s2.k401Roth||0, Math.max(0, s2K401Limit - s2K401Trad)) : 0;
+  // ---- 401k base (no catch-up) ----
+  const s1K401Trad   = Math.min(s1.k401Trad||0, td.k401Limit);
+  const s2K401Trad   = mfj ? Math.min(s2.k401Trad||0, td.k401Limit) : 0;
+  const s1K401Roth   = Math.min(s1.k401Roth||0, Math.max(0, td.k401Limit - s1K401Trad));
+  const s2K401Roth   = mfj ? Math.min(s2.k401Roth||0, Math.max(0, td.k401Limit - s2K401Trad)) : 0;
+
+  // ---- Catch-up (separate) ----
+  const s1CatchupAmt    = getCatchupAmt(s1.age, td);
+  const s2CatchupAmt    = mfj ? getCatchupAmt(s2.age, td) : 0;
+  const s1CatchupIsRoth = s1W2 > (td.catchupRothThreshold || Infinity);
+  const s2CatchupIsRoth = mfj ? s2W2 > (td.catchupRothThreshold || Infinity) : false;
+  const s1K401Catchup   = Math.min(s1.k401Catchup||0, s1CatchupAmt);
+  const s2K401Catchup   = mfj ? Math.min(s2.k401Catchup||0, s2CatchupAmt) : 0;
+
+  // ---- After-tax (non-deductible, non-Roth) ----
+  const s1K401AfterTax = s1.k401AfterTax || 0;
+  const s2K401AfterTax = mfj ? (s2.k401AfterTax || 0) : 0;
+
+  // ---- IRA ----
+  const s1IraLimit = (td.iraLimit||7000) + ((s1.age||0) >= 50 ? (td.iraCatchup50||1000) : 0);
+  const s2IraLimit = (td.iraLimit||7000) + ((s2.age||0) >= 50 ? (td.iraCatchup50||1000) : 0);
+  const s1IraTrad  = Math.min(s1.iraTrad||0, s1IraLimit);
+  const s2IraTrad  = mfj ? Math.min(s2.iraTrad||0, s2IraLimit) : 0;
+  const s1IraRoth  = s1.iraRoth || 0;
+  const s2IraRoth  = mfj ? (s2.iraRoth || 0) : 0;
 
   // ---- HSA (pre-tax; user enters per spouse; combined must not exceed family limit + catch-ups) ----
   const s1Hsa = s1.hsa || 0;
@@ -302,8 +330,19 @@ const calculateTaxes = (inputs) => {
   const s2Match = mfj ? (s2.employerMatch || 0) : 0;
 
   // ---- Aggregated deductions ----
-  const preTaxDed  = s1K401Trad + s2K401Trad + s1Hsa + s2Hsa;
-  const postTaxDed = s1K401Roth + s2K401Roth;
+  // Pre-tax deductions (reduce AGI)
+  const preTaxDed = s1K401Trad + s2K401Trad
+    + (s1CatchupIsRoth ? 0 : s1K401Catchup)
+    + (s2CatchupIsRoth ? 0 : s2K401Catchup)
+    + s1IraTrad + s2IraTrad
+    + s1Hsa + s2Hsa;
+
+  // Post-tax deductions (tracked for take-home; no AGI effect)
+  const postTaxDed = s1K401Roth + s2K401Roth
+    + (s1CatchupIsRoth ? s1K401Catchup : 0)
+    + (s2CatchupIsRoth ? s2K401Catchup : 0)
+    + s1K401AfterTax + s2K401AfterTax
+    + s1IraRoth + s2IraRoth;
 
   // ---- AGI ----
   const agi = Math.max(0, grossIncome - preTaxDed);
@@ -399,7 +438,10 @@ const calculateTaxes = (inputs) => {
     td, yr, fs, mfj,
     grossIncome, s1W2, s2W2, totalW2, stcg, ltcg,
     s1K401Trad, s2K401Trad, s1K401Roth, s2K401Roth,
-    s1K401Limit, s2K401Limit, s1Hsa, s2Hsa,
+    s1K401Catchup, s2K401Catchup, s1CatchupIsRoth, s2CatchupIsRoth,
+    s1K401AfterTax, s2K401AfterTax,
+    s1IraTrad, s2IraTrad, s1IraRoth, s2IraRoth,
+    s1Hsa, s2Hsa,
     preTaxDed, postTaxDed,
     agi, taxableOrdinary, taxableTotal,
     usedDeduction, stdDed, itemizedTotal, usingItemized,
@@ -441,7 +483,15 @@ const exportCSV = (r, inputs) => {
     ['"Short-Term Capital Gains"',  r.stcg.toFixed(2)],
     ['"Long-Term Capital Gains"',   r.ltcg.toFixed(2)],
     ['"Adjusted Gross Income"',     r.agi.toFixed(2)],
-    ['"Pre-Tax Deductions (401k+HSA)"', r.preTaxDed.toFixed(2)],
+    ['"Pre-Tax Deductions (401k+IRA+HSA)"', r.preTaxDed.toFixed(2)],
+    ['"401k Catch-up — Spouse 1"', r.s1K401Catchup.toFixed(2)],
+    ['"401k Catch-up — Spouse 2"', r.s2K401Catchup.toFixed(2)],
+    ['"After-Tax 401k — Spouse 1"', r.s1K401AfterTax.toFixed(2)],
+    ['"After-Tax 401k — Spouse 2"', r.s2K401AfterTax.toFixed(2)],
+    ['"Traditional IRA — Spouse 1"', r.s1IraTrad.toFixed(2)],
+    ['"Traditional IRA — Spouse 2"', r.s2IraTrad.toFixed(2)],
+    ['"Roth IRA — Spouse 1"', r.s1IraRoth.toFixed(2)],
+    ['"Roth IRA — Spouse 2"', r.s2IraRoth.toFixed(2)],
     ['"Standard/Itemized Deduction"',   r.usedDeduction.toFixed(2)],
     ['"Federal Taxable Ordinary Income"', r.taxableOrdinary.toFixed(2)],
     [],
@@ -490,12 +540,17 @@ const exportCSV = (r, inputs) => {
 // ================================================================
 // UI PRIMITIVES
 // ================================================================
-const CurrencyInput = ({label, value, onChange, hint}) => {
+const CurrencyInput = ({label, value, onChange, hint, action}) => {
   const [disp, setDisp] = React.useState(value ? fmt(value) : '');
   React.useEffect(() => { if (!document.activeElement || document.activeElement.tagName !== 'INPUT') setDisp(value ? fmt(value) : ''); }, [value]);
   return (
     <div className="mb-3">
-      <label className="block text-xs font-medium text-slate-600 mb-1">{label}</label>
+      {label && (
+        <div className="flex justify-between items-center mb-1">
+          <label className="text-xs font-medium text-slate-600">{label}</label>
+          {action}
+        </div>
+      )}
       <input type="text"
         className="w-full border border-slate-300 rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 bg-white"
         value={disp} placeholder="$0"
@@ -551,16 +606,28 @@ const Row = ({label, value, bold, indent, sub, highlight}) => (
 
 const Divider = () => <div className="my-2 border-t border-slate-100" />;
 
+const MaxBtn = ({label, onClick}) => (
+  <button
+    type="button"
+    onClick={onClick}
+    className="text-xs bg-blue-50 hover:bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full border border-blue-200 font-medium transition shrink-0"
+  >
+    Max: {label}
+  </button>
+);
+
 // ================================================================
 // SPOUSE INPUT CARD
 // ================================================================
-const SpouseCard = ({title, data, onChange, td, mfj, titleCls}) => {
+const SpouseCard = ({title, data, onChange, td, mfj, fs, titleCls}) => {
   const age        = data.age || 0;
   const catchupAmt = getCatchupAmt(age, td);
-  const k401Limit  = td.k401Limit + catchupAmt;
   const hsaBase    = mfj ? td.hsaFamily : td.hsaSelf;
   const hsaLimit   = hsaBase + (age >= 55 ? td.hsaCatchup55 : 0);
   const set        = k => v => onChange({...data, [k]: v});
+
+  const catchupIsRoth = (data.salary||0)+(data.bonus||0)+(data.rsu||0) > (td.catchupRothThreshold||Infinity);
+  const iraPerPersonLimit = (td.iraLimit||7000) + (age >= 50 ? (td.iraCatchup50||1000) : 0);
 
   return (
     <Card title={title} titleCls={titleCls}>
@@ -571,37 +638,92 @@ const SpouseCard = ({title, data, onChange, td, mfj, titleCls}) => {
       <CurrencyInput label="Vested RSUs" value={data.rsu} onChange={set('rsu')}
         hint="Treated as W-2 ordinary income at vest; 22% supplemental withholding" />
 
-      <Divider />
-      <div className="flex justify-between items-center mb-1.5">
-        <p className="text-xs font-bold text-slate-500 uppercase tracking-wide">401(k)</p>
-        <span className="text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full font-medium">Limit {fmt(k401Limit)}</span>
-      </div>
-      {age >= 50 && (
-        <div className="mb-2 px-2 py-1 bg-indigo-50 border border-indigo-100 rounded-lg text-xs text-indigo-700 font-medium">
-          {age >= 60 && age <= 63
-            ? `✓ SECURE 2.0 catch-up (age 60–63): +${fmt(catchupAmt)} included in limit`
-            : `✓ Age 50+ catch-up: +${fmt(catchupAmt)} included in limit`}
-        </div>
-      )}
-      <CurrencyInput label="Traditional 401k (pre-tax)" value={data.k401Trad} onChange={set('k401Trad')} />
-      <CurrencyInput label="Roth 401k (post-tax)" value={data.k401Roth} onChange={set('k401Roth')}
-        hint="No current-year tax deduction; counts against combined limit" />
-      <CurrencyInput label="Employer Match (informational)" value={data.employerMatch} onChange={set('employerMatch')}
-        hint="Shown in results only — not tax-deductible to you" />
+      <div className="border border-slate-200 rounded-xl p-3 mb-3 relative">
+        <span className="absolute -top-2.5 left-3 bg-white px-1 text-xs font-bold text-slate-500 uppercase tracking-wide">Deductions</span>
 
-      <Divider />
-      <div className="flex justify-between items-center mb-1.5">
-        <p className="text-xs font-bold text-slate-500 uppercase tracking-wide">HSA</p>
-        <span className="text-xs bg-teal-50 text-teal-700 px-2 py-0.5 rounded-full font-medium">
-          {mfj ? 'Family' : 'Self'} limit {fmt(hsaLimit)}{age>=55?' (incl. catch-up)':''}
-        </span>
-      </div>
-      {age >= 55 && (
-        <div className="mb-2 px-2 py-1 bg-teal-50 border border-teal-100 rounded-lg text-xs text-teal-700 font-medium">
-          ✓ Age 55+ HSA catch-up: +{fmt(td.hsaCatchup55)}
+        {/* 401(k) Base Section */}
+        <div className="flex justify-between items-center mb-1.5 mt-1">
+          <p className="text-xs font-bold text-slate-500 uppercase tracking-wide">401(k)</p>
+          <span className="text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full font-medium">Limit {fmt(td.k401Limit)}</span>
         </div>
-      )}
-      <CurrencyInput label="HSA Contribution" value={data.hsa} onChange={set('hsa')} />
+        <CurrencyInput label="Traditional 401k (pre-tax)" value={data.k401Trad} onChange={set('k401Trad')}
+          hint="Pre-tax; reduces AGI"
+          action={<MaxBtn label={fmt(td.k401Limit)} onClick={() => set('k401Trad')(td.k401Limit)} />}
+        />
+        <CurrencyInput label="Roth 401k (post-tax)" value={data.k401Roth} onChange={set('k401Roth')}
+          hint="Post-tax; no current deduction"
+          action={<MaxBtn label={fmt(Math.max(0, td.k401Limit - (data.k401Trad||0)))} onClick={() => set('k401Roth')(Math.max(0, td.k401Limit - (data.k401Trad||0)))} />}
+        />
+
+        {/* Catch-up Section (age 50+) */}
+        {age >= 50 && (
+          <div className="mb-2">
+            <div className="flex justify-between items-center mb-1.5">
+              <p className="text-xs font-bold text-slate-500 uppercase tracking-wide">
+                {age >= 60 && age <= 63 ? 'Catch-up (SECURE 2.0 age 60–63)' : 'Catch-up (age 50+)'}
+              </p>
+              {catchupIsRoth && (
+                <span className="text-xs bg-amber-50 text-amber-700 px-2 py-0.5 rounded-full border border-amber-200 font-medium">
+                  Forced Roth (wages &gt; {fmt(td.catchupRothThreshold)})
+                </span>
+              )}
+            </div>
+            <CurrencyInput label={age >= 60 && age <= 63 ? `Catch-up contribution (up to ${fmt(td.k401Catchup60_63)})` : `Catch-up contribution (up to ${fmt(td.k401Catchup50)})`}
+              value={data.k401Catchup} onChange={set('k401Catchup')}
+              hint={catchupIsRoth ? 'Required to be Roth — not tax-deductible' : 'Pre-tax catch-up'}
+              action={<MaxBtn label={fmt(catchupAmt)} onClick={() => set('k401Catchup')(catchupAmt)} />}
+            />
+          </div>
+        )}
+
+        {/* After-Tax 401k Section */}
+        {td.k415cLimit && (
+          <div className="mb-2">
+            <div className="flex justify-between items-center mb-1.5">
+              <p className="text-xs font-bold text-slate-500 uppercase tracking-wide">After-Tax 401k</p>
+              <span className="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full font-medium">415(c) limit {fmt(td.k415cLimit)}</span>
+            </div>
+            <CurrencyInput label="After-tax 401k (non-Roth)" value={data.k401AfterTax} onChange={set('k401AfterTax')}
+              hint={`Non-Roth after-tax (mega backdoor Roth source); no current deduction. Subtract your contributions & employer match from ${fmt(td.k415cLimit)} for true remaining capacity.`}
+              action={<MaxBtn label={fmt(td.k415cLimit)} onClick={() => set('k401AfterTax')(td.k415cLimit)} />}
+            />
+          </div>
+        )}
+
+        {/* Employer Match */}
+        <CurrencyInput label="Employer Match (informational)" value={data.employerMatch} onChange={set('employerMatch')}
+          hint="Shown in results only — not tax-deductible to you" />
+
+        {/* IRA Section */}
+        <div className="flex justify-between items-center mb-1.5 mt-2">
+          <p className="text-xs font-bold text-slate-500 uppercase tracking-wide">IRA</p>
+          <span className="text-xs bg-purple-50 text-purple-700 px-2 py-0.5 rounded-full font-medium">
+            {fmt(iraPerPersonLimit)}{age >= 50 ? ' (incl. $1k catch-up)' : ''}
+          </span>
+        </div>
+        <CurrencyInput label="Traditional IRA" value={data.iraTrad} onChange={set('iraTrad')}
+          hint={`May be deductible; phases out at AGI ${fs==='mfj'?'$126k–$146k':'$79k–$89k'} (2025) if covered by workplace plan`}
+          action={<MaxBtn label={fmt(iraPerPersonLimit)} onClick={() => set('iraTrad')(iraPerPersonLimit)} />}
+        />
+        <CurrencyInput label="Roth IRA" value={data.iraRoth} onChange={set('iraRoth')}
+          hint={`Post-tax; phases out at AGI ${fs==='mfj'?'$236k–$246k':'$150k–$165k'} (2025)`}
+        />
+        <p className="text-xs text-slate-400 mb-2">Traditional + Roth combined cannot exceed {fmt(iraPerPersonLimit)}/yr</p>
+
+        {/* HSA Section */}
+        <div className="flex justify-between items-center mb-1.5">
+          <p className="text-xs font-bold text-slate-500 uppercase tracking-wide">HSA</p>
+          <span className="text-xs bg-teal-50 text-teal-700 px-2 py-0.5 rounded-full font-medium">
+            {mfj ? 'Family' : 'Self'} limit {fmt(hsaLimit)}{age>=55?' (incl. catch-up)':''}
+          </span>
+        </div>
+        {age >= 55 && (
+          <div className="mb-2 px-2 py-1 bg-teal-50 border border-teal-100 rounded-lg text-xs text-teal-700 font-medium">
+            ✓ Age 55+ HSA catch-up: +{fmt(td.hsaCatchup55)}
+          </div>
+        )}
+        <CurrencyInput label="HSA Contribution" value={data.hsa} onChange={set('hsa')} />
+      </div>
     </Card>
   );
 };
@@ -655,7 +777,7 @@ const ResultsPanel = ({results: r, inputs, onExport}) => {
         {r.stcg > 0 && <Row label="Short-Term Capital Gains" value={fmt(r.stcg)} indent sub />}
         {r.ltcg > 0 && <Row label="Long-Term Capital Gains" value={fmt(r.ltcg)} indent sub />}
         <Divider />
-        <Row label="Pre-Tax Deductions (401k Trad + HSA)" value={`(${fmt(r.preTaxDed)})`} indent sub />
+        <Row label="Pre-Tax Deductions (401k + IRA + HSA)" value={`(${fmt(r.preTaxDed)})`} indent sub />
         <Row label="Adjusted Gross Income (AGI)" value={fmt(r.agi)} bold highlight />
         <Row label={`${r.usingItemized ? 'Itemized' : 'Standard'} Deduction`} value={`(${fmt(r.usedDeduction)})`} indent sub />
         <Row label="Federal Taxable Ordinary Income" value={fmt(r.taxableOrdinary)} bold />
@@ -1273,7 +1395,7 @@ const AdminPanel = ({onUpdate}) => {
 // ================================================================
 // APP ROOT
 // ================================================================
-const DFLT_SPOUSE = {age:'', salary:0, bonus:0, rsu:0, k401Trad:0, k401Roth:0, hsa:0, employerMatch:0};
+const DFLT_SPOUSE = {age:'', salary:0, bonus:0, rsu:0, k401Trad:0, k401Roth:0, k401Catchup:0, k401AfterTax:0, iraTrad:0, iraRoth:0, hsa:0, employerMatch:0};
 const DFLT_INPUTS = {
   year: '2026', filingStatus: 'mfj',
   s1: {...DFLT_SPOUSE}, s2: {...DFLT_SPOUSE},
@@ -1406,14 +1528,14 @@ const App = () => {
 
               <SpouseCard
                 title={mfj ? 'Spouse 1 — Income &amp; Retirement' : 'Your Income &amp; Retirement'}
-                data={inputs.s1} onChange={set('s1')} td={td} mfj={mfj}
+                data={inputs.s1} onChange={set('s1')} td={td} mfj={mfj} fs={inputs.filingStatus}
                 titleCls="text-blue-700"
               />
 
               {mfj && (
                 <SpouseCard
                   title="Spouse 2 — Income &amp; Retirement"
-                  data={inputs.s2} onChange={set('s2')} td={td} mfj={mfj}
+                  data={inputs.s2} onChange={set('s2')} td={td} mfj={mfj} fs={inputs.filingStatus}
                   titleCls="text-indigo-700"
                 />
               )}
