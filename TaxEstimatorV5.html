@@ -434,6 +434,12 @@ const calculateTaxes = (inputs) => {
   const qtrlyTotal     = investmentTax + suppGap;
   const qtrlyPayment   = qtrlyTotal / 4;
 
+  // ---- Per-spouse deduction breakdowns (for Take-Home detail) ----
+  const s1PreTax  = s1K401Trad + (s1CatchupIsRoth ? 0 : s1K401Catchup) + s1IraTrad + s1Hsa;
+  const s2PreTax  = s2K401Trad + (s2CatchupIsRoth ? 0 : s2K401Catchup) + s2IraTrad + s2Hsa;
+  const s1PostTax = s1K401Roth + (s1CatchupIsRoth ? s1K401Catchup : 0) + s1K401AfterTax + s1IraRoth;
+  const s2PostTax = s2K401Roth + (s2CatchupIsRoth ? s2K401Catchup : 0) + s2K401AfterTax + s2IraRoth;
+
   return {
     td, yr, fs, mfj,
     grossIncome, s1W2, s2W2, totalW2, stcg, ltcg,
@@ -456,6 +462,7 @@ const calculateTaxes = (inputs) => {
     totalBonus, totalRSU, suppTotal, suppWithheld, suppActual, suppGap,
     investmentTax, qtrlyTotal, qtrlyPayment,
     s1Match, s2Match, totalMatch: s1Match + s2Match,
+    s1PreTax, s2PreTax, s1PostTax, s2PostTax,
   };
 };
 
@@ -619,7 +626,7 @@ const MaxBtn = ({label, onClick}) => (
 // ================================================================
 // SPOUSE INPUT CARD
 // ================================================================
-const SpouseCard = ({title, data, onChange, td, mfj, fs, titleCls}) => {
+const SpouseCard = ({title, data, onChange, td, mfj, fs, titleCls, otherHsa}) => {
   const age        = data.age || 0;
   const catchupAmt = getCatchupAmt(age, td);
   const hsaBase    = mfj ? td.hsaFamily : td.hsaSelf;
@@ -711,12 +718,23 @@ const SpouseCard = ({title, data, onChange, td, mfj, fs, titleCls}) => {
         <p className="text-xs text-slate-400 mb-2">Traditional + Roth combined cannot exceed {fmt(iraPerPersonLimit)}/yr</p>
 
         {/* HSA Section */}
-        <div className="flex justify-between items-center mb-1.5">
-          <p className="text-xs font-bold text-slate-500 uppercase tracking-wide">HSA</p>
-          <span className="text-xs bg-teal-50 text-teal-700 px-2 py-0.5 rounded-full font-medium">
-            {mfj ? 'Family' : 'Self'} limit {fmt(hsaLimit)}{age>=55?' (incl. catch-up)':''}
-          </span>
-        </div>
+        {(() => {
+          const hsaFamilyReached = mfj && ((data.hsa||0) + (otherHsa||0)) >= td.hsaFamily;
+          return (
+            <div className="flex justify-between items-center mb-1.5">
+              <p className="text-xs font-bold text-slate-500 uppercase tracking-wide">HSA</p>
+              <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                hsaFamilyReached
+                  ? 'bg-red-100 text-red-700 border border-red-300'
+                  : 'bg-teal-50 text-teal-700'
+              }`}>
+                {hsaFamilyReached
+                  ? `Family limit of ${fmt(td.hsaFamily)} reached`
+                  : `${mfj ? 'Family' : 'Self'} limit ${fmt(hsaLimit)}${age>=55?' (incl. catch-up)':''}`}
+              </span>
+            </div>
+          );
+        })()}
         {age >= 55 && (
           <div className="mb-2 px-2 py-1 bg-teal-50 border border-teal-100 rounded-lg text-xs text-teal-700 font-medium">
             ✓ Age 55+ HSA catch-up: +{fmt(td.hsaCatchup55)}
@@ -855,9 +873,21 @@ const ResultsPanel = ({results: r, inputs, onExport}) => {
       {/* ---- Take-Home ---- */}
       <Card title="Take-Home Summary" titleCls="text-emerald-700">
         <Row label="Gross Income" value={fmt(r.grossIncome)} />
+        {mfj && <>
+          <Row label="Spouse 1" value={fmt(r.s1W2)} indent sub />
+          <Row label="Spouse 2" value={fmt(r.s2W2)} indent sub />
+        </>}
         <Row label="Total Taxes" value={`(${fmt(r.totalTax)})`} indent sub />
         <Row label="Pre-Tax 401k & HSA" value={`(${fmt(r.preTaxDed)})`} indent sub />
+        {mfj && <>
+          <Row label="Spouse 1" value={`(${fmt(r.s1PreTax)})`} indent sub />
+          <Row label="Spouse 2" value={`(${fmt(r.s2PreTax)})`} indent sub />
+        </>}
         <Row label="Post-Tax Roth 401k" value={`(${fmt(r.postTaxDed)})`} indent sub />
+        {mfj && <>
+          <Row label="Spouse 1" value={`(${fmt(r.s1PostTax)})`} indent sub />
+          <Row label="Spouse 2" value={`(${fmt(r.s2PostTax)})`} indent sub />
+        </>}
         <Divider />
         <Row label="Annual Take-Home" value={fmt(r.takeHomeAnnual)} bold highlight />
         <Row label="Monthly Take-Home" value={fmt(r.takeHomeMonthly)} bold />
@@ -1530,6 +1560,7 @@ const App = () => {
                 title={mfj ? 'Spouse 1 — Income &amp; Retirement' : 'Your Income &amp; Retirement'}
                 data={inputs.s1} onChange={set('s1')} td={td} mfj={mfj} fs={inputs.filingStatus}
                 titleCls="text-blue-700"
+                otherHsa={mfj ? (inputs.s2.hsa||0) : 0}
               />
 
               {mfj && (
@@ -1537,6 +1568,7 @@ const App = () => {
                   title="Spouse 2 — Income &amp; Retirement"
                   data={inputs.s2} onChange={set('s2')} td={td} mfj={mfj} fs={inputs.filingStatus}
                   titleCls="text-indigo-700"
+                  otherHsa={inputs.s1.hsa||0}
                 />
               )}
 
