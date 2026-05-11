@@ -1,0 +1,870 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Retirement Master Plan — Age 51 | Married Couple | WA State</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#F0F2F5;--surface:#FFFFFF;--surface2:#F7F9FB;--border:#E2E6EA;--border2:#CBD5E1;
+  --text:#0F172A;--muted:#64748B;--hint:#94A3B8;
+  --navy:#1E3A5F;--blue:#2563EB;--green:#059669;--amber:#D97706;--red:#DC2626;--purple:#7C3AED;
+  --green-bg:#ECFDF5;--green-t:#065F46;
+  --amber-bg:#FFFBEB;--amber-t:#92400E;
+  --red-bg:#FEF2F2;--red-t:#991B1B;
+  --blue-bg:#EFF6FF;--blue-t:#1E40AF;
+  --purple-bg:#F3F0FF;--purple-t:#4C1D95;
+}
+body{font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;background:var(--bg);color:var(--text);font-size:14px;line-height:1.6;min-height:100vh}
+.hdr{background:var(--navy);color:white;padding:18px 28px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px}
+.hdr-l h1{font-size:17px;font-weight:600}
+.hdr-l p{font-size:11px;opacity:.6;margin-top:2px}
+.hdr-r{display:flex;gap:24px}
+.hs{text-align:right}.hs-v{font-size:19px;font-weight:600}.hs-l{font-size:11px;opacity:.55}
+.nav{background:var(--surface);border-bottom:1px solid var(--border);padding:0 24px;display:flex;overflow-x:auto}
+.nb{padding:13px 15px;border:none;background:transparent;color:var(--muted);cursor:pointer;font-size:13px;font-weight:500;border-bottom:2px solid transparent;white-space:nowrap;font-family:inherit;transition:color .15s}
+.nb:hover{color:var(--text)}.nb.on{color:var(--navy);border-bottom-color:var(--navy)}
+.main{padding:22px 28px;max-width:940px;margin:0 auto}
+.pane{display:none}.pane.on{display:block}
+.g4{display:grid;grid-template-columns:repeat(auto-fit,minmax(155px,1fr));gap:10px;margin-bottom:14px}
+.sc{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:13px 15px}
+.sc-l{font-size:11px;color:var(--muted);margin-bottom:3px;text-transform:uppercase;letter-spacing:.04em}
+.sc-v{font-size:20px;font-weight:600}
+.g{color:var(--green)}.r{color:var(--red)}.b{color:var(--blue)}.a{color:var(--amber)}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:17px 19px;margin-bottom:14px}
+.ct{font-size:14px;font-weight:600;margin-bottom:3px}
+.cs{font-size:12px;color:var(--muted);margin-bottom:12px}
+.bdg{display:inline-block;font-size:11px;font-weight:500;padding:2px 8px;border-radius:20px;flex-shrink:0}
+.bdg-r{background:var(--red-bg);color:var(--red-t)}
+.bdg-a{background:var(--amber-bg);color:var(--amber-t)}
+.bdg-b{background:var(--blue-bg);color:var(--blue-t)}
+.bdg-g{background:var(--green-bg);color:var(--green-t)}
+.bdg-p{background:var(--purple-bg);color:var(--purple-t)}
+.ri{display:flex;align-items:flex-start;gap:11px;padding:9px 0;border-bottom:1px solid var(--border)}
+.ri:last-child{border-bottom:none}
+.ri-t{flex:1;font-size:13px;color:var(--muted);line-height:1.6}
+.pb-w{margin-bottom:11px}
+.pb-h{display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px}
+.pb{height:6px;background:var(--border);border-radius:3px;overflow:hidden}
+.pb-f{height:100%;border-radius:3px}
+.tier{border:1px solid var(--border);border-left:3px solid;border-radius:10px;border-top-left-radius:0;border-bottom-left-radius:0;padding:13px 15px;margin-bottom:10px}
+.tier-hd{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:7px}
+.tier-t{font-size:13px;font-weight:600}.tier-st{font-size:11px;color:var(--muted);margin-top:1px}
+.tier-amt{text-align:right;flex-shrink:0;margin-left:10px}
+.tier-v{font-size:15px;font-weight:600}.tier-y{font-size:11px}
+.tier-b{font-size:12px;color:var(--muted);line-height:1.7}
+.ib{border-radius:8px;padding:10px 13px;font-size:12px;line-height:1.7;margin-top:10px}
+.ib-g{background:var(--green-bg);color:var(--green-t)}
+.ib-a{background:var(--amber-bg);color:var(--amber-t)}
+.ib-r{background:var(--red-bg);color:var(--red-t)}
+.ib-b{background:var(--blue-bg);color:var(--blue-t)}
+.ib-p{background:var(--purple-bg);color:var(--purple-t)}
+.sbg{background:var(--surface2);border-radius:10px;padding:13px 15px;margin-top:12px}
+.sbg-t{font-size:13px;font-weight:600;margin-bottom:9px}
+.cw{position:relative;width:100%;height:300px;margin:10px 0}
+.cw-sm{height:240px}
+.sc-btns{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:11px}
+.sc-btn{padding:5px 11px;border:1px solid var(--border);background:var(--surface);color:var(--muted);cursor:pointer;font-size:12px;font-weight:500;border-radius:6px;transition:all .15s;font-family:inherit}
+.sc-btn:hover{border-color:var(--navy);color:var(--navy)}
+.sc-btn.on{background:var(--navy);color:white;border-color:var(--navy)}
+.cl{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;color:var(--muted);margin-top:8px}
+.cl-i{display:flex;align-items:center;gap:5px}
+.cl-d{width:12px;height:3px;border-radius:2px;display:inline-block}
+.phase{border-left:3px solid;padding:12px 14px;border-radius:0 8px 8px 0;margin-bottom:10px;background:var(--surface2)}
+.phase-hd{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;flex-wrap:wrap;gap:6px}
+.phase-t{font-size:13px;font-weight:600}
+.phase-b{font-size:12px;color:var(--muted);line-height:1.7}
+.it{display:grid;grid-template-columns:1fr 1fr;gap:3px 20px;font-size:12px;line-height:2}
+.it-k{color:var(--blue-t)}.it-v{font-weight:600;text-align:right;color:var(--blue-t)}
+.kv{display:grid;grid-template-columns:1fr auto;gap:3px 20px;font-size:13px;line-height:2.1}
+.kv-k{color:var(--muted)}.kv-v{font-weight:600;text-align:right}
+.kv-sep{border-top:1px solid var(--border);padding-top:4px;color:var(--text)}
+.kv-sep-g{border-top:1px solid var(--border);padding-top:4px;color:var(--green);font-weight:600;text-align:right}
+.mort-g{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
+.mort-c{background:var(--surface2);border-radius:8px;padding:12px}
+.mort-ct{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;font-weight:600;margin-bottom:6px}
+.mort-cb{font-size:12px;color:var(--muted);line-height:1.6}
+.tlh{padding:10px 0 10px 13px;border-left:3px solid var(--border2);margin-bottom:9px}
+.tlh-t{font-size:13px;font-weight:600;margin-bottom:3px}
+.tlh-b{font-size:12px;color:var(--muted);line-height:1.7}
+.benef-g{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.benef-c{background:var(--surface2);border-radius:8px;padding:12px}
+.benef-ct{font-size:12px;font-weight:600;margin-bottom:4px}
+.benef-cb{font-size:11px;color:var(--muted);line-height:1.6}
+.tl-item{display:flex;gap:14px;padding-bottom:24px}
+.tl-col{display:flex;flex-direction:column;align-items:center}
+.tl-dot{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;flex-shrink:0}
+.tl-line{width:1px;flex:1;background:var(--border);margin-top:5px}
+.tl-t{font-size:13px;font-weight:600;margin-bottom:5px;padding-top:5px}
+.tl-b{font-size:12px;color:var(--muted);line-height:1.8}
+.cmp-tbl{width:100%;border-collapse:collapse;font-size:12px;margin-top:10px}
+.cmp-tbl th{text-align:left;padding:8px 10px;background:var(--surface2);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);border-bottom:1px solid var(--border)}
+.cmp-tbl td{padding:8px 10px;border-bottom:1px solid var(--border);color:var(--muted);vertical-align:top;line-height:1.5}
+.cmp-tbl tr:last-child td{border-bottom:none}
+.cmp-tbl td:first-child{font-weight:600;color:var(--text);white-space:nowrap}
+.seg{position:absolute;bottom:0;height:48%;transition:width .3s,left .3s}
+.bzone{position:absolute;top:0;height:100%}
+.blbl{position:absolute;top:5px;font-size:10px;font-weight:500;padding:0 5px}
+.rmd-krow{display:flex;justify-content:space-between;padding:7px 0;border-bottom:0.5px solid var(--border);font-size:13px}
+.rmd-krow:last-child{border-bottom:none}
+@media(max-width:600px){
+  .hdr-r{gap:14px}.hs-v{font-size:15px}
+  .g4{grid-template-columns:1fr 1fr}
+  .mort-g,.benef-g,.it{grid-template-columns:1fr}
+  .main{padding:16px}
+  .cmp-tbl{font-size:11px}
+}
+</style>
+</head>
+<body>
+
+<div class="hdr">
+  <div class="hdr-l">
+    <h1>Retirement Master Plan</h1>
+    <p>Married couple &middot; Age 51 &middot; WA State &middot; Retiring at 55 &middot; $250k/yr spending target</p>
+  </div>
+  <div class="hdr-r">
+    <div class="hs"><div class="hs-v">$4.5M</div><div class="hs-l">Current portfolio</div></div>
+    <div class="hs"><div class="hs-v" style="color:#6EE7B7">$6.5M</div><div class="hs-l">Target at 55</div></div>
+    <div class="hs"><div class="hs-v">Age 70</div><div class="hs-l">Claim SS</div></div>
+  </div>
+</div>
+
+<div class="nav">
+  <button class="nb on" onclick="showTab('ov',this)">Overview</button>
+  <button class="nb" onclick="showTab('buf',this)">3-yr buffer</button>
+  <button class="nb" onclick="showTab('proj',this)">Projection</button>
+  <button class="nb" onclick="showTab('roth',this)">Roth + SS</button>
+  <button class="nb" onclick="showTab('tax',this)">Tax strategy</button>
+  <button class="nb" onclick="showTab('est',this)">Estate plan</button>
+  <button class="nb" onclick="showTab('rmd',this)">RMD calculator</button>
+  <button class="nb" onclick="showTab('tl',this)">Timeline</button>
+</div>
+
+<div class="main">
+
+<!-- OVERVIEW -->
+<div id="ov" class="pane on">
+  <div class="g4">
+    <div class="sc"><div class="sc-l">Current portfolio</div><div class="sc-v">$4.5M</div></div>
+    <div class="sc"><div class="sc-l">Target at age 55</div><div class="sc-v b">$6.5M</div></div>
+    <div class="sc"><div class="sc-l">Projected at age 55</div><div class="sc-v g">~$6.52M</div></div>
+    <div class="sc"><div class="sc-l">3-yr buffer needed</div><div class="sc-v">$861k</div></div>
+    <div class="sc"><div class="sc-l">Spend at retirement</div><div class="sc-v">$287k/yr</div></div>
+    <div class="sc"><div class="sc-l">Spend at age 70</div><div class="sc-v">$481k/yr</div></div>
+    <div class="sc"><div class="sc-l">SS claim (both spouses)</div><div class="sc-v g">Age 70</div></div>
+    <div class="sc"><div class="sc-l">WA new tax risk (2028+)</div><div class="sc-v r">9.9%</div></div>
+  </div>
+
+  <div class="card">
+    <div class="ct">Readiness scorecard</div>
+    <div style="margin-top:6px">
+      <div class="pb-w"><div class="pb-h"><span>Portfolio vs. target</span><span class="g" style="font-weight:600">On track — 99%</span></div><div class="pb"><div class="pb-f" style="width:99%;background:var(--green)"></div></div></div>
+      <div class="pb-w"><div class="pb-h"><span>SRR buffer plan</span><span class="b" style="font-weight:600">Defined — implement now</span></div><div class="pb"><div class="pb-f" style="width:70%;background:var(--blue)"></div></div></div>
+      <div class="pb-w"><div class="pb-h"><span>Roth conversion plan</span><span class="a" style="font-weight:600">Needs work</span></div><div class="pb"><div class="pb-f" style="width:25%;background:var(--amber)"></div></div></div>
+      <div class="pb-w"><div class="pb-h"><span>LTC coverage</span><span class="a" style="font-weight:600">Undercovered</span></div><div class="pb"><div class="pb-f" style="width:35%;background:var(--amber)"></div></div></div>
+      <div class="pb-w"><div class="pb-h"><span>WA millionaire tax + NV residency plan</span><span class="r" style="font-weight:600">Critical — plan before 2028</span></div><div class="pb"><div class="pb-f" style="width:15%;background:var(--red)"></div></div></div>
+      <div class="pb-w" style="margin-bottom:0"><div class="pb-h"><span>Estate / trust setup</span><span class="r" style="font-weight:600">Critical gap — urgent</span></div><div class="pb"><div class="pb-f" style="width:12%;background:var(--red)"></div></div></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="ct">Priority action items</div>
+    <div class="ri"><span class="bdg bdg-r">Urgent</span><span class="ri-t">Draft estate plan — community property trust, wills, POA, healthcare directives for both spouses. OBBBA permanently sets federal exemption at $15M/$30M MFJ — federal risk eliminated, but WA state estate tax ($3M exclusion, top rate 20%) still applies. Hire WA estate attorney this quarter.</span></div>
+    <div class="ri"><span class="bdg bdg-r">Urgent</span><span class="ri-t">Start Roth conversions this tax year. Fill to top of 22% MFJ bracket ($201,050). Without conversions, future RMDs at 73 will push you into 22–24% brackets plus trigger IRMAA and potentially WA's 9.9% millionaire tax on income over $1M/household. Coordinate with spouse's income.</span></div>
+    <div class="ri"><span class="bdg bdg-r">Urgent</span><span class="ri-t">Evaluate NV residency before WA 9.9% millionaire tax takes effect Jan 1, 2028. At your income level, this could save $50–150k+/yr in state taxes alone. Begin establishing NV domicile well before the effective date — WA will scrutinize residency claims aggressively.</span></div>
+    <div class="ri"><span class="bdg bdg-a">High</span><span class="ri-t">Open a Donor-Advised Fund (Fidelity Charitable or Schwab Charitable). Contribute appreciated stock at 35% MFJ deduction now. WA's millionaire tax allows $100k charitable deduction against state taxable income — potential double benefit at federal + state level.</span></div>
+    <div class="ri"><span class="bdg bdg-a">High</span><span class="ri-t">Upgrade LTC to hybrid life/LTC policies for both spouses at 51. Premiums rise 5–8%/yr and health changes can disqualify. Waiting until 55 costs 20–30% more. Get quotes for both immediately.</span></div>
+    <div class="ri"><span class="bdg bdg-b">Medium</span><span class="ri-t">Keep the 2.5% mortgage — do NOT pay off. At 2.5% fixed vs. 3.5% inflation, you're earning 1%/yr real return on borrowed money. Use SALT deduction (now $40k through 2029 under OBBBA, but phased down for MFJ >$500k) and itemize with mortgage interest + property tax + charitable. See Tax tab for full strategy.</span></div>
+    <div class="ri"><span class="bdg bdg-b">Medium</span><span class="ri-t">Max HSA as family ($8,300 + $1k catch-up = $9,300). Invest aggressively. After 65, both spouses use tax-free for Medicare premiums and medical — completely invisible to IRMAA. Name each other as HSA beneficiary (spouse inherits as HSA tax-free).</span></div>
+  </div>
+</div>
+
+<!-- BUFFER -->
+<div id="buf" class="pane">
+  <div class="card">
+    <div class="ct">3-tier SRR buffer ladder — funded at retirement (age 55)</div>
+    <div class="cs">Total: $861k &nbsp;|&nbsp; Average yield: ~4.8% &nbsp;|&nbsp; Annual interest: ~$41k — meaningfully offsets yield drag</div>
+
+    <div class="tier" style="border-left-color:var(--green)">
+      <div class="tier-hd">
+        <div><div class="tier-t">Tier 1 — Year 1 spending (immediate access)</div><div class="tier-st">HYSA + Money Market Fund</div></div>
+        <div class="tier-amt"><div class="tier-v">$287k</div><div class="tier-y g">4.5–5.0%</div></div>
+      </div>
+      <div class="tier-b">Fidelity FZFXX, Vanguard VMFXX, or HYSA (SoFi, Marcus). Keep 3 months in joint checking, 9 months in money market. Replenish from Tier 2 monthly. Never let this drop below 3 months of expenses.</div>
+    </div>
+
+    <div class="tier" style="border-left-color:var(--blue)">
+      <div class="tier-hd">
+        <div><div class="tier-t">Tier 2 — Year 2 spending</div><div class="tier-st">12-month CD ladder + 1-yr Treasury Bills</div></div>
+        <div class="tier-amt"><div class="tier-v">$287k</div><div class="tier-y b">4.7–5.0%</div></div>
+      </div>
+      <div class="tier-b">Split $71k CDs across 4 banks quarterly (FDIC $250k/depositor/bank — joint accounts double to $500k). Rolling 3-month maturity replenishes Tier 1 automatically. T-Bills (4, 8, 13-week) add flexibility. Entire tier rolls into Tier 1 every 12 months.</div>
+    </div>
+
+    <div class="tier" style="border-left-color:var(--purple)">
+      <div class="tier-hd">
+        <div><div class="tier-t">Tier 3 — Year 3 spending</div><div class="tier-st">2-yr Treasuries + WA Municipal Bonds + 24-mo CDs</div></div>
+        <div class="tier-amt"><div class="tier-v">$287k</div><div class="tier-y" style="color:var(--purple)">4.5–4.8%</div></div>
+      </div>
+      <div class="tier-b">WA munis: federally tax-exempt. 2-yr Treasury notes for safety. BIL or SHY ETFs for liquid flex tranche. At 22% MFJ retirement bracket: 3.5% muni = 4.49% taxable equivalent. Rolls into Tier 2 annually. Note: if you relocate to NV, WA munis remain federally tax-exempt — no change needed.</div>
+    </div>
+
+    <div class="sbg">
+      <div class="sbg-t">Quarterly replenishment decision rules</div>
+      <div style="display:flex;flex-direction:column;gap:9px">
+        <div style="display:flex;gap:9px;align-items:flex-start"><span class="bdg bdg-g" style="margin-top:1px">Market up</span><span class="tier-b">Sell from growth portfolio. Prioritize rebalancing first — trim overweight positions. In taxable: sell highest-cost-basis lots to minimize gains. In 401k/IRA: no tax friction. Target quarterly cadence, not monthly.</span></div>
+        <div style="display:flex;gap:9px;align-items:flex-start"><span class="bdg bdg-r" style="margin-top:1px">Market down</span><span class="tier-b">Do NOT sell equities. Draw Tier 1 only. Harvest tax losses in growth portfolio (TLH). Do not replenish buffer until market recovers 10%+ from its low. You have 3 years — use every day of it.</span></div>
+        <div style="display:flex;gap:9px;align-items:flex-start"><span class="bdg bdg-b" style="margin-top:1px">Age 70+</span><span class="tier-b">Combined SS income for both spouses (~$200k+ nominal) auto-replenishes ~40–50% of buffer annually. RMDs also fund Tier 1. Sell growth only for the net shortfall.</span></div>
+        <div style="display:flex;gap:9px;align-items:flex-start"><span class="bdg bdg-a" style="margin-top:1px">Flex lever</span><span class="tier-b">In a severe down-market year: reduce discretionary from $130k to $50–75k. This extends the buffer from 3 to 4.5–5 effective years — nearly eliminating sequence risk without selling a single equity position.</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="ct">Buffer inflation adjustment — annual target schedule</div>
+    <div class="cs">Replenish Tier 1 to the current year's inflation-adjusted need, not just last year's level</div>
+    <div class="g4">
+      <div class="sc"><div class="sc-l">Age 55</div><div class="sc-v" style="font-size:17px">$287k/yr</div><div style="font-size:11px;color:var(--muted);margin-top:2px">Buffer total: $861k</div></div>
+      <div class="sc"><div class="sc-l">Age 60</div><div class="sc-v" style="font-size:17px">$341k/yr</div><div style="font-size:11px;color:var(--muted);margin-top:2px">Buffer total: $1.02M</div></div>
+      <div class="sc"><div class="sc-l">Age 65</div><div class="sc-v" style="font-size:17px">$405k/yr</div><div style="font-size:11px;color:var(--muted);margin-top:2px">Buffer total: $1.22M</div></div>
+      <div class="sc"><div class="sc-l">Age 70</div><div class="sc-v" style="font-size:17px">$481k/yr</div><div style="font-size:11px;color:var(--green);margin-top:2px">Net after SS: ~$262k</div></div>
+    </div>
+    <div class="ib ib-b">At age 70, combined SS income for both spouses (~$219k nominal at 3.5% inflation, assuming both claim at 70) reduces the net portfolio draw from $481k to ~$262k/yr — a 45% reduction that significantly extends longevity and eases replenishment pressure.</div>
+  </div>
+</div>
+
+<!-- PROJECTION -->
+<div id="proj" class="pane">
+  <div class="g4">
+    <div class="sc"><div class="sc-l">Starting portfolio (age 55)</div><div class="sc-v">$6.52M</div></div>
+    <div class="sc"><div class="sc-l">Base case — age 70</div><div class="sc-v b" id="v70">—</div></div>
+    <div class="sc"><div class="sc-l">Base case — age 85</div><div class="sc-v g" id="v85">—</div></div>
+    <div class="sc"><div class="sc-l">Stress case — age 85</div><div class="sc-v a" id="v85s">—</div></div>
+  </div>
+
+  <div class="card">
+    <div class="ct">Portfolio projection — age 55 to 90 (married couple)</div>
+    <div class="cs">Both spouses' SS added at age 70 | RMDs begin at age 73 | All values nominal ($M)</div>
+    <div class="sc-btns">
+      <button class="sc-btn on" onclick="switchScen('base',this)">Base (7%, 3.5% inf)</button>
+      <button class="sc-btn" onclick="switchScen('stress',this)">Stress (5%, 4% inf)</button>
+      <button class="sc-btn" onclick="switchScen('bull',this)">Bull (9%, 3.5% inf)</button>
+      <button class="sc-btn" onclick="switchScen('all',this)">All 3 scenarios</button>
+    </div>
+    <div class="cw">
+      <canvas id="projChart" role="img" aria-label="Portfolio projection from age 55 to 90 for married couple.">Portfolio projection chart comparing three scenarios.</canvas>
+    </div>
+    <div class="cl">
+      <span class="cl-i"><span class="cl-d" style="background:var(--green)"></span>Bull (9%)</span>
+      <span class="cl-i"><span class="cl-d" style="background:var(--blue)"></span>Base (7%)</span>
+      <span class="cl-i"><span class="cl-d" style="background:var(--amber);border-top:2px dashed var(--amber);height:0"></span>Stress (5%, 4% inflation)</span>
+      <span style="font-size:11px">Combined SS at age 70 | Stress line is dashed</span>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="ct">Savings roadmap to $6.5M by age 55</div>
+    <div class="cs">At current savings pace you are on track — minimal additional effort required</div>
+    <div class="kv">
+      <span class="kv-k">$4.5M current at 7% for 4 years</span><span class="kv-v">$5.90M</span>
+      <span class="kv-k">401k + catch-up (4 yrs × $30.5k, compounded)</span><span class="kv-v">+$135k</span>
+      <span class="kv-k">HSA family max (4 yrs × $9.3k, compounded)</span><span class="kv-v">+$40k</span>
+      <span class="kv-k">Taxable savings (~$100k/yr, compounded)</span><span class="kv-v">+$449k</span>
+      <span class="kv-k kv-sep" style="font-weight:600;color:var(--text)">Projected at retirement (age 55)</span><span class="kv-sep-g">$6.52M</span>
+      <span class="kv-k">Target needed (3.8% effective SWR + SS at 70)</span><span class="kv-v b">$6.50M</span>
+    </div>
+    <div class="ib ib-g">On track as a couple. If spouse also works and contributes to a 401k, the cushion grows further. With the 2.5% mortgage kept in place (not paid off), you retain ~$85k/yr in portfolio assets earning 7% instead of extinguishing cheap debt.</div>
+  </div>
+</div>
+
+<!-- ROTH + SS -->
+<div id="roth" class="pane">
+  <div class="card">
+    <div class="ct">Social Security claiming strategy — both spouses claim at age 70</div>
+    <div class="cs">Break-even vs. 65: ~age 80.7 &nbsp;|&nbsp; vs. 68: ~age 82.8 &nbsp;|&nbsp; Portfolio sustains the 15-year wait for both. Combined SS at 70 provides powerful buffer replenishment.</div>
+    <div class="cw cw-sm">
+      <canvas id="ssChart" role="img" aria-label="Cumulative lifetime SS benefits comparing claim ages 65, 68, and 70.">Cumulative Social Security benefits by claim age.</canvas>
+    </div>
+    <div class="cl">
+      <span class="cl-i"><span class="cl-d" style="background:var(--red)"></span>Age 65 ($3,547/mo)</span>
+      <span class="cl-i"><span class="cl-d" style="background:var(--amber)"></span>Age 68 ($4,502/mo)</span>
+      <span class="cl-i"><span class="cl-d" style="background:var(--green)"></span>Age 70 ($5,203/mo) — recommended</span>
+    </div>
+    <div class="ib ib-g"><strong>Both spouses claim at 70.</strong> Combined monthly: ~$10,400+/mo (if both have similar earnings). Combined annual: ~$125k+ (nominal), growing to ~$219k+ by age 70 after COLA. Spousal strategy: if one spouse has lower earnings, their spousal benefit at 70 = 50% of higher earner's PIA. Both delaying maximizes survivor benefit — critical for the surviving spouse's financial security. 85% of combined SS is taxable at your income level.</div>
+  </div>
+
+  <div class="card">
+    <div class="ct">Roth conversion master plan — ages 55 to 72 (MFJ brackets)</div>
+    <div class="cs">Goal: convert traditional 401k before RMDs at 73 force large taxable distributions. MFJ brackets give you 2× the room per bracket vs. single filers.</div>
+
+    <div class="phase" style="border-left-color:var(--green)">
+      <div class="phase-hd"><span class="phase-t">Phase 1: Ages 55–63 — prime window</span><span class="bdg bdg-g">Convert $200–350k/yr MFJ</span></div>
+      <div class="phase-b">No W-2 income in retirement. Fill to top of 22% MFJ bracket ($201,050). With $0 other income: $200k conversion ≈ $30–40k tax at ~17% effective rate. MFJ doubles bracket width vs. single — major advantage. Always pay conversion tax from taxable brokerage. Over 9 years: $1.8–3.1M converted tax-efficiently.</div>
+    </div>
+
+    <div class="phase" style="border-left-color:var(--amber)">
+      <div class="phase-hd"><span class="phase-t">Phase 2: Ages 63–65 — IRMAA control</span><span class="bdg bdg-a">Pause or $100–150k</span></div>
+      <div class="phase-b">IRMAA uses income 2 years prior. Age 63 income = age 65 Medicare premium. Target MAGI below $206k MFJ. Roth conversions count as MAGI — reduce if necessary. Use DAF contributions to offset. File SSA-44 for both spouses at 65 citing retirement as a life-changing income event.</div>
+    </div>
+
+    <div class="phase" style="border-left-color:var(--blue)">
+      <div class="phase-hd"><span class="phase-t">Phase 3: Ages 66–72 — moderate conversions</span><span class="bdg bdg-b">$100–150k/yr</span></div>
+      <div class="phase-b">Both spouses on Medicare. Balance IRMAA tier cost vs. long-term Roth benefit. SS income at 70 adds to MAGI — factor in carefully. Use QCDs for charitable giving (up to $105k/yr per spouse from IRA — NOT MAGI). Target: reduce combined traditional 401k/IRA to ≤$500k before age 73.</div>
+    </div>
+
+    <div class="sbg" style="background:var(--blue-bg)">
+      <div class="sbg-t" style="color:var(--blue-t)">18-year conversion impact (MFJ)</div>
+      <div class="it">
+        <span class="it-k">Total converted (estimate)</span><span class="it-v">~$2.5–3.5M</span>
+        <span class="it-k">Tax paid on conversions @ ~17–22%</span><span class="it-v">~$425–770k</span>
+        <span class="it-k">Tax if NOT converted (RMDs @ 24%+)</span><span class="it-v">~$600–840k</span>
+        <span class="it-k">Lifetime tax savings</span><span class="it-v">~$175–300k</span>
+        <span class="it-k">Estate benefit — Roth to heirs (tax-free)</span><span class="it-v">$2.5M+</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- TAX STRATEGY -->
+<div id="tax" class="pane">
+  <div class="card">
+    <div class="ct">IRMAA avoidance — Medicare Part B/D surcharge mitigation (both spouses)</div>
+    <div class="cs">Without planning, drawing $250k from traditional 401k triggers IRMAA Tier 3+ (+$384/mo per person, 2024). Goal: keep combined MAGI below $206k MFJ.</div>
+    <div class="ri"><span class="bdg bdg-g">Roth draws</span><span class="ri-t">Not counted in MAGI. The primary lever. Draw from Roth IRA/401k for spending in Medicare years. This is why the Roth conversion plan ages 55–63 using MFJ brackets is critical.</span></div>
+    <div class="ri"><span class="bdg bdg-g">HSA draws</span><span class="ri-t">Tax-free for qualified medical, not counted in MAGI. Both spouses use for Medicare Part B/D premiums, Medigap, dental, vision, hearing. Stop contributions when either spouse enrolls in Medicare.</span></div>
+    <div class="ri"><span class="bdg bdg-g">QCDs (70½+)</span><span class="ri-t">Qualified Charitable Distributions from IRA up to $105k/yr per spouse ($210k combined). Counts against RMD but NOT as MAGI. Massive lever if charitably inclined.</span></div>
+    <div class="ri"><span class="bdg bdg-b">Muni bonds</span><span class="ri-t">Federal tax-exempt interest not counted in MAGI. At 22% MFJ bracket: 3.5% muni = 4.49% taxable equivalent. Ideal for buffer Tier 3 and taxable brokerage.</span></div>
+    <div class="ri"><span class="bdg bdg-a">IRMAA appeal</span><span class="ri-t">At 65, file SSA-44 for both spouses citing retirement as "significant income reduction." Moves IRMAA basis to current retirement income. Saves $2,000–4,600/yr per person — $4,000–9,200/yr for both.</span></div>
+  </div>
+
+  <div class="card">
+    <div class="ct">Mortgage strategy — 2.5% fixed through 2051</div>
+    <div class="cs">At 2.5% fixed rate, well below 3.5% inflation, this is negative real-cost debt. The math strongly favors keeping it.</div>
+    <div class="mort-g">
+      <div class="mort-c">
+        <div class="mort-ct">While working (ages 51–55) — keep it</div>
+        <div class="mort-cb">At 35% MFJ bracket: after-tax cost of 2.5% mortgage ≈ <strong>1.63%</strong>. Portfolio earns 7%. Spread: +5.37%/yr on every dollar not used for payoff. SALT cap now $40k (OBBBA, 2025–2029) for MFJ with phasedown above $500k AGI — you'll get partial benefit. Itemize: mortgage interest + property tax (up to SALT cap) + charitable (DAF) should exceed $32.3k standard deduction MFJ.</div>
+      </div>
+      <div class="mort-c">
+        <div class="mort-ct">During retirement (ages 55–69) — still keep it</div>
+        <div class="mort-cb">At 22% or lower bracket in retirement: after-tax cost ≈ <strong>1.95%</strong>. Still below inflation. Mortgage payment provides forced structure to annual spending. The $85k/yr stays in your budget through age 76 (payoff in 2051). Floor spending remains ~$120k until then — factor this into buffer sizing. After SS starts at 70, combined SS (~$219k/yr) covers most of the mortgage payment in years 70–76.</div>
+      </div>
+    </div>
+    <div class="ib ib-g"><strong>Do not pay off.</strong> At 2.5%, every dollar used for payoff earns 2.5% risk-free but forfeits 7% portfolio growth — a 4.5% annual opportunity cost. The mortgage self-extinguishes in 2051 (age 76). Over 25 years of retirement, the ~5% annual spread on the outstanding balance compounds to significant wealth. The key insight: your mortgage rate is below the risk-free rate on T-Bills (~4.5–5%), meaning even your buffer earns more than the mortgage costs. After SS starts at 70, the $85k mortgage payment is largely covered by combined SS income — the portfolio pressure drops sharply for the final 6 years (ages 70–76).</div>
+    
+    <div class="sbg" style="margin-top:12px">
+      <div class="sbg-t">Tax optimization strategies for mortgage during retirement</div>
+      <div style="display:flex;flex-direction:column;gap:9px">
+        <div style="display:flex;gap:9px;align-items:flex-start"><span class="bdg bdg-g" style="margin-top:1px">Itemize MFJ</span><span class="tier-b">Mortgage interest + property tax (up to SALT cap) + charitable giving (DAF, QCDs). If combined exceeds $32.3k standard deduction MFJ, itemize. "Bunching" charitable contributions every 2 years via DAF can alternate between itemizing and standard deduction — maximizing both.</span></div>
+        <div style="display:flex;gap:9px;align-items:flex-start"><span class="bdg bdg-b" style="margin-top:1px">SALT cap</span><span class="tier-b">OBBBA raised SALT to $40k (2025–2029) but phases down for AGI >$500k MFJ. In retirement at lower income, you may get the full $40k: property tax (~$25k?) + state taxes. After 2029, SALT reverts to $10k — plan charitable bunching around this change. If you move to NV: NV has no income tax, so your SALT is property tax only.</span></div>
+        <div style="display:flex;gap:9px;align-items:flex-start"><span class="bdg bdg-a" style="margin-top:1px">Rate arb</span><span class="tier-b">While mortgage costs 2.5%: put equivalent cash in T-Bills or HYSA at 4.5–5%. You earn ~2%/yr net spread on the outstanding balance — effectively getting paid to hold the mortgage. At $500k remaining balance, that's ~$10k/yr in free yield.</span></div>
+        <div style="display:flex;gap:9px;align-items:flex-start"><span class="bdg bdg-a" style="margin-top:1px">Post-2051</span><span class="tier-b">Mortgage ends naturally at age 76. Floor spending drops from $120k to ~$50k. By this point SS has been flowing for 6 years and RMDs have started — floor spending is comfortably covered by income streams alone. The 21-year period (ages 55–76) where floor includes mortgage is the reason the 3-year buffer and discretionary flex lever are critical: in a bad market, you can cut discretionary but not the $85k mortgage payment.</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="ct">Tax-loss harvesting (TLH) framework</div>
+    <div class="tlh" style="border-left-color:var(--green)">
+      <div class="tlh-t">Now (ages 51–55) — build loss carryforward</div>
+      <div class="tlh-b">Harvest losses aggressively in taxable brokerage. Use substantially-similar funds: VTI → SCHB, VOO → IVV, VXUS → IXUS. Losses offset ordinary income ($3k/yr cap MFJ) + unlimited capital gains. Build $100–200k carryforward for free gains-realization power in retirement.</div>
+    </div>
+    <div class="tlh" style="border-left-color:var(--blue)">
+      <div class="tlh-t">Early retirement (55–65) — coordinate with replenishment</div>
+      <div class="tlh-b">TLH offsets gains from rebalancing and buffer replenishment sales. In down-market quarters: harvest losses immediately, swap to similar fund, let the buffer absorb spending.</div>
+    </div>
+    <div class="tlh" style="border-left-color:var(--purple)">
+      <div class="tlh-t">Tax-gain harvesting (55–65) — the 0% LTCG opportunity</div>
+      <div class="tlh-b">If combined MAGI drops below $94,050 (MFJ) in any retirement year, LTCG is taxed at 0%. Intentionally sell appreciated positions — step up cost basis — then repurchase. Zero tax, permanently higher basis. Most powerful in early retirement before Roth conversions raise MAGI.</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="ct">Long-term care — upgrade for both spouses</div>
+    <div class="ri"><span class="bdg bdg-g">Recommended: Hybrid LTC</span><span class="ri-t">Life insurance + LTC rider (Lincoln MoneyGuard, Nationwide CareMatters, OneAmerica Asset Care). $200–250k single premium per spouse buys $600k–$1M in LTC benefits each. If unused, heirs receive death benefit. Buy both policies at 51.</span></div>
+    <div class="ri"><span class="bdg bdg-a">Self-insure gap</span><span class="ri-t">Alzheimer's care at $10–15k/month for 8–10 years = $960k–$1.8M per spouse. Two spouses doubles the tail risk. Insure years 2+ for both, self-fund year 1.</span></div>
+    <div class="ri"><span class="bdg bdg-b">Tax angle</span><span class="ri-t">Qualified LTC premiums deductible as medical (above 7.5% AGI MFJ). HSA funds pay LTC insurance premiums tax-free after 65. OBBBA's Medicaid changes (2028+) include $1M home equity cap for eligibility — plan accordingly.</span></div>
+  </div>
+</div>
+
+<!-- ESTATE PLAN -->
+<div id="est" class="pane">
+  <div class="card" style="border-color:var(--blue)">
+    <div class="ct" style="color:var(--blue)">OBBBA (signed July 4, 2025) — federal estate tax permanently resolved</div>
+    <div class="cs">The One Big Beautiful Bill Act permanently raised the federal estate/gift/GST exemption. No more sunset anxiety.</div>
+    <div class="g4">
+      <div class="sc"><div class="sc-l">Federal exemption (2026+)</div><div class="sc-v g">$15M</div></div>
+      <div class="sc"><div class="sc-l">MFJ combined (portability)</div><div class="sc-v g">$30M</div></div>
+      <div class="sc"><div class="sc-l">Your est. estate</div><div class="sc-v">$6.5M+</div></div>
+      <div class="sc"><div class="sc-l">Federal estate tax due</div><div class="sc-v g">$0</div></div>
+    </div>
+    <div class="ib ib-g">At $6.5M, you are well below the $30M MFJ federal exemption. Federal estate tax is permanently a non-issue for your estate. However, the exemption is indexed to inflation from 2027 — file portability election on first spouse's death (IRS Form 706) to preserve the deceased spouse's unused exclusion. This is free insurance even when clearly under the limit.</div>
+  </div>
+
+  <div class="card" style="border-color:var(--red)">
+    <div class="ct" style="color:var(--red)">WA state estate tax — SB 6347 (updated rates, effective July 2026)</div>
+    <div class="cs">WA estate tax is separate from federal. New SB 6347 restores pre-2025 rates (top rate: 20%, down from 35%). $3M exclusion retained, NOT indexed for inflation.</div>
+    <div class="g4">
+      <div class="sc"><div class="sc-l">WA exclusion</div><div class="sc-v">$3.0M</div></div>
+      <div class="sc"><div class="sc-l">Your estate</div><div class="sc-v r">$6.5M+</div></div>
+      <div class="sc"><div class="sc-l">WA taxable excess</div><div class="sc-v a">~$3.5M</div></div>
+      <div class="sc"><div class="sc-l">Est. WA estate tax</div><div class="sc-v r">~$460k</div></div>
+    </div>
+    <div class="ib ib-r">WA estate tax rates run 10–20% on the excess above $3M. The $3M exclusion does NOT adjust for inflation and WA does NOT allow portability between spouses — each spouse needs their own $3M exclusion via proper trust planning (A/B trust). Without an A/B trust, only one $3M exclusion is available. With proper planning: $6M combined exclusion reduces exposure significantly.</div>
+  </div>
+
+  <div class="card" style="border-color:var(--red)">
+    <div class="ct" style="color:var(--red)">WA millionaire tax — SB 6346 (effective Jan 1, 2028)</div>
+    <div class="cs">9.9% tax on WA household income exceeding $1M/year. Applies to residents, part-year residents, and nonresidents with WA-source income. First returns due April 2029.</div>
+    <div class="ri"><span class="bdg bdg-r">Critical</span><span class="ri-t"><strong style="color:var(--text)">$1M threshold per household, NOT per person.</strong> Unlike federal MFJ, the $1M is not doubled for married couples. Large Roth conversions, capital gains from buffer replenishment, or RMDs could push you over $1M in any given year. At $250k spend + $150k Roth conversion + $100k cap gains = $500k — safe. But large one-time events (property sale, stock windfall) could trigger it.</span></div>
+    <div class="ri"><span class="bdg bdg-a">Planning</span><span class="ri-t"><strong style="color:var(--text)">Roth conversion pacing matters.</strong> Converting $350k/yr is safe if total household income stays under $1M. But if combined with dividends, capital gains, and other income, you could inadvertently cross the $1M line. Model total AGI before each year's conversion.</span></div>
+    <div class="ri"><span class="bdg bdg-b">Credits</span><span class="ri-t"><strong style="color:var(--text)">Offsetting credits available:</strong> WA capital gains tax credit (avoids double-tax on same income), B&O tax credit, other state income tax credit (OSTC) if you have income taxed in another state. Charitable deduction up to $100k against WA taxable income. Pass-through entity tax (PTET) election available for business owners.</span></div>
+    <div class="ri"><span class="bdg bdg-r">Legal risk</span><span class="ri-t"><strong style="color:var(--text)">Constitutionality uncertain.</strong> Legal challenges are underway — WA Supreme Court has granted accelerated review in Heywood v. Hobbs. The tax may be struck down or modified. However, plan as if it will survive — don't rely on litigation outcomes for financial planning.</span></div>
+    <div class="ib ib-a">The combination of WA's 9.9% millionaire tax, 7% capital gains tax, and 10–20% estate tax makes WA one of the most aggressive state tax environments for high-net-worth retirees. NV residency eliminates all three. See the WA vs NV comparison table below.</div>
+  </div>
+
+  <div class="card">
+    <div class="ct">WA vs NV — state residency strategy matrix (today's $ at retirement)</div>
+    <div class="cs">20-year cumulative tax impact comparison. NV has zero income tax, zero capital gains tax, zero estate tax.</div>
+    <table class="cmp-tbl">
+      <thead>
+        <tr>
+          <th>Wealth tier</th>
+          <th>WA strategy</th>
+          <th>NV strategy</th>
+          <th>20-yr delta (vs NV)</th>
+          <th>Recommendation</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>&lt;$5M</td>
+          <td>A/B trust; protect WA $3M exclusion per spouse</td>
+          <td>Not needed</td>
+          <td style="font-weight:600;color:var(--green)">$0–$300k</td>
+          <td>Keep it simple — focus on WA estate planning, not relocation</td>
+        </tr>
+        <tr>
+          <td>$5M–$10M</td>
+          <td>A/B trust + optimize taxes; annual gifting</td>
+          <td>Selective trust</td>
+          <td style="font-weight:600;color:var(--amber)">$300k–$1.2M</td>
+          <td>Consider NV only if large liquidity event is coming or millionaire tax applies</td>
+        </tr>
+        <tr style="background:var(--blue-bg)">
+          <td style="color:var(--blue-t)">$6.5M ← you</td>
+          <td style="color:var(--blue-t)">A/B trust + Roth conversions + DAF; WA estate tax ~$460k; millionaire tax ~$0–50k/yr if income managed</td>
+          <td style="color:var(--blue-t)">NV trust; eliminate estate + income tax</td>
+          <td style="font-weight:600;color:var(--blue-t)">$500k–$1.5M</td>
+          <td style="color:var(--blue-t)"><strong>Establish NV trust now; evaluate full residency move before 2028 millionaire tax effective date</strong></td>
+        </tr>
+        <tr>
+          <td>$10M–$20M</td>
+          <td>A/B + optimize; income + estate tax drag meaningful</td>
+          <td>Trust + consider move</td>
+          <td style="font-weight:600;color:var(--red)">$1.2M–$4M</td>
+          <td>Start NV trust now; plan relocation before major gains events</td>
+        </tr>
+        <tr>
+          <td>$20M–$40M</td>
+          <td>Income + estate tax drag very high</td>
+          <td>Trust + move</td>
+          <td style="font-weight:600;color:var(--red)">$4M–$10M</td>
+          <td>Execute NV trust immediately and plan a clean residency move</td>
+        </tr>
+        <tr>
+          <td>$40M+</td>
+          <td>Very high compounding leakage across all WA taxes</td>
+          <td>Core NV strategy</td>
+          <td style="font-weight:600;color:var(--red)">$10M–$50M+</td>
+          <td>Make NV your base — full trust + residency strategy is essential</td>
+        </tr>
+      </tbody>
+    </table>
+    <div class="ib ib-b" style="margin-top:14px"><strong>NV residency requirements for WA residents:</strong> (1) Establish genuine physical presence — spend 183+ days/yr in NV; (2) Get NV driver's license, voter registration, vehicle registration; (3) Change bank accounts, doctors, mail; (4) Sever WA domicile indicators — WA will audit aggressively, especially after SB 6346; (5) Consider purchasing or leasing NV property (Reno/Las Vegas/Henderson); (6) Timing: complete the move before Jan 1, 2028 to avoid the first year of WA millionaire tax. Note: WA SB 6346 also taxes nonresidents on WA-source income — if you retain WA rental property, business interests, or employment compensation, those remain taxable.</div>
+  </div>
+
+  <div class="card">
+    <div class="ct">What is estate and beneficiary coordination?</div>
+    <div style="font-size:13px;color:var(--muted);line-height:1.8;margin-bottom:12px">It means aligning three things: (1) how assets are <strong style="color:var(--text)">titled</strong> (community property vs. separate in WA), (2) <strong style="color:var(--text)">beneficiary designations</strong> on accounts (these override your will entirely), and (3) <strong style="color:var(--text)">estate documents</strong> (A/B trust, wills, POAs, healthcare directives for both spouses). A mismatch between any of these can send assets to the wrong person, trigger large taxes, or tie assets up in probate for years.</div>
+    <div style="font-size:13px;color:var(--muted);line-height:1.8"><strong style="color:var(--text)">SECURE Act 2.0 impact:</strong> Non-spouse beneficiaries who inherit a traditional IRA must withdraw everything within 10 years and pay ordinary income tax. A $2M traditional IRA to children = $400–600k+ in taxes. A $2M <em>Roth</em> IRA to children = zero tax, same 10-year window. This single difference justifies the entire Roth conversion strategy.</div>
+  </div>
+
+  <div class="card">
+    <div class="ct">Estate reduction and transfer strategies (updated for OBBBA + WA laws)</div>
+    <div class="ri"><span class="bdg bdg-r">Urgent</span><span class="ri-t"><strong style="color:var(--text)">A/B trust (bypass trust).</strong> WA does NOT allow portability. Each spouse's $3M WA exclusion is lost if not captured in a trust. A/B trust splits estate at first death: "B" trust holds up to $3M for children (bypasses surviving spouse's estate). Combined: $6M excluded. Without it: only $3M. This single document saves ~$300k+ in WA estate tax.</span></div>
+    <div class="ri"><span class="bdg bdg-g">Start now</span><span class="ri-t"><strong style="color:var(--text)">Annual gifting (MFJ).</strong> $19k/person tax-free (2025). Both spouses give: $38k/person. To 2 children: $76k/yr. Over 10 years: $760k removed from estate. 529 superfunding: $95k per spouse per child ($380k total for 2 children), front-loading 5 years of annual exclusion gifts at once. Under OBBBA's $15M exemption, these gifts use zero federal lifetime exclusion unless you're above $15M.</span></div>
+    <div class="ri"><span class="bdg bdg-a">High value</span><span class="ri-t"><strong style="color:var(--text)">Donor-advised fund.</strong> Contribute appreciated stock → immediate federal deduction → reduces WA taxable estate → $100k deduction against WA millionaire tax. Fidelity Charitable, Schwab Charitable. "Bunching" strategy: contribute $200k in one year, take standard deduction the next — maximizes total deductions across years.</span></div>
+    <div class="ri"><span class="bdg bdg-b">Long-term</span><span class="ri-t"><strong style="color:var(--text)">Roth IRA as legacy asset.</strong> Best possible asset for heirs: 10-year tax-free distribution. Under OBBBA's permanent $15M/$30M exemption, your estate passes federal-tax-free regardless — but Roth conversions still save heirs from income tax on inherited traditional IRAs. The heirs' savings is the real win.</span></div>
+    <div class="ri"><span class="bdg bdg-p">NV strategy</span><span class="ri-t"><strong style="color:var(--text)">Nevada Incomplete Non-Grantor (NING) trust.</strong> Transfer assets to a NV trust — assets grow outside WA's taxing jurisdiction. WA's SB 6346 specifically adds back NING trust income, so this must be paired with genuine NV residency to be effective. Consult a multi-state trust attorney. If you establish NV residency, a NV dynasty trust can hold assets indefinitely with zero state estate, income, or capital gains tax.</span></div>
+    <div class="ri"><span class="bdg bdg-b">Consider</span><span class="ri-t"><strong style="color:var(--text)">Irrevocable life insurance trust (ILIT).</strong> Life insurance inside ILIT sits outside both federal and WA taxable estate. Death benefit funds the WA estate tax bill. Under OBBBA, federal ILIT need is reduced — but WA estate tax still applies, making ILIT valuable for WA residents. Get quotes now for both spouses at 51.</span></div>
+  </div>
+
+  <div class="card">
+    <div class="ct">Beneficiary designation audit — both spouses, review every 2 years</div>
+    <div class="cs">Beneficiary designations override your will entirely. Wrong designations can redirect millions to the wrong person.</div>
+    <div class="benef-g">
+      <div class="benef-c"><div class="benef-ct">Traditional 401k</div><div class="benef-cb">Spouse as primary (required by law unless waived). Trust as contingent. Heirs get 10-year taxable distribution — most tax-expensive asset to inherit. Reduce balance via Roth conversions. Both spouses' plans should mirror.</div></div>
+      <div class="benef-c"><div class="benef-ct">Roth 401k + Roth IRA</div><div class="benef-cb">Children as primary. Best asset to inherit — 10-year entirely tax-free distribution. Maximize conversions to maximize what children receive tax-free. Most valuable legacy asset.</div></div>
+      <div class="benef-c"><div class="benef-ct">Taxable brokerage</div><div class="benef-cb">WA community property: both spouses get full step-up at first death (unique to community property states). Do NOT gift appreciated stock while alive — let it pass at death for full step-up.</div></div>
+      <div class="benef-c"><div class="benef-ct">HSA</div><div class="benef-cb">Name spouse as beneficiary — inherits as an HSA, completely tax-free. Non-spouse heirs: entire HSA balance becomes taxable income in year of death. Consider spending HSA during retirement.</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- RMD CALCULATOR -->
+<div id="rmd" class="pane">
+  <div class="card">
+    <div class="ct">Interactive RMD tax calculator — progressive bracket visualization (MFJ)</div>
+    <div class="cs">See how Required Minimum Distributions stack on top of other income and get taxed progressively through the brackets. Drag the slider to compare scenarios.</div>
+
+    <div style="margin-bottom:1.5rem">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px">
+        <span style="font-size:13px;color:var(--muted)">Traditional 401k/IRA balance at age 73</span>
+        <span style="font-size:20px;font-weight:600" id="balOut">$2.0M</span>
+      </div>
+      <input type="range" id="balSlider" min="100" max="4000" step="50" value="2000" style="width:100%;accent-color:var(--navy)">
+      <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--hint);margin-top:3px">
+        <span>$100k (heavy Roth conversion)</span><span>$4.0M (no conversions)</span>
+      </div>
+    </div>
+
+    <div class="g4">
+      <div class="sc"><div class="sc-l">RMD this year</div><div class="sc-v" id="mRmd">—</div></div>
+      <div class="sc"><div class="sc-l">Taxable income (MFJ)</div><div class="sc-v" id="mTaxInc">—</div></div>
+      <div class="sc"><div class="sc-l">Total federal tax</div><div class="sc-v" id="mTax">—</div></div>
+      <div class="sc"><div class="sc-l">Marginal rate</div><div class="sc-v a" id="mMarg">—</div></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="ct">How income stacks through progressive brackets (age 73, MFJ 2024)</div>
+    <div style="position:relative;height:80px;border-radius:8px;overflow:hidden;border:1px solid var(--border);margin-bottom:6px">
+      <div class="bzone" style="left:0;width:5.38%;background:#ECFDF5"></div>
+      <div class="bzone" style="left:5.38%;width:11.84%;background:#EAF3DE"></div>
+      <div class="bzone" style="left:17.22%;width:17.81%;background:#EFF6FF"></div>
+      <div class="bzone" style="left:35.03%;width:30.5%;background:#FFFBEB"></div>
+      <div class="bzone" style="left:65.53%;width:34.47%;background:#FEF2F2"></div>
+      <div class="blbl" style="left:0;color:var(--green-t)">10%</div>
+      <div class="blbl" style="left:5.38%;color:#27500A">12%</div>
+      <div class="blbl" style="left:17.22%;color:var(--blue-t)">22%</div>
+      <div class="blbl" style="left:35.03%;color:var(--amber-t)">24%</div>
+      <div class="blbl" style="left:65.53%;color:var(--red-t)">32%+</div>
+      <div class="seg" id="seg-d" style="left:0;background:#B4B2A9;border-radius:0"></div>
+      <div class="seg" id="seg-ss" style="background:#85B7EB"></div>
+      <div class="seg" id="seg-oth" style="background:#D3D1C7"></div>
+      <div class="seg" id="seg-rmd" style="background:#EF9F27"></div>
+      <div id="totalLine" style="position:absolute;top:0;bottom:0;width:2px;background:rgba(0,0,0,0.25);transition:left .3s"></div>
+      <div id="marg-label" style="position:absolute;bottom:52px;font-size:10px;font-weight:500;white-space:nowrap;padding:2px 6px;border-radius:3px;transition:left .3s"></div>
+    </div>
+    <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--hint);padding:0 2px">
+      <span>$0</span><span>$94k</span><span>$201k (22%→24%)</span><span>$384k</span><span>$600k</span>
+    </div>
+    <div class="cl" style="margin-top:8px">
+      <span class="cl-i"><span style="width:10px;height:10px;border-radius:2px;background:#B4B2A9;display:inline-block"></span>Std deduction ($32.3k MFJ)</span>
+      <span class="cl-i"><span style="width:10px;height:10px;border-radius:2px;background:#85B7EB;display:inline-block"></span>Combined SS (85% taxable, ~$106k)</span>
+      <span class="cl-i"><span style="width:10px;height:10px;border-radius:2px;background:#D3D1C7;display:inline-block"></span>Other income ($15k)</span>
+      <span class="cl-i"><span style="width:10px;height:10px;border-radius:2px;background:#EF9F27;display:inline-block"></span>RMD (drag slider)</span>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="ct">Tax breakdown — where each dollar gets taxed</div>
+    <div id="bracketDetail"></div>
+  </div>
+
+  <div class="card">
+    <div class="ct">Side-by-side: with vs. without Roth conversions</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+      <div style="background:var(--red-bg);border-radius:8px;padding:12px">
+        <div style="font-size:12px;font-weight:600;color:var(--red-t);margin-bottom:8px">Without Roth conversions</div>
+        <div id="cmpBad" style="font-size:12px;color:var(--red-t);line-height:1.9"></div>
+      </div>
+      <div style="background:var(--green-bg);border-radius:8px;padding:12px">
+        <div style="font-size:12px;font-weight:600;color:var(--green-t);margin-bottom:8px">With Roth conversions ($500k left)</div>
+        <div id="cmpGood" style="font-size:12px;color:var(--green-t);line-height:1.9"></div>
+      </div>
+    </div>
+    <div style="background:var(--surface2);border-radius:8px;padding:10px;font-size:12px;color:var(--muted)">
+      <strong style="color:var(--text)">Annual tax savings from Roth strategy:</strong> <span id="annualSavings" style="font-weight:600;color:var(--green)">—</span> &nbsp;·&nbsp; Over 15 years (ages 73–88): <span id="lifetimeSavings" style="font-weight:600;color:var(--green)">—</span>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="ct">Cascade effects — hidden RMD costs beyond income tax</div>
+    <div id="cascadeSection"></div>
+  </div>
+</div>
+
+<!-- TIMELINE -->
+<div id="tl" class="pane">
+  <div class="card">
+    <div class="ct">Age-by-age action roadmap (married couple)</div>
+    <div class="cs" style="margin-bottom:20px">Key milestones, decisions, and actions across your retirement journey</div>
+
+    <div class="tl-item">
+      <div class="tl-col"><div class="tl-dot" style="background:#DBEAFE;color:#1E40AF">51</div><div class="tl-line"></div></div>
+      <div style="flex:1;padding-top:4px;padding-bottom:24px">
+        <div class="tl-t">Now — foundation sprint (most critical year)</div>
+        <div class="tl-b">Max 401k + catch-up ($30.5k) &middot; Max HSA family ($9,300) &middot; Draft estate plan for both spouses: A/B trust, wills, POA, healthcare directives &middot; Audit beneficiary designations on every account (both spouses) &middot; Open DAF and contribute appreciated stock &middot; Get hybrid LTC quotes for both spouses &middot; Begin Roth conversions (fill 22% MFJ bracket) &middot; Build taxable savings to $100k+/yr &middot; Begin systematic TLH &middot; Evaluate NV residency timeline before 2028 millionaire tax</div>
+      </div>
+    </div>
+
+    <div class="tl-item">
+      <div class="tl-col"><div class="tl-dot" style="background:#DBEAFE;color:#1E40AF">53</div><div class="tl-line"></div></div>
+      <div style="flex:1;padding-top:4px;padding-bottom:24px">
+        <div class="tl-t">Ages 53–54 — retirement runway + NV residency decision</div>
+        <div class="tl-b">Decision point: stay in WA or establish NV residency before Jan 1, 2028 &middot; If NV: begin physical presence, DL, voter reg, property &middot; Begin building Tier 3 buffer in advance of retirement &middot; Gradually reduce equity allocation from 90% toward 80% &middot; IRMAA preview: model both spouses' age-63 income impact on age-65 Medicare &middot; Keep 2.5% mortgage — natural payoff in 2051 &middot; OBBBA SALT cap ($40k) still available through 2029 — maximize itemization</div>
+      </div>
+    </div>
+
+    <div class="tl-item">
+      <div class="tl-col"><div class="tl-dot" style="background:#D1FAE5;color:#065F46">55</div><div class="tl-line"></div></div>
+      <div style="flex:1;padding-top:4px;padding-bottom:24px">
+        <div class="tl-t">Age 55 — retirement begins</div>
+        <div class="tl-b">Rule of 55: access current employer 401k penalty-free (do not roll over until 59½) &middot; Fund 3-year buffer ($861k) immediately &middot; Begin aggressive Roth conversions (fill 22% MFJ bracket ~$200k/yr) &middot; Keep 2.5% mortgage — earns positive carry &middot; Activate quarterly replenishment decision rules &middot; Transition portfolio to retirement allocation (70% equity, 17% buffer, 13% bonds) &middot; If in NV: ensure spending 183+ days/yr in NV for domicile protection</div>
+      </div>
+    </div>
+
+    <div class="tl-item">
+      <div class="tl-col"><div class="tl-dot" style="background:#D1FAE5;color:#065F46">59½</div><div class="tl-line"></div></div>
+      <div style="flex:1;padding-top:4px;padding-bottom:24px">
+        <div class="tl-t">Age 59½ — full account access unlocked</div>
+        <div class="tl-b">Roth IRA earnings accessible penalty-free (both spouses) &middot; All 401k/IRA withdrawals penalty-free &middot; 5-year Roth conversion ladder matured &middot; Full flexibility in withdrawal sequencing &middot; Roth balance from 4.5 years of MFJ conversions: $900k–$1.4M+ &middot; Review portfolio vs. plan checkpoint</div>
+      </div>
+    </div>
+
+    <div class="tl-item">
+      <div class="tl-col"><div class="tl-dot" style="background:#FEF3C7;color:#92400E">63</div><div class="tl-line"></div></div>
+      <div style="flex:1;padding-top:4px;padding-bottom:24px">
+        <div class="tl-t">Age 63 — IRMAA critical control year (both spouses)</div>
+        <div class="tl-b">Age 63 income = age 65 Medicare premium (2-year lookback) for both spouses &middot; Target combined MAGI below $206k MFJ &middot; Pause Roth conversions if necessary &middot; Use DAF contributions to reduce unavoidable MAGI &middot; File SSA-44 for both spouses at 65</div>
+      </div>
+    </div>
+
+    <div class="tl-item">
+      <div class="tl-col"><div class="tl-dot" style="background:#FEF3C7;color:#92400E">65</div><div class="tl-line"></div></div>
+      <div style="flex:1;padding-top:4px;padding-bottom:24px">
+        <div class="tl-t">Age 65 — Medicare enrollment for both spouses</div>
+        <div class="tl-b">Enroll both spouses in Medicare Parts A, B, D + Medigap (Plan G or N) &middot; File SSA-44 for both citing retirement &middot; Stop HSA contributions immediately &middot; Begin spending HSA tax-free on premiums, dental, vision &middot; Do NOT claim SS — continue to 70 &middot; Resume Roth conversions if IRMAA managed</div>
+      </div>
+    </div>
+
+    <div class="tl-item">
+      <div class="tl-col"><div class="tl-dot" style="background:#D1FAE5;color:#065F46">76</div><div class="tl-line"></div></div>
+      <div style="flex:1;padding-top:4px;padding-bottom:24px">
+        <div class="tl-t">Age 76 — mortgage self-extinguishes (2051)</div>
+        <div class="tl-b">2.5% mortgage pays off naturally after 30 years. Floor spending drops from ~$120k to ~$50k. By now, SS has been flowing for 6 years and RMDs for 3 years — income streams more than cover the reduced floor. Over the 25-year mortgage hold (ages 51–76), you earned ~5%/yr spread on every dollar not used for payoff. The total value of keeping cheap debt: an estimated $400–600k in additional portfolio growth vs. early payoff at retirement.</div>
+      </div>
+    </div>
+
+    <div class="tl-item">
+      <div class="tl-col"><div class="tl-dot" style="background:#D1FAE5;color:#065F46">70</div><div class="tl-line"></div></div>
+      <div style="flex:1;padding-top:4px;padding-bottom:24px">
+        <div class="tl-t">Age 70 — SS begins for both spouses</div>
+        <div class="tl-b">Both spouses claim Social Security &middot; Combined: ~$10,400+/mo nominal by 70 (~$219k/yr after COLA) &middot; 85% of combined SS is taxable: coordinate with Roth draws &middot; Combined SS covers ~45% of spending — dramatic reduction in portfolio draws &middot; Begin QCDs if charitably inclined ($105k/yr per spouse) &middot; Review and update estate plan</div>
+      </div>
+    </div>
+
+    <div class="tl-item">
+      <div class="tl-col"><div class="tl-dot" style="background:#FEE2E2;color:#991B1B">73</div><div class="tl-line" style="background:transparent"></div></div>
+      <div style="flex:1;padding-top:4px">
+        <div class="tl-t">Age 73 — RMDs begin (SECURE Act 2.0)</div>
+        <div class="tl-b">If Roth conversion plan executed: traditional balance ≤$500k → RMDs ~$18–25k/yr (manageable within 12% bracket MFJ) &middot; Without conversion: traditional $2M+ → RMDs $80k+/yr push into 22–24% bracket + may trigger WA millionaire tax if still WA resident &middot; Both spouses' RMDs coordinate with combined SS for bracket optimization &middot; Use QCDs from both spouses' IRAs to redirect excess RMDs &middot; Review estate plan — shift focus to legacy and distribution</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div><!-- /main -->
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script>
+// ===== Tab switching =====
+function showTab(id, btn) {
+  var panes = document.querySelectorAll('.pane');
+  var btns = document.querySelectorAll('.nb');
+  for (var i = 0; i < panes.length; i++) panes[i].classList.remove('on');
+  for (var i = 0; i < btns.length; i++) btns[i].classList.remove('on');
+  document.getElementById(id).classList.add('on');
+  btn.classList.add('on');
+  if (id === 'proj' && !projBuilt) { buildProjChart('base'); projBuilt = true; }
+  if (id === 'roth' && !ssBuilt) { buildSSChart(); ssBuilt = true; }
+  if (id === 'rmd' && !rmdBuilt) { updateRMD(); rmdBuilt = true; }
+}
+
+// ===== Portfolio projection (married — both spouses SS) =====
+function calcPortfolio(gr, ir) {
+  var port = 6520000, spend = 287000, labels = [], vals = [];
+  for (var yr = 0; yr <= 35; yr++) {
+    var age = 55 + yr;
+    labels.push(age);
+    vals.push(parseFloat((port / 1e6).toFixed(2)));
+    var ss = 0;
+    if (age >= 70) {
+      var ssAt70 = 124872 * Math.pow(1 + ir, 19);
+      ss = ssAt70 * Math.pow(1.025, age - 70);
+    }
+    port = Math.max(0, port * (1 + gr) - Math.max(0, spend - ss));
+    spend *= (1 + ir);
+  }
+  return { labels: labels, vals: vals };
+}
+
+var bullD  = calcPortfolio(0.09, 0.035);
+var baseD  = calcPortfolio(0.07, 0.035);
+var stressD = calcPortfolio(0.05, 0.04);
+
+document.getElementById('v70').textContent  = '$' + baseD.vals[15].toFixed(1) + 'M';
+document.getElementById('v85').textContent  = '$' + baseD.vals[30].toFixed(1) + 'M';
+document.getElementById('v85s').textContent = '$' + stressD.vals[30].toFixed(1) + 'M';
+
+var projChart = null, projBuilt = false, ssBuilt = false, rmdBuilt = false;
+
+function buildProjChart(scen) {
+  if (projChart) { projChart.destroy(); projChart = null; }
+  var ctx = document.getElementById('projChart').getContext('2d');
+  var datasets = [];
+  if (scen === 'all' || scen === 'bull') {
+    datasets.push({ label: 'Bull 9%', data: bullD.vals, borderColor: '#059669', backgroundColor: 'transparent', borderWidth: 2.5, pointRadius: 0, tension: 0.3 });
+  }
+  if (scen === 'all' || scen === 'base') {
+    datasets.push({ label: 'Base 7%', data: baseD.vals, borderColor: '#2563EB', backgroundColor: 'transparent', borderWidth: 2.5, pointRadius: 0, tension: 0.3 });
+  }
+  if (scen === 'all' || scen === 'stress') {
+    datasets.push({ label: 'Stress 5%', data: stressD.vals, borderColor: '#D97706', backgroundColor: 'transparent', borderWidth: 2, borderDash: [6, 3], pointRadius: 0, tension: 0.3 });
+  }
+  projChart = new Chart(ctx, {
+    type: 'line',
+    data: { labels: baseD.labels, datasets: datasets },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { grid: { color: 'rgba(0,0,0,0.04)' }, ticks: { color: '#94A3B8', font: { size: 11 }, autoSkip: false, maxRotation: 0, callback: function(v, i) { return (55+i) % 5 === 0 ? 'Age '+(55+i) : ''; } } },
+        y: { grid: { color: 'rgba(0,0,0,0.04)' }, ticks: { color: '#94A3B8', font: { size: 11 }, callback: function(v) { return '$'+v.toFixed(0)+'M'; } } }
+      }
+    }
+  });
+}
+
+function switchScen(scen, btn) {
+  var sibs = btn.parentElement.querySelectorAll('.sc-btn');
+  for (var i = 0; i < sibs.length; i++) sibs[i].classList.remove('on');
+  btn.classList.add('on');
+  buildProjChart(scen);
+}
+
+// ===== SS chart =====
+function buildSSChart() {
+  var ctx = document.getElementById('ssChart').getContext('2d');
+  var ages = [];
+  for (var a = 65; a <= 90; a++) ages.push(a);
+  new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: ages,
+      datasets: [
+        { label: 'Claim 65', data: ages.map(function(a) { return Math.round((a-65)*42.564); }), borderColor: '#DC2626', backgroundColor: 'transparent', borderWidth: 2, pointRadius: 0, tension: 0.2 },
+        { label: 'Claim 68', data: ages.map(function(a) { return a >= 68 ? Math.round((a-68)*54.024) : 0; }), borderColor: '#D97706', backgroundColor: 'transparent', borderWidth: 2, pointRadius: 0, tension: 0.2 },
+        { label: 'Claim 70', data: ages.map(function(a) { return a >= 70 ? Math.round((a-70)*62.436) : 0; }), borderColor: '#059669', backgroundColor: 'transparent', borderWidth: 2.5, pointRadius: 0, tension: 0.2 }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { grid: { color: 'rgba(0,0,0,0.04)' }, ticks: { color: '#94A3B8', font: { size: 11 }, autoSkip: false, maxRotation: 0, callback: function(v,i) { return (65+i)%5===0?'Age '+(65+i):''; } } },
+        y: { grid: { color: 'rgba(0,0,0,0.04)' }, title: { display: true, text: 'Cumulative benefit ($k)', color: '#94A3B8', font: { size: 11 } }, ticks: { color: '#94A3B8', font: { size: 11 }, callback: function(v) { return v>=1000?'$'+(v/1000).toFixed(1)+'M':'$'+v+'k'; } } }
+      }
+    }
+  });
+}
+
+// ===== RMD Calculator =====
+var maxScale = 600000;
+var deduction = 32300;
+var ssGross = 124872;
+var ssTaxable = Math.round(ssGross * 0.85);
+var otherInc = 15000;
+var lifeExp = 26.5;
+var brackets = [
+  {limit:23200,rate:0.10},{limit:94300,rate:0.12},{limit:201050,rate:0.22},
+  {limit:383900,rate:0.24},{limit:487450,rate:0.32},{limit:731200,rate:0.35},
+  {limit:Infinity,rate:0.37}
+];
+
+function calcTax(balance) {
+  var rmd = balance / lifeExp;
+  var gross = rmd + ssTaxable + otherInc;
+  var taxable = Math.max(0, gross - deduction);
+  var tax = 0, margRate = 0.10, prev = 0, detail = [];
+  for (var i = 0; i < brackets.length; i++) {
+    if (taxable <= prev) break;
+    var inB = Math.min(taxable, brackets[i].limit) - prev;
+    if (inB > 0) { tax += inB * brackets[i].rate; margRate = brackets[i].rate; detail.push({rate:brackets[i].rate, amount:inB, tax:inB*brackets[i].rate}); }
+    prev = brackets[i].limit;
+  }
+  return {rmd:rmd, gross:gross, taxable:taxable, tax:tax, margRate:margRate, detail:detail};
+}
+
+function fmt(n) { return '$'+Math.round(n).toLocaleString(); }
+function pct(n) { return Math.round(n*100)+'%'; }
+
+function updateRMD() {
+  var bal = parseInt(document.getElementById('balSlider').value) * 1000;
+  document.getElementById('balOut').textContent = bal >= 1000000 ? '$'+(bal/1e6).toFixed(1)+'M' : '$'+Math.round(bal/1000)+'k';
+  var r = calcTax(bal);
+  document.getElementById('mRmd').textContent = fmt(r.rmd);
+  document.getElementById('mTaxInc').textContent = fmt(r.taxable);
+  document.getElementById('mTax').textContent = fmt(r.tax);
+  var me = document.getElementById('mMarg');
+  me.textContent = pct(r.margRate);
+  me.style.color = r.margRate <= 0.12 ? 'var(--green)' : r.margRate <= 0.22 ? 'var(--amber)' : 'var(--red)';
+
+  var dp = deduction/maxScale*100, sp = ssTaxable/maxScale*100, op = otherInc/maxScale*100;
+  var rp = Math.min(r.rmd/maxScale*100, 100-dp-sp-op);
+  var tp = Math.min(r.gross/maxScale*100, 100);
+  document.getElementById('seg-d').style.width=dp.toFixed(2)+'%'; document.getElementById('seg-d').style.left='0%';
+  document.getElementById('seg-ss').style.left=dp.toFixed(2)+'%'; document.getElementById('seg-ss').style.width=sp.toFixed(2)+'%';
+  document.getElementById('seg-oth').style.left=(dp+sp).toFixed(2)+'%'; document.getElementById('seg-oth').style.width=op.toFixed(2)+'%';
+  document.getElementById('seg-rmd').style.left=(dp+sp+op).toFixed(2)+'%'; document.getElementById('seg-rmd').style.width=Math.max(0,rp).toFixed(2)+'%';
+  document.getElementById('totalLine').style.left=tp.toFixed(2)+'%';
+  var ml = document.getElementById('marg-label');
+  ml.style.left=Math.min(tp,88).toFixed(2)+'%';
+  ml.textContent='Marginal: '+pct(r.margRate);
+  ml.style.background=r.margRate<=0.12?'#ECFDF5':r.margRate<=0.22?'#FFFBEB':'#FEF2F2';
+  ml.style.color=r.margRate<=0.12?'#065F46':r.margRate<=0.22?'#92400E':'#991B1B';
+
+  var det='';
+  r.detail.forEach(function(d){det+='<div class="rmd-krow"><span>'+pct(d.rate)+' on '+fmt(d.amount)+'</span><span style="font-weight:600">'+fmt(d.tax)+'</span></div>';});
+  det+='<div class="rmd-krow" style="border-top:1px solid var(--border2)"><span style="font-weight:600">Total federal tax</span><span style="font-weight:600">'+fmt(r.tax)+' ('+(r.taxable>0?(r.tax/r.taxable*100).toFixed(1):'0')+'% effective)</span></div>';
+  document.getElementById('bracketDetail').innerHTML=det;
+
+  var good = calcTax(500000);
+  document.getElementById('cmpBad').innerHTML='RMD: '+fmt(r.rmd)+'<br>Taxable income: '+fmt(r.taxable)+'<br>Marginal rate: <strong>'+pct(r.margRate)+'</strong><br>Total tax: <strong>'+fmt(r.tax)+'</strong>';
+  document.getElementById('cmpGood').innerHTML='RMD: '+fmt(good.rmd)+'<br>Taxable income: '+fmt(good.taxable)+'<br>Marginal rate: <strong>'+pct(good.margRate)+'</strong><br>Total tax: <strong>'+fmt(good.tax)+'</strong>';
+  var as = Math.max(0, r.tax - good.tax);
+  document.getElementById('annualSavings').textContent = fmt(as)+'/yr';
+  document.getElementById('lifetimeSavings').textContent = fmt(as*15)+'+';
+
+  var cs='';
+  var irmaaHit = r.taxable > 206000;
+  cs+='<div class="rmd-krow"><span>IRMAA Medicare surcharge (both spouses)</span><span style="font-weight:600;color:'+(irmaaHit?'var(--red)':'var(--green)')+'">'+(irmaaHit?'Triggered — +$384–420/mo × 2 spouses':'Safe — base premium for both')+'</span></div>';
+  cs+='<div class="rmd-krow"><span>Combined SS income % taxable</span><span style="font-weight:600">85% (income well above $44k MFJ threshold)</span></div>';
+  var waMillTax = (r.rmd + ssTaxable + otherInc) > 1000000;
+  cs+='<div class="rmd-krow"><span>WA millionaire tax (9.9%, if WA resident)</span><span style="font-weight:600;color:'+(waMillTax?'var(--red)':'var(--green)')+'">'+(waMillTax?'Triggered — 9.9% on income above $1M':'Not triggered at this income level')+'</span></div>';
+  cs+='<div class="rmd-krow"><span>LTCG rate on dividends</span><span style="font-weight:600">'+(r.taxable>94050?'15%':'0%')+' (income '+(r.taxable>94050?'above':'below')+' 0% threshold MFJ)</span></div>';
+  document.getElementById('cascadeSection').innerHTML=cs;
+
+  if(irmaaHit){document.getElementById('cascadeSection').innerHTML+='<div class="ib ib-a">IRMAA adds $384–420/mo per spouse in surcharges — up to $10,080/yr for a married couple. This never appears on your tax return but is a direct income-driven cost. Keeping combined MAGI under $206k MFJ eliminates it entirely.</div>';}
+  else{document.getElementById('cascadeSection').innerHTML+='<div class="ib ib-g">At this income, IRMAA surcharges are not triggered for either spouse. This is the result of keeping traditional IRA balances low through Roth conversions.</div>';}
+  if(waMillTax){document.getElementById('cascadeSection').innerHTML+='<div class="ib ib-r" style="margin-top:6px">WA millionaire tax applies 9.9% on household income above $1M. At this RMD level combined with SS and other income, you would owe approximately '+fmt((r.rmd+ssTaxable+otherInc-1000000)*0.099)+'/yr in WA state tax alone. NV residency eliminates this entirely.</div>';}
+}
+
+document.getElementById('balSlider').addEventListener('input', updateRMD);
+</script>
+</body>
+</html>
