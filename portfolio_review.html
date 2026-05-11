@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Portfolio Review & Diversification Strategy</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0C0F14;--surface:#151920;--surface2:#1C2028;--border:#262D3A;
+  --text:#E4E8EF;--muted:#8892A4;--hint:#5A6376;
+  --blue:#4B8BF5;--green:#34D399;--amber:#FBBF24;--red:#F87171;--purple:#A78BFA;--cyan:#22D3EE;
+  --green-bg:rgba(52,211,153,0.1);--green-t:#34D399;
+  --amber-bg:rgba(251,191,36,0.1);--amber-t:#FBBF24;
+  --red-bg:rgba(248,113,113,0.1);--red-t:#F87171;
+  --blue-bg:rgba(75,139,245,0.1);--blue-t:#4B8BF5;
+}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);font-size:14px;line-height:1.6;min-height:100vh}
+.hdr{background:linear-gradient(135deg,#0F1923 0%,#162032 100%);padding:24px 32px;border-bottom:1px solid var(--border)}
+.hdr h1{font-size:18px;font-weight:700;margin-bottom:3px}
+.hdr p{font-size:12px;color:var(--muted)}
+.nav{background:var(--surface);border-bottom:1px solid var(--border);padding:0 28px;display:flex;overflow-x:auto;gap:2px}
+.nb{padding:12px 16px;border:none;background:transparent;color:var(--hint);cursor:pointer;font-size:12px;font-weight:600;border-bottom:2px solid transparent;white-space:nowrap;font-family:inherit;transition:all .15s;text-transform:uppercase;letter-spacing:.06em}
+.nb:hover{color:var(--muted)}.nb.on{color:var(--cyan);border-bottom-color:var(--cyan)}
+.main{padding:24px 32px;max-width:980px;margin:0 auto}
+.pane{display:none}.pane.on{display:block}
+.g4{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:10px;margin-bottom:16px}
+.sc{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:13px 15px}
+.sc-l{font-size:10px;color:var(--hint);margin-bottom:4px;text-transform:uppercase;letter-spacing:.06em;font-weight:600}
+.sc-v{font-size:20px;font-weight:700;font-family:'JetBrains Mono',monospace}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px 20px;margin-bottom:14px}
+.ct{font-size:14px;font-weight:700;margin-bottom:4px}
+.cs{font-size:12px;color:var(--muted);margin-bottom:14px}
+.bdg{display:inline-block;font-size:10px;font-weight:600;padding:3px 9px;border-radius:20px;flex-shrink:0;text-transform:uppercase;letter-spacing:.04em}
+.bdg-r{background:var(--red-bg);color:var(--red-t)}.bdg-a{background:var(--amber-bg);color:var(--amber-t)}
+.bdg-b{background:var(--blue-bg);color:var(--blue-t)}.bdg-g{background:var(--green-bg);color:var(--green-t)}
+.ri{display:flex;align-items:flex-start;gap:11px;padding:10px 0;border-bottom:1px solid var(--border)}
+.ri:last-child{border-bottom:none}
+.ri-t{flex:1;font-size:13px;color:var(--muted);line-height:1.6}
+.ib{border-radius:8px;padding:11px 14px;font-size:12px;line-height:1.7;margin-top:10px}
+.ib-r{background:var(--red-bg);color:var(--red-t)}.ib-g{background:var(--green-bg);color:var(--green-t)}
+.ib-a{background:var(--amber-bg);color:var(--amber-t)}.ib-b{background:var(--blue-bg);color:var(--blue-t)}
+.bar-w{margin-bottom:12px}
+.bar-h{display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px;color:var(--muted)}
+.bar-h span:last-child{font-family:'JetBrains Mono',monospace;font-weight:500;color:var(--text)}
+.bar{height:8px;background:var(--border);border-radius:4px;overflow:hidden;position:relative}
+.bar-f{height:100%;border-radius:4px;transition:width .6s}
+.bar-t{position:absolute;top:0;bottom:0;width:2px;background:var(--text);opacity:.5}
+.hld-row{display:grid;grid-template-columns:60px 1fr 90px 70px 80px;align-items:center;padding:8px 0;border-bottom:1px solid var(--border);font-size:12px}
+.hld-row:last-child{border-bottom:none}
+.hld-tk{font-family:'JetBrains Mono',monospace;font-weight:600;font-size:12px;color:var(--cyan)}
+.hld-nm{color:var(--muted);font-size:11px}
+.hld-val{font-family:'JetBrains Mono',monospace;text-align:right;font-size:12px}
+.hld-pct{text-align:right;font-size:11px;color:var(--muted)}
+.hld-act{text-align:right;font-size:11px}
+.phase{border-left:3px solid;padding:12px 14px;border-radius:0 8px 8px 0;margin-bottom:10px;background:var(--surface2)}
+.phase-hd{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;flex-wrap:wrap;gap:6px}
+.phase-t{font-size:13px;font-weight:700}.phase-b{font-size:12px;color:var(--muted);line-height:1.7}
+.etf-row{display:grid;grid-template-columns:80px 1fr 80px 60px;align-items:center;padding:9px 0;border-bottom:1px solid var(--border);font-size:12px;gap:10px}
+.etf-row:last-child{border-bottom:none}
+.etf-tk{font-family:'JetBrains Mono',monospace;font-weight:600;color:var(--green)}
+.etf-nm{color:var(--muted);font-size:11px;line-height:1.4}
+.etf-er{font-family:'JetBrains Mono',monospace;text-align:right;font-size:11px;color:var(--muted)}
+.etf-risk{text-align:right;font-size:11px}
+.risk1{color:#34D399}.risk2{color:#6EE7B7}.risk3{color:#FBBF24}.risk4{color:#FB923C}.risk5{color:#F87171}
+.cmp-tbl{width:100%;border-collapse:collapse;font-size:12px;margin-top:8px}
+.cmp-tbl th{text-align:left;padding:8px 10px;background:var(--surface2);font-weight:600;font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--hint);border-bottom:1px solid var(--border)}
+.cmp-tbl td{padding:8px 10px;border-bottom:1px solid var(--border);color:var(--muted);vertical-align:top;line-height:1.5}
+.cmp-tbl tr:last-child td{border-bottom:none}
+.cmp-tbl td:first-child{font-weight:600;color:var(--text);white-space:nowrap}
+.donut-wrap{display:flex;align-items:center;gap:24px;margin:14px 0}
+.donut-legend{display:flex;flex-direction:column;gap:6px;font-size:12px}
+.dl-i{display:flex;align-items:center;gap:8px}
+.dl-dot{width:10px;height:10px;border-radius:3px;flex-shrink:0}
+.dl-val{font-family:'JetBrains Mono',monospace;margin-left:auto;padding-left:14px;font-size:12px}
+@media(max-width:600px){.main{padding:16px}.g4{grid-template-columns:1fr 1fr}.hld-row{grid-template-columns:55px 1fr 80px 60px;gap:4px}.hld-act{display:none}.etf-row{grid-template-columns:70px 1fr 60px}}
+</style>
+</head>
+<body>
+
+<div class="hdr">
+  <h1>Portfolio Review & Diversification Strategy</h1>
+  <p>$4,746,132 &middot; 140+ holdings &middot; As of May 3, 2026 &middot; Prepared for retirement at 55</p>
+</div>
+
+<div class="nav">
+  <button class="nb on" onclick="showTab('dx',this)">Diagnosis</button>
+  <button class="nb" onclick="showTab('conc',this)">Concentration</button>
+  <button class="nb" onclick="showTab('target',this)">Target allocation</button>
+  <button class="nb" onclick="showTab('etfs',this)">ETF picks</button>
+  <button class="nb" onclick="showTab('plan',this)">Diversification plan</button>
+  <button class="nb" onclick="showTab('tail',this)">Tail cleanup</button>
+</div>
+
+<div class="main">
+
+<!-- DIAGNOSIS -->
+<div id="dx" class="pane on">
+  <div class="g4">
+    <div class="sc"><div class="sc-l">Total portfolio</div><div class="sc-v" style="color:var(--text)">$4.75M</div></div>
+    <div class="sc"><div class="sc-l">Individual stocks</div><div class="sc-v" style="color:var(--amber)">140+</div></div>
+    <div class="sc"><div class="sc-l">Top 5 = % of portfolio</div><div class="sc-v" style="color:var(--red)">38.0%</div></div>
+    <div class="sc"><div class="sc-l">Tech concentration</div><div class="sc-v" style="color:var(--red)">~49%</div></div>
+    <div class="sc"><div class="sc-l">Bonds + cash</div><div class="sc-v" style="color:var(--amber)">6.8%</div></div>
+    <div class="sc"><div class="sc-l">International</div><div class="sc-v" style="color:var(--amber)">14.2%</div></div>
+    <div class="sc"><div class="sc-l">Positions < $5k</div><div class="sc-v" style="color:var(--red)">80+</div></div>
+    <div class="sc"><div class="sc-l">Buffer readiness</div><div class="sc-v" style="color:var(--red)">$322k/$861k</div></div>
+  </div>
+
+  <div class="card">
+    <div class="ct">Portfolio health — 5 critical findings</div>
+    <div class="cs">Your portfolio has excellent growth potential but carries structural risks that must be addressed before retirement in 4 years.</div>
+
+    <div class="ri"><span class="bdg bdg-r">Critical</span><span class="ri-t"><strong style="color:var(--text)">Mega-cap tech concentration: ~49% of portfolio.</strong> GOOG ($470k), META ($430k), MSFT ($355k), AMZN ($303k), NVDA ($247k) alone = 38%. Add AAPL, AVGO, AMD, ANET, MU, SMH, and the ~55% tech overlap in Fidelity Growth Commingled ($648k) and QQQ ($40k) — your total tech exposure is nearly half the portfolio. A 2022-style tech correction (-30%) would wipe $700k+ in months. This must be diversified before retirement.</span></div>
+
+    <div class="ri"><span class="bdg bdg-r">Critical</span><span class="ri-t"><strong style="color:var(--text)">140+ positions with 80+ under $5k — extreme fragmentation.</strong> Positions like BBWI ($475), TTD ($275), BKNG ($212), LPLA ($159), CEG ($388), Z ($504) create tax reporting complexity, rebalancing friction, and management overhead with near-zero impact on returns. Every one of these generates a 1099 line. This is a portfolio that grew organically without pruning — it needs a cleanup before the simpler retirement phase.</span></div>
+
+    <div class="ri"><span class="bdg bdg-a">High</span><span class="ri-t"><strong style="color:var(--text)">Bond/cash allocation at 6.8% — far below the 17% needed at retirement.</strong> You need $861k in the 3-tier buffer by age 55. Currently: Stable Value ($206k) + SPAXX ($54k) + Cash ($24k) + BND/BNDX/SCHP ($5.5k) + CDs ($2k) ≈ $292k. You need to build ~$570k more over 4 years — about $143k/yr moved from equities to buffer instruments, timed to coincide with rebalancing and TLH opportunities.</span></div>
+
+    <div class="ri"><span class="bdg bdg-a">High</span><span class="ri-t"><strong style="color:var(--text)">International at 14.2% — underweight vs. global market cap (~40%).</strong> VXUS ($223k), VEA ($26k), VWO ($14k), intl funds ($245k), plus some ADRs. Target: 20% of equity sleeve = ~$780k. You're ~$200k short. The good news: concentrated US tech positions you'll be trimming can rotate partly into international ETFs.</span></div>
+
+    <div class="ri"><span class="bdg bdg-b">Medium</span><span class="ri-t"><strong style="color:var(--text)">Overlapping index exposure creates hidden costs.</strong> You hold VOO, VTI, VFFSX, VANG 500 IDX, VOOG, SPYG, VUG, VV — these are all large-cap US equity with 90%+ correlation. Combined ~$216k across 7 funds doing the same thing. Consolidate into 1–2 core positions to reduce tax lot complexity and make rebalancing tractable.</span></div>
+  </div>
+
+  <div class="card">
+    <div class="ct">Current vs. target allocation</div>
+    <div class="cs">Shift from 92% equity / 7% bonds+cash to 82% equity / 18% buffer over 4 years</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+      <div>
+        <div style="font-size:11px;font-weight:600;color:var(--hint);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">Current allocation</div>
+        <div class="bar-w"><div class="bar-h"><span>US stocks</span><span>78.2%</span></div><div class="bar"><div class="bar-f" style="width:78.2%;background:var(--blue)"></div></div></div>
+        <div class="bar-w"><div class="bar-h"><span>Intl stocks</span><span>13.8%</span></div><div class="bar"><div class="bar-f" style="width:13.8%;background:var(--cyan)"></div></div></div>
+        <div class="bar-w"><div class="bar-h"><span>US bonds</span><span>4.3%</span></div><div class="bar"><div class="bar-f" style="width:4.3%;background:var(--green)"></div></div></div>
+        <div class="bar-w"><div class="bar-h"><span>Cash</span><span>2.1%</span></div><div class="bar"><div class="bar-f" style="width:2.1%;background:var(--amber)"></div></div></div>
+        <div class="bar-w"><div class="bar-h"><span>Other</span><span>1.6%</span></div><div class="bar"><div class="bar-f" style="width:1.6%;background:var(--hint)"></div></div></div>
+      </div>
+      <div>
+        <div style="font-size:11px;font-weight:600;color:var(--hint);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">Target at retirement (age 55)</div>
+        <div class="bar-w"><div class="bar-h"><span>US stocks</span><span style="color:var(--green)">55%</span></div><div class="bar"><div class="bar-f" style="width:55%;background:var(--blue)"></div><div class="bar-t" style="left:78.2%"></div></div></div>
+        <div class="bar-w"><div class="bar-h"><span>Intl stocks</span><span style="color:var(--green)">20%</span></div><div class="bar"><div class="bar-f" style="width:20%;background:var(--cyan)"></div><div class="bar-t" style="left:13.8%"></div></div></div>
+        <div class="bar-w"><div class="bar-h"><span>3-yr buffer (bonds/CDs/MM)</span><span style="color:var(--green)">18%</span></div><div class="bar"><div class="bar-f" style="width:18%;background:var(--green)"></div><div class="bar-t" style="left:6.4%"></div></div></div>
+        <div class="bar-w"><div class="bar-h"><span>Small/mid-cap tilt</span><span style="color:var(--green)">5%</span></div><div class="bar"><div class="bar-f" style="width:5%;background:var(--purple)"></div></div></div>
+        <div class="bar-w"><div class="bar-h"><span>Alternatives (REIT/commodities)</span><span style="color:var(--green)">2%</span></div><div class="bar"><div class="bar-f" style="width:2%;background:var(--amber)"></div></div></div>
+        <div style="font-size:11px;color:var(--hint);margin-top:6px">White marker = current level | Green bar = target</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- CONCENTRATION -->
+<div id="conc" class="pane">
+  <div class="card">
+    <div class="ct">Top 5 concentrated positions — 38% of portfolio ($1.8M)</div>
+    <div class="cs">Any single position above 5% is a concentration risk. You have five above 5%. In a tech downturn these move in lockstep — effective diversification is near zero among them.</div>
+    <div class="hld-row" style="color:var(--hint);font-weight:600;font-size:10px;text-transform:uppercase;letter-spacing:.06em;border-bottom:1px solid var(--border)">
+      <span>Ticker</span><span>Name</span><span style="text-align:right">Value</span><span style="text-align:right">% port</span><span style="text-align:right">Action</span>
+    </div>
+    <div class="hld-row"><span class="hld-tk">GOOG</span><span>Alphabet Inc</span><span class="hld-val">$469,806</span><span class="hld-pct" style="color:var(--red)">9.9%</span><span class="hld-act" style="color:var(--red)">Trim to 4%</span></div>
+    <div class="hld-row"><span class="hld-tk">META</span><span>Meta Platforms</span><span class="hld-val">$429,549</span><span class="hld-pct" style="color:var(--red)">9.1%</span><span class="hld-act" style="color:var(--red)">Trim to 4%</span></div>
+    <div class="hld-row"><span class="hld-tk">MSFT</span><span>Microsoft Corp</span><span class="hld-val">$355,410</span><span class="hld-pct" style="color:var(--red)">7.5%</span><span class="hld-act" style="color:var(--amber)">Trim to 4%</span></div>
+    <div class="hld-row"><span class="hld-tk">AMZN</span><span>Amazon.com</span><span class="hld-val">$302,619</span><span class="hld-pct" style="color:var(--red)">6.4%</span><span class="hld-act" style="color:var(--amber)">Trim to 4%</span></div>
+    <div class="hld-row"><span class="hld-tk">NVDA</span><span>NVIDIA Corp</span><span class="hld-val">$247,332</span><span class="hld-pct" style="color:var(--red)">5.2%</span><span class="hld-act" style="color:var(--amber)">Trim to 3%</span></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px">
+      <div style="background:var(--red-bg);border-radius:8px;padding:12px">
+        <div style="font-size:12px;font-weight:600;color:var(--red);margin-bottom:6px">If you do nothing</div>
+        <div style="font-size:12px;color:var(--red);line-height:1.7">A 30% tech correction (2022-style) drops your portfolio by ~$700k. Combined with early retirement draws, this triggers the exact SRR scenario your buffer is designed to prevent — but with $1.8M concentrated in the epicenter of the drawdown.</div>
+      </div>
+      <div style="background:var(--green-bg);border-radius:8px;padding:12px">
+        <div style="font-size:12px;font-weight:600;color:var(--green);margin-bottom:6px">After diversification</div>
+        <div style="font-size:12px;color:var(--green);line-height:1.7">Same 30% tech correction with diversified portfolio: impact ≈ $350k (half the damage). Top 5 positions capped at 4% each = $190k each. Freed capital ($880k+) flows into buffer, international, and value ETFs — uncorrelated to tech.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="ct">Fidelity Growth Commingled ($648k, 13.7%) — hidden concentration</div>
+    <div class="cs">This fund's top holdings are likely MSFT, AMZN, NVDA, META, AAPL, GOOG. You already own all of these individually. Estimated ~55% overlap with your individual tech stocks.</div>
+    <div class="ri"><span class="bdg bdg-a">Action</span><span class="ri-t">If this is in your 401k (appears to be from the Empower platform), you cannot sell it tax-free in a taxable account. However, at retirement when you roll over to an IRA, replace this with VTI or a blend of VTI + VXUS + VO. If you can switch within the 401k now, move half to a total market index and half to an international index fund.</span></div>
+  </div>
+
+  <div class="card">
+    <div class="ct">Trim schedule — tax-smart unwinding over 4 years</div>
+    <div class="cs">Sell $220k/yr from concentrated positions. In taxable: use highest-cost-basis lots. Offset with TLH from losers. In 401k: no tax friction — rebalance freely.</div>
+    <table class="cmp-tbl">
+      <thead><tr><th>Year</th><th>Trim from</th><th>Amount</th><th>Reinvest into</th><th>Tax strategy</th></tr></thead>
+      <tbody>
+        <tr><td>Year 1 (2026)</td><td>GOOG, META</td><td>~$220k</td><td>Buffer Tier 3 (2-yr CDs, T-Notes) + VXUS</td><td>Offset gains with TLH from losers in tail. Harvest BA, RIVN, ELAN, MOS, DOW losses.</td></tr>
+        <tr><td>Year 2 (2027)</td><td>MSFT, AMZN</td><td>~$220k</td><td>Buffer Tier 2 (1-yr CDs, T-Bills) + VTI</td><td>Bunch charitable deduction via DAF with appreciated shares. More TLH harvesting from tail.</td></tr>
+        <tr><td>Year 3 (2028)</td><td>NVDA, GOOG remainder</td><td>~$220k</td><td>Buffer Tier 1 (HYSA, MM) + SCHD + VO</td><td>If NV resident by now: no WA cap gains tax. If WA: stay under $1M household income (millionaire tax).</td></tr>
+        <tr><td>Year 4 (2029)</td><td>META remainder, AVGO</td><td>~$220k</td><td>Top off buffer + VIG + VSS</td><td>Final year of working or first year of retirement — time sales to lowest-income tax year.</td></tr>
+      </tbody>
+    </table>
+    <div class="ib ib-g">Total trimmed: ~$880k over 4 years. Top 5 drop from 38% to ~19% (still holding core positions, just right-sized). $570k flows into the 3-tier buffer. $310k into diversifying ETFs. All transitions are tax-coordinated with TLH and charitable giving.</div>
+  </div>
+</div>
+
+<!-- TARGET ALLOCATION -->
+<div id="target" class="pane">
+  <div class="card">
+    <div class="ct">Target portfolio allocation at retirement — 82% growth / 18% buffer</div>
+    <div class="cs">Designed for medium-to-high risk with structural protection via the 3-tier SRR buffer. ~$6.5M portfolio at age 55.</div>
+    <table class="cmp-tbl">
+      <thead><tr><th>Sleeve</th><th>Target %</th><th>Target $</th><th>Holdings</th><th>Risk</th></tr></thead>
+      <tbody>
+        <tr><td>US large cap core</td><td>30%</td><td>$1.95M</td><td>VTI (primary) + retained individual positions capped at 4% each</td><td style="color:var(--amber)">4/5</td></tr>
+        <tr><td>US large cap growth</td><td>10%</td><td>$650k</td><td>VUG or VOOG — replaces the fragmented growth positions</td><td style="color:var(--red)">5/5</td></tr>
+        <tr><td>International developed</td><td>12%</td><td>$780k</td><td>VXUS (primary) + VEA for developed only</td><td style="color:var(--amber)">4/5</td></tr>
+        <tr><td>International emerging</td><td>5%</td><td>$325k</td><td>VWO + VSS for small-cap intl</td><td style="color:var(--red)">5/5</td></tr>
+        <tr><td>US mid/small cap</td><td>5%</td><td>$325k</td><td>VO (mid) + IJR (small) + AVUV (small value factor)</td><td style="color:var(--red)">5/5</td></tr>
+        <tr><td>Dividend / value tilt</td><td>10%</td><td>$650k</td><td>SCHD (dividend growth) + VIG (dividend appreciation)</td><td style="color:#6EE7B7">3/5</td></tr>
+        <tr><td>REITs / alternatives</td><td>2%</td><td>$130k</td><td>FREL or VNQ + small commodity tilt</td><td style="color:var(--amber)">4/5</td></tr>
+        <tr><td style="color:var(--green)">Sector overlay (retained)</td><td>8%</td><td>$520k</td><td>Top 5 tech positions at max 4% each + AAPL, AVGO, XOM</td><td style="color:var(--red)">5/5</td></tr>
+        <tr style="background:var(--green-bg)"><td style="color:var(--green)">3-yr SRR buffer</td><td style="color:var(--green)">18%</td><td style="color:var(--green)">$1.17M</td><td style="color:var(--green)">Tier 1: HYSA/MM | Tier 2: 1-yr CDs/T-Bills | Tier 3: 2-yr T-Notes/munis</td><td style="color:var(--green)">1/5</td></tr>
+      </tbody>
+    </table>
+    <div class="ib ib-b">Weighted average risk: 3.7/5 (medium-high). Equity beta: ~0.85 (vs. 1.1 currently due to tech overweight). The buffer provides 3 years of floor spending ($120k × 3 = $360k minimum) with the rest covering discretionary draw. Max drawdown in a 2008-style crash: ~28% on growth sleeve vs. ~35% with current concentration.</div>
+  </div>
+
+  <div class="card">
+    <div class="ct">Account type optimization — which holdings in which accounts</div>
+    <div class="cs">Tax efficiency comes from placing high-turnover / income-generating assets in tax-sheltered accounts.</div>
+    <div class="ri"><span class="bdg bdg-g">401k / Trad IRA</span><span class="ri-t"><strong style="color:var(--text)">Bond funds, SCHD, VIG, REITs, FREL.</strong> Dividends and interest taxed at ordinary rates — shelter them. Roth conversions will move them tax-free over time. Rebalance freely (no tax friction). This is where your Stable Value ($206k) and target-date funds already live — correct placement.</span></div>
+    <div class="ri"><span class="bdg bdg-g">Roth 401k / Roth IRA</span><span class="ri-t"><strong style="color:var(--text)">Highest-growth assets: VUG, VOOG, VWO, VO, individual growth stocks (NVDA, AMZN).</strong> Growth compounds tax-free forever. These assets to heirs via Roth = 10-year tax-free distribution. Never put bonds in Roth — it wastes the tax-free growth advantage.</span></div>
+    <div class="ri"><span class="bdg bdg-g">Taxable brokerage</span><span class="ri-t"><strong style="color:var(--text)">VTI, VXUS, VEA, tax-managed individual stocks, muni bonds for buffer Tier 3.</strong> Index ETFs are tax-efficient (low turnover, no capital gains distributions). VXUS gets the Foreign Tax Credit (FTC) — only available in taxable. Individual stocks allow specific-lot TLH. Never hold REITs or high-dividend funds here.</span></div>
+    <div class="ri"><span class="bdg bdg-g">HSA</span><span class="ri-t"><strong style="color:var(--text)">Most aggressive growth: VUG or small-cap growth (AVUV).</strong> Triple tax advantage. Never touch until 65. Invest 100% in equities — this is 14+ years until Medicare. The $9,300/yr family contribution invested aggressively at 9% for 14 years = ~$300k+ tax-free for medical expenses in retirement.</span></div>
+  </div>
+</div>
+
+<!-- ETF PICKS -->
+<div id="etfs" class="pane">
+  <div class="card">
+    <div class="ct">Recommended core ETF portfolio — 5-point risk scale</div>
+    <div class="cs">Consolidate 140+ positions into 10–12 core ETFs + 5–8 retained conviction stocks. Each ETF selected for low expense ratio, tax efficiency, and non-overlapping coverage.</div>
+
+    <div class="etf-row" style="color:var(--hint);font-weight:600;font-size:10px;text-transform:uppercase;letter-spacing:.06em;border-bottom:1px solid var(--border)">
+      <span>Ticker</span><span>Role</span><span style="text-align:right">Exp ratio</span><span style="text-align:right">Risk</span>
+    </div>
+
+    <div style="font-size:11px;font-weight:600;color:var(--green);text-transform:uppercase;letter-spacing:.06em;padding:12px 0 6px">Risk 1/5 — Capital preservation (buffer)</div>
+    <div class="etf-row"><span class="etf-tk">SPAXX</span><span class="etf-nm">Fidelity Gov Money Market — Tier 1 buffer, immediate liquidity</span><span class="etf-er">0.42%</span><span class="etf-risk risk1">●●●●● 1</span></div>
+    <div class="etf-row"><span class="etf-tk">SGOV</span><span class="etf-nm">iShares 0-3 Month Treasury Bond — T-Bill ETF for Tier 2, more liquid than CDs</span><span class="etf-er">0.05%</span><span class="etf-risk risk1">●●●●● 1</span></div>
+    <div class="etf-row"><span class="etf-tk">SHY</span><span class="etf-nm">iShares 1-3 Year Treasury Bond — Tier 3 buffer, slightly longer duration</span><span class="etf-er">0.15%</span><span class="etf-risk risk1">●●●●● 1</span></div>
+
+    <div style="font-size:11px;font-weight:600;color:#6EE7B7;text-transform:uppercase;letter-spacing:.06em;padding:12px 0 6px">Risk 2/5 — Low volatility income</div>
+    <div class="etf-row"><span class="etf-tk">SCHD</span><span class="etf-nm">Schwab US Dividend Equity — high-quality dividend growers, 3.5% yield, low turnover</span><span class="etf-er">0.06%</span><span class="etf-risk risk2">●●●●○ 2</span></div>
+    <div class="etf-row"><span class="etf-tk">VIG</span><span class="etf-nm">Vanguard Dividend Appreciation — 10+ yr consecutive dividend raisers, quality tilt</span><span class="etf-er">0.05%</span><span class="etf-risk risk2">●●●●○ 2</span></div>
+
+    <div style="font-size:11px;font-weight:600;color:var(--amber);text-transform:uppercase;letter-spacing:.06em;padding:12px 0 6px">Risk 3/5 — Core equity (broad market)</div>
+    <div class="etf-row"><span class="etf-tk">VTI</span><span class="etf-nm">Vanguard Total Stock Market — entire US market, 4,000+ stocks, ultimate diversification</span><span class="etf-er">0.03%</span><span class="etf-risk risk3">●●●○○ 3</span></div>
+    <div class="etf-row"><span class="etf-tk">VXUS</span><span class="etf-nm">Vanguard Total Intl Stock — 8,000+ stocks, developed + emerging, FTC eligible in taxable</span><span class="etf-er">0.07%</span><span class="etf-risk risk3">●●●○○ 3</span></div>
+
+    <div style="font-size:11px;font-weight:600;color:#FB923C;text-transform:uppercase;letter-spacing:.06em;padding:12px 0 6px">Risk 4/5 — Growth tilt</div>
+    <div class="etf-row"><span class="etf-tk">VUG</span><span class="etf-nm">Vanguard Growth — large-cap growth, replaces fragmented growth fund overlap</span><span class="etf-er">0.04%</span><span class="etf-risk risk4">●●○○○ 4</span></div>
+    <div class="etf-row"><span class="etf-tk">VO</span><span class="etf-nm">Vanguard Mid-Cap — mid-cap blend, historically outperforms large over long periods</span><span class="etf-er">0.04%</span><span class="etf-risk risk4">●●○○○ 4</span></div>
+    <div class="etf-row"><span class="etf-tk">VNQ</span><span class="etf-nm">Vanguard Real Estate — REIT exposure, uncorrelated to tech, hold in 401k only (tax)</span><span class="etf-er">0.12%</span><span class="etf-risk risk4">●●○○○ 4</span></div>
+
+    <div style="font-size:11px;font-weight:600;color:var(--red);text-transform:uppercase;letter-spacing:.06em;padding:12px 0 6px">Risk 5/5 — High growth / high volatility</div>
+    <div class="etf-row"><span class="etf-tk">VWO</span><span class="etf-nm">Vanguard Emerging Markets — higher risk/reward, China/India/Brazil/Taiwan exposure</span><span class="etf-er">0.08%</span><span class="etf-risk risk5">●○○○○ 5</span></div>
+    <div class="etf-row"><span class="etf-tk">AVUV</span><span class="etf-nm">Avantis US Small Cap Value — factor-tilted small value, highest historical premium</span><span class="etf-er">0.25%</span><span class="etf-risk risk5">●○○○○ 5</span></div>
+    <div class="etf-row"><span class="etf-tk">VSS</span><span class="etf-nm">Vanguard FTSE All-World ex-US Small-Cap — international small-cap, uncorrelated</span><span class="etf-er">0.07%</span><span class="etf-risk risk5">●○○○○ 5</span></div>
+  </div>
+
+  <div class="card">
+    <div class="ct">Retained individual positions — conviction holds capped at 4% each</div>
+    <div class="cs">Keep 5–8 high-quality individual stocks you believe in — but cap each at 4% ($260k at $6.5M). These sit in the "sector overlay" sleeve.</div>
+    <table class="cmp-tbl">
+      <thead><tr><th>Ticker</th><th>Current</th><th>Cap at 4%</th><th>Trim</th><th>Rationale to keep</th></tr></thead>
+      <tbody>
+        <tr><td>GOOG</td><td>$470k (9.9%)</td><td>$260k</td><td style="color:var(--red)">−$210k</td><td>AI leadership, cloud, search moat</td></tr>
+        <tr><td>META</td><td>$430k (9.1%)</td><td>$260k</td><td style="color:var(--red)">−$170k</td><td>Social moat, AI infra, strong FCF</td></tr>
+        <tr><td>MSFT</td><td>$355k (7.5%)</td><td>$260k</td><td style="color:var(--red)">−$95k</td><td>Enterprise moat, Azure, AI copilot</td></tr>
+        <tr><td>AMZN</td><td>$303k (6.4%)</td><td>$260k</td><td style="color:var(--amber)">−$43k</td><td>AWS, e-commerce dominance</td></tr>
+        <tr><td>NVDA</td><td>$247k (5.2%)</td><td>$195k (3%)</td><td style="color:var(--amber)">−$52k</td><td>AI chips, but cyclical — cap lower</td></tr>
+        <tr><td>XOM</td><td>$26k (0.5%)</td><td>Keep as-is</td><td>—</td><td>Energy hedge, strong dividend, uncorrelated to tech</td></tr>
+        <tr><td>BRK.B</td><td>$17k (0.4%)</td><td>Build to 2%</td><td style="color:var(--green)">+$113k</td><td>Diversified conglomerate, cash-rich, zero-correlation</td></tr>
+      </tbody>
+    </table>
+    <div class="ib ib-b">Total retained: ~$1.26M in 7 positions (19% of portfolio). The other ~120 individual stocks get liquidated over 4 years and proceeds flow into core ETFs and the buffer. This transforms your portfolio from 140+ positions to ~20 holdings (12 ETFs + 7 stocks + buffer instruments).</div>
+  </div>
+</div>
+
+<!-- DIVERSIFICATION PLAN -->
+<div id="plan" class="pane">
+  <div class="card">
+    <div class="ct">4-year tax-smart diversification roadmap</div>
+    <div class="cs">Each phase coordinates selling with TLH, charitable giving, and buffer building. Target: 140+ positions → ~20 by retirement.</div>
+
+    <div class="phase" style="border-left-color:var(--cyan)">
+      <div class="phase-hd"><span class="phase-t">Phase 1: Q2–Q4 2026 — harvest losses + start trimming</span><span class="bdg bdg-b">~$250k moved</span></div>
+      <div class="phase-b">
+        <strong style="color:var(--text)">Sell (tax-loss harvest):</strong> Identify all positions currently at a loss — RIVN ($548, likely large loss), ELAN ($1,965), MOS ($1,264), DOW ($1,151), BA ($8,142 if below basis), BBWI ($475), WBD ($1,214), LULU ($1,322), AR ($1,367), MUR ($957). Harvest losses to build carryforward bank. Replace each with a non-identical ETF (VTI, VXUS, VO) to maintain market exposure.<br><br>
+        <strong style="color:var(--text)">Sell (overweight trim):</strong> Trim $120k from GOOG (sell highest-cost lots). Offset gains with harvested losses. Proceeds → Buffer Tier 3 (2-year CDs + T-Notes).<br><br>
+        <strong style="color:var(--text)">Charitable:</strong> Donate $50k of appreciated GOOG or META shares to DAF. Full FMV deduction at 35% bracket ($17.5k tax savings). Zero capital gains recognized.
+      </div>
+    </div>
+
+    <div class="phase" style="border-left-color:var(--green)">
+      <div class="phase-hd"><span class="phase-t">Phase 2: 2027 — accelerate consolidation</span><span class="bdg bdg-g">~$350k moved</span></div>
+      <div class="phase-b">
+        <strong style="color:var(--text)">Sell (tail cleanup):</strong> Liquidate all remaining positions under $3k (~50+ holdings). Combined value ~$100k. Small lots = minimal gains per position. Some will have losses for additional TLH. Proceeds → VTI + VXUS in taxable brokerage.<br><br>
+        <strong style="color:var(--text)">Sell (overweight trim):</strong> Trim $100k META + $80k MSFT. Offset with any remaining loss carryforward. Proceeds → Buffer Tier 2 (1-yr CDs, T-Bills) + SCHD in 401k.<br><br>
+        <strong style="color:var(--text)">401k rebalance:</strong> Switch Fidelity Growth Commingled ($648k) to 50% total market index + 30% international index + 20% stable value. Zero tax friction in 401k.
+      </div>
+    </div>
+
+    <div class="phase" style="border-left-color:var(--amber)">
+      <div class="phase-hd"><span class="phase-t">Phase 3: 2028 — buffer ramp + NV considerations</span><span class="bdg bdg-a">~$280k moved</span></div>
+      <div class="phase-b">
+        <strong style="color:var(--text)">Critical timing:</strong> WA millionaire tax effective Jan 1, 2028. If you establish NV residency, large gain realization is tax-free at the state level. This is the ideal year for the biggest trim if in NV.<br><br>
+        <strong style="color:var(--text)">Sell:</strong> Trim $150k NVDA + remaining GOOG to target. Liquidate mid-tier positions ($3k–$10k) that aren't conviction holds. Proceeds → Buffer Tier 1 (HYSA, MM) + VO + VIG.<br><br>
+        <strong style="color:var(--text)">Review:</strong> Portfolio should now be ~40 positions. Buffer at ~$700k of $861k target.
+      </div>
+    </div>
+
+    <div class="phase" style="border-left-color:var(--purple)">
+      <div class="phase-hd"><span class="phase-t">Phase 4: 2029 — final positioning for retirement</span><span class="bdg bdg-b">~$200k moved</span></div>
+      <div class="phase-b">
+        <strong style="color:var(--text)">Final trims:</strong> AMZN to $260k cap, META to $260k cap, AVGO to target. All remaining non-conviction individual positions sold.<br><br>
+        <strong style="color:var(--text)">Buffer completion:</strong> Top off 3-tier buffer to full $861k (inflation-adjusted). Final composition: ~$287k each in Tier 1/2/3.<br><br>
+        <strong style="color:var(--text)">Lock in:</strong> Portfolio is now ~20 positions. Set quarterly rebalancing calendar. Document the replenishment decision rules. Engage a fee-only CFP for annual review. You're ready.
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="ct">Tax impact estimate over 4 years</div>
+    <div style="display:grid;grid-template-columns:1fr auto;gap:3px 20px;font-size:13px;line-height:2.1">
+      <span style="color:var(--muted)">Gross gains realized from trims</span><span style="font-weight:600;font-family:'JetBrains Mono',monospace;text-align:right">~$550–700k</span>
+      <span style="color:var(--muted)">Tax-loss harvesting offset</span><span style="font-weight:600;font-family:'JetBrains Mono',monospace;text-align:right;color:var(--green)">−$80–120k</span>
+      <span style="color:var(--muted)">DAF charitable contribution offset</span><span style="font-weight:600;font-family:'JetBrains Mono',monospace;text-align:right;color:var(--green)">−$50–100k</span>
+      <span style="color:var(--muted)">401k rebalancing (no tax)</span><span style="font-weight:600;font-family:'JetBrains Mono',monospace;text-align:right;color:var(--green)">−$200–300k</span>
+      <span style="color:var(--muted);border-top:1px solid var(--border);padding-top:4px">Net taxable gains</span><span style="font-weight:600;font-family:'JetBrains Mono',monospace;text-align:right;border-top:1px solid var(--border);padding-top:4px">~$130–280k</span>
+      <span style="color:var(--muted)">Estimated LTCG tax (15–20%)</span><span style="font-weight:600;font-family:'JetBrains Mono',monospace;text-align:right;color:var(--amber)">~$20–56k</span>
+      <span style="color:var(--muted)">Cost of NOT diversifying (30% tech crash on $1.8M)</span><span style="font-weight:600;font-family:'JetBrains Mono',monospace;text-align:right;color:var(--red)">−$540k</span>
+    </div>
+    <div class="ib ib-g">The tax cost of diversification ($20–56k over 4 years) is a fraction of the risk you're eliminating. Paying $40k in LTCG to avoid $540k in potential concentration losses is a 13:1 payoff ratio. This is insurance you're getting paid to buy.</div>
+  </div>
+</div>
+
+<!-- TAIL CLEANUP -->
+<div id="tail" class="pane">
+  <div class="card">
+    <div class="ct">Tail cleanup — 80+ positions under $5k to liquidate</div>
+    <div class="cs">These positions collectively represent ~$160k (3.4% of portfolio) but generate enormous tax reporting complexity and rebalancing friction. Most should be sold and reinvested into core ETFs.</div>
+    
+    <div class="ri"><span class="bdg bdg-r">Sell first — likely losses (TLH candidates)</span><span class="ri-t" style="font-family:'JetBrains Mono',monospace;font-size:11px;line-height:2">RIVN ($548) · BBWI ($475) · ELAN ($1,965) · MOS ($1,264) · DOW ($1,151) · MUR ($957) · AR ($1,367) · LULU ($1,322) · BA ($8,142) · CVS ($4,004) · WBD ($1,214) · PVH ($867) · KVUE ($871) · CMCSA ($1,438) · BMY ($4,229) · TDW ($1,681) · FQVLF ($2,396) · HUM ($902) · PCG ($932)</span></div>
+
+    <div class="ri"><span class="bdg bdg-a">Sell — too small to matter</span><span class="ri-t" style="font-family:'JetBrains Mono',monospace;font-size:11px;line-height:2">LPLA ($159) · BKNG ($212) · TTD ($275) · VV ($347) · CEG ($388) · Z ($504) · DVA ($496) · WCN ($464) · BKGFY ($468) · SBUX ($525) · UAL ($592) · DPZ ($689) · CHRW ($693) · FTAI ($698) · WING ($731) · BIIB ($715) · HCA ($741) · MSCI ($760) · FSLR ($762) · AXP ($762) · MSI ($793) · DIS ($797) · SFM ($822) · IBKR ($853) · BOX ($2,501) · APPF ($2,579)</span></div>
+
+    <div class="ri"><span class="bdg bdg-b">Review — small but decent companies</span><span class="ri-t" style="font-family:'JetBrains Mono',monospace;font-size:11px;line-height:2">COST ($3,519) · LLY ($3,468) · CRM ($4,300) · DDOG ($3,513) · ISRG ($2,747) · TMO ($2,012) · SPGI ($1,287) · MCO ($1,012) · UNH ($1,357) · LMT ($1,343) · NOC ($2,386) · TMUS ($1,178)<br><br><span style="color:var(--muted);font-family:'DM Sans',sans-serif">These are good companies but at 0.02–0.07% of your portfolio, they contribute nothing to returns. A $3k position would need to 10× just to move your portfolio 0.5%. Sell all and put proceeds into VTI — you'll still own these companies via the index.</span></span></div>
+  </div>
+
+  <div class="card">
+    <div class="ct">Overlapping index funds — consolidate to 2</div>
+    <div class="cs">You hold 7+ funds that all track roughly the same thing. Combined: ~$216k doing the job of one ETF.</div>
+    <table class="cmp-tbl">
+      <thead><tr><th>Current holding</th><th>Value</th><th>Overlap with</th><th>Action</th></tr></thead>
+      <tbody>
+        <tr><td>VOO</td><td>$39,133</td><td>VTI (99%)</td><td style="color:var(--red)">Sell → VTI</td></tr>
+        <tr><td>VFFSX</td><td>$28,636</td><td>VTI (99%)</td><td style="color:var(--red)">Sell → VTI</td></tr>
+        <tr><td>VOOG</td><td>$24,868</td><td>VUG (95%)</td><td style="color:var(--red)">Sell → VUG</td></tr>
+        <tr><td>SPYG</td><td>$3,642</td><td>VUG (97%)</td><td style="color:var(--red)">Sell → VUG</td></tr>
+        <tr><td>VV</td><td>$347</td><td>VTI (95%)</td><td style="color:var(--red)">Sell → VTI</td></tr>
+        <tr><td>QQQ</td><td>$39,669</td><td>VUG (85%)</td><td style="color:var(--amber)">Sell → VUG (higher tech overlap)</td></tr>
+        <tr style="background:var(--green-bg)"><td style="color:var(--green)">Keep: VTI</td><td style="color:var(--green)">$41,591</td><td>—</td><td style="color:var(--green)">Core US — build to $1.95M</td></tr>
+        <tr style="background:var(--green-bg)"><td style="color:var(--green)">Keep: VUG</td><td style="color:var(--green)">$38,234</td><td>—</td><td style="color:var(--green)">Growth tilt — build to $650k</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <div class="ct">End state — your portfolio in 4 years</div>
+    <div class="cs">From 140+ positions to ~20 holdings. Clean, manageable, tax-efficient, retirement-ready.</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:8px">
+      <div style="background:var(--surface2);border-radius:8px;padding:14px">
+        <div style="font-size:11px;font-weight:600;color:var(--hint);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">Core ETFs (12)</div>
+        <div style="font-size:12px;color:var(--muted);line-height:2.2;font-family:'JetBrains Mono',monospace">
+          VTI — US total market<br>VUG — US growth<br>VXUS — International<br>VWO — Emerging markets<br>
+          VO — Mid-cap<br>AVUV — Small value<br>VSS — Intl small-cap<br>SCHD — Dividend growth<br>
+          VIG — Dividend appreciation<br>VNQ — REITs (401k)<br>SGOV — T-Bill buffer<br>SHY — Short-term Treasury
+        </div>
+      </div>
+      <div style="background:var(--surface2);border-radius:8px;padding:14px">
+        <div style="font-size:11px;font-weight:600;color:var(--hint);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">Conviction stocks (7) + buffer</div>
+        <div style="font-size:12px;color:var(--muted);line-height:2.2;font-family:'JetBrains Mono',monospace">
+          GOOG — 4% cap<br>META — 4% cap<br>MSFT — 4% cap<br>AMZN — 4% cap<br>
+          NVDA — 3% cap<br>XOM — hold<br>BRK.B — build to 2%<br><br>
+          <span style="color:var(--green)">Tier 1: SPAXX/HYSA</span><br>
+          <span style="color:var(--green)">Tier 2: CDs + SGOV</span><br>
+          <span style="color:var(--green)">Tier 3: SHY + Munis</span>
+        </div>
+      </div>
+    </div>
+    <div class="ib ib-g" style="margin-top:14px">This portfolio is designed to run on autopilot: quarterly rebalancing takes 30 minutes, tax reporting fits on one page, and every position has a clear role. No more tracking 140+ tickers, managing 140+ 1099 lines, or wondering what that $275 TTD position is doing for your retirement.</div>
+  </div>
+</div>
+
+</div>
+
+<script>
+function showTab(id, btn) {
+  var panes = document.querySelectorAll('.pane');
+  var btns = document.querySelectorAll('.nb');
+  for (var i = 0; i < panes.length; i++) panes[i].classList.remove('on');
+  for (var i = 0; i < btns.length; i++) btns[i].classList.remove('on');
+  document.getElementById(id).classList.add('on');
+  btn.classList.add('on');
+}
+</script>
+</body>
+</html>
