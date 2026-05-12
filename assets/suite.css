@@ -1,0 +1,409 @@
+/* =============================================================
+ * Wealth Suite — shared shell (Material Design 3)
+ * Used by: index.html (full styling) + every tool page (topbar only)
+ * Tools keep their own internal styling; this file only governs
+ * .suite-* elements injected by suite.js.
+ * ============================================================= */
+
+/* ---------- MD3 design tokens ---------- */
+:root {
+  /* Brand: trust-blue primary, prosperity-gold tertiary */
+  --md-sys-color-primary:                   #2C5BAA;
+  --md-sys-color-on-primary:                #FFFFFF;
+  --md-sys-color-primary-container:         #D8E2FF;
+  --md-sys-color-on-primary-container:      #001A41;
+
+  --md-sys-color-secondary:                 #565F71;
+  --md-sys-color-on-secondary:              #FFFFFF;
+  --md-sys-color-secondary-container:       #DAE2F9;
+  --md-sys-color-on-secondary-container:    #131C2B;
+
+  --md-sys-color-tertiary:                  #715573;
+  --md-sys-color-on-tertiary:               #FFFFFF;
+  --md-sys-color-tertiary-container:        #FBD7FB;
+  --md-sys-color-on-tertiary-container:     #29132D;
+
+  --md-sys-color-error:                     #BA1A1A;
+  --md-sys-color-on-error:                  #FFFFFF;
+  --md-sys-color-error-container:           #FFDAD6;
+
+  --md-sys-color-background:                #FAFAFE;
+  --md-sys-color-on-background:             #1A1B20;
+  --md-sys-color-surface:                   #FAFAFE;
+  --md-sys-color-on-surface:                #1A1B20;
+  --md-sys-color-on-surface-variant:        #45464F;
+  --md-sys-color-surface-container-lowest:  #FFFFFF;
+  --md-sys-color-surface-container-low:     #F4F3F8;
+  --md-sys-color-surface-container:         #EEEDF2;
+  --md-sys-color-surface-container-high:    #E8E7EC;
+  --md-sys-color-surface-container-highest: #E2E1E7;
+
+  --md-sys-color-outline:                   #757680;
+  --md-sys-color-outline-variant:           #C5C6D0;
+  --md-sys-color-inverse-surface:           #2F3036;
+  --md-sys-color-inverse-on-surface:        #F1F0F5;
+
+  /* MD3 success palette (extension) */
+  --md-sys-color-success:                   #2E7D32;
+  --md-sys-color-success-container:         #D4EDDA;
+  --md-sys-color-on-success-container:      #0B2912;
+
+  /* Elevation (MD3 5-step) */
+  --md-sys-elevation-0: none;
+  --md-sys-elevation-1: 0 1px 2px 0 rgb(0 0 0 / .12), 0 1px 3px 1px rgb(0 0 0 / .08);
+  --md-sys-elevation-2: 0 1px 2px 0 rgb(0 0 0 / .12), 0 2px 6px 2px rgb(0 0 0 / .10);
+  --md-sys-elevation-3: 0 4px 8px 3px rgb(0 0 0 / .10), 0 1px 3px 0 rgb(0 0 0 / .12);
+  --md-sys-elevation-4: 0 6px 10px 4px rgb(0 0 0 / .10), 0 2px 3px 0 rgb(0 0 0 / .12);
+  --md-sys-elevation-5: 0 8px 12px 6px rgb(0 0 0 / .10), 0 4px 4px 0 rgb(0 0 0 / .12);
+
+  /* Shape (MD3 token scale) */
+  --md-sys-shape-corner-xs:    4px;
+  --md-sys-shape-corner-sm:    8px;
+  --md-sys-shape-corner-md:    12px;
+  --md-sys-shape-corner-lg:    16px;
+  --md-sys-shape-corner-xl:    28px;
+  --md-sys-shape-corner-full:  9999px;
+
+  /* Motion */
+  --md-sys-motion-emphasized:        cubic-bezier(.2, 0, 0, 1);
+  --md-sys-motion-emphasized-decel:  cubic-bezier(.05, .7, .1, 1);
+  --md-sys-motion-standard:          cubic-bezier(.2, 0, 0, 1);
+
+  /* Suite-specific */
+  --suite-topbar-height: 64px;
+  --suite-max-width: 1400px;
+  --suite-content-pad: clamp(16px, 4vw, 32px);
+}
+
+[data-theme="dark"] {
+  --md-sys-color-primary:                   #AFC6FF;
+  --md-sys-color-on-primary:                #002E69;
+  --md-sys-color-primary-container:         #0F4493;
+  --md-sys-color-on-primary-container:      #D8E2FF;
+
+  --md-sys-color-secondary:                 #BEC6DC;
+  --md-sys-color-on-secondary:              #283041;
+  --md-sys-color-secondary-container:       #3E4759;
+  --md-sys-color-on-secondary-container:    #DAE2F9;
+
+  --md-sys-color-tertiary:                  #DEBCDE;
+  --md-sys-color-on-tertiary:               #402843;
+  --md-sys-color-tertiary-container:        #583E5B;
+  --md-sys-color-on-tertiary-container:     #FBD7FB;
+
+  --md-sys-color-error:                     #FFB4AB;
+  --md-sys-color-on-error:                  #690005;
+  --md-sys-color-error-container:           #93000A;
+
+  --md-sys-color-background:                #121318;
+  --md-sys-color-on-background:             #E3E2E9;
+  --md-sys-color-surface:                   #121318;
+  --md-sys-color-on-surface:                #E3E2E9;
+  --md-sys-color-on-surface-variant:        #C5C6D0;
+  --md-sys-color-surface-container-lowest:  #0D0E13;
+  --md-sys-color-surface-container-low:     #1A1B20;
+  --md-sys-color-surface-container:         #1E1F25;
+  --md-sys-color-surface-container-high:    #292A30;
+  --md-sys-color-surface-container-highest: #34353B;
+
+  --md-sys-color-outline:                   #8F909A;
+  --md-sys-color-outline-variant:           #45464F;
+  --md-sys-color-inverse-surface:           #E3E2E9;
+  --md-sys-color-inverse-on-surface:        #2F3036;
+
+  --md-sys-color-success:                   #91D89A;
+  --md-sys-color-success-container:         #1F4A24;
+  --md-sys-color-on-success-container:      #D4EDDA;
+}
+
+/* ---------- Base ---------- */
+html { color-scheme: light; }
+html[data-theme="dark"] { color-scheme: dark; }
+
+body.suite-body {
+  margin: 0;
+  font-family: 'Roboto Flex', 'Roboto', -apple-system, 'Helvetica Neue', Arial, sans-serif;
+  background: var(--md-sys-color-background);
+  color: var(--md-sys-color-on-background);
+  font-feature-settings: "cv11", "ss01";
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ---------- Top app bar (shared across suite + every tool) ----------
+ * Uses fixed positioning so it survives arbitrary body layouts
+ * (e.g. Tailwind `flex items-center justify-center` on the body
+ * would otherwise center a sticky topbar mid-page).
+ * Body gets matching top padding via .suite-body / .suite-tool-shell.
+ */
+html { scroll-padding-top: var(--suite-topbar-height); }
+
+.suite-topbar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+  background: var(--md-sys-color-surface-container);
+  color: var(--md-sys-color-on-surface);
+  border-bottom: 1px solid var(--md-sys-color-outline-variant);
+  box-shadow: var(--md-sys-elevation-1);
+  height: var(--suite-topbar-height);
+  font-family: 'Roboto Flex', 'Roboto', -apple-system, sans-serif;
+}
+
+/* Compensate for the fixed topbar:
+ *  - .suite-body: applied to the dashboard, takes the padding directly.
+ *  - .suite-tool-shell: added by suite.js to each tool's <body> so the
+ *    tool's first paint isn't tucked under the bar. Works even when
+ *    the tool's body uses display:flex with centered alignment. */
+body.suite-body,
+body.suite-tool-shell {
+  padding-top: var(--suite-topbar-height);
+}
+
+.suite-topbar__inner {
+  height: 100%;
+  max-width: var(--suite-max-width);
+  margin: 0 auto;
+  padding: 0 var(--suite-content-pad);
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.suite-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+  color: inherit;
+  flex-shrink: 0;
+}
+.suite-brand__logo {
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  background: var(--md-sys-color-primary);
+  color: var(--md-sys-color-on-primary);
+  border-radius: var(--md-sys-shape-corner-sm);
+  font-weight: 700;
+  font-size: 16px;
+  letter-spacing: -.02em;
+}
+.suite-brand__name {
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: -.01em;
+  margin: 0;
+  white-space: nowrap;
+}
+
+.suite-topnav {
+  display: flex;
+  gap: 4px;
+  margin-left: 12px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  flex: 1 1 auto;
+}
+.suite-topnav::-webkit-scrollbar { display: none; }
+
+.suite-topnav__link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: var(--md-sys-shape-corner-full);
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: .01em;
+  text-decoration: none;
+  color: var(--md-sys-color-on-surface-variant);
+  white-space: nowrap;
+  transition: background .18s var(--md-sys-motion-standard), color .18s;
+}
+.suite-topnav__link:hover {
+  background: color-mix(in oklab, var(--md-sys-color-on-surface) 8%, transparent);
+  color: var(--md-sys-color-on-surface);
+}
+.suite-topnav__link.is-active {
+  background: var(--md-sys-color-secondary-container);
+  color: var(--md-sys-color-on-secondary-container);
+}
+
+.suite-topbar__spacer { flex: 1; }
+
+.suite-iconbutton {
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  border: none;
+  background: transparent;
+  color: var(--md-sys-color-on-surface-variant);
+  border-radius: var(--md-sys-shape-corner-full);
+  cursor: pointer;
+  transition: background .18s var(--md-sys-motion-standard);
+}
+.suite-iconbutton:hover {
+  background: color-mix(in oklab, var(--md-sys-color-on-surface) 8%, transparent);
+  color: var(--md-sys-color-on-surface);
+}
+.suite-iconbutton svg { width: 22px; height: 22px; }
+
+/* ---------- Dashboard (index.html only) ---------- */
+.suite-main {
+  max-width: var(--suite-max-width);
+  margin: 0 auto;
+  padding: clamp(24px, 5vw, 56px) var(--suite-content-pad) 64px;
+}
+
+.suite-hero {
+  margin-bottom: clamp(32px, 5vw, 56px);
+  max-width: 720px;
+}
+.suite-hero h2 {
+  font-size: clamp(28px, 4vw, 44px);
+  font-weight: 400;
+  line-height: 1.15;
+  letter-spacing: -.02em;
+  margin: 0 0 16px;
+  color: var(--md-sys-color-on-surface);
+}
+.suite-hero h2 strong {
+  font-weight: 600;
+  background: linear-gradient(135deg, var(--md-sys-color-primary), var(--md-sys-color-tertiary));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.suite-hero p {
+  font-size: clamp(15px, 1.6vw, 17px);
+  line-height: 1.55;
+  color: var(--md-sys-color-on-surface-variant);
+  margin: 0;
+}
+
+.suite-section-title {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--md-sys-color-on-surface-variant);
+  margin: 0 0 16px;
+}
+
+/* Responsive grid — 1col mobile, 2col tablet, 3col desktop, 4col wide */
+.suite-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+  margin-bottom: 48px;
+}
+
+.suite-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 20px;
+  min-height: 180px;
+  background: var(--md-sys-color-surface-container-low);
+  color: var(--md-sys-color-on-surface);
+  border: 1px solid var(--md-sys-color-outline-variant);
+  border-radius: var(--md-sys-shape-corner-lg);
+  text-decoration: none;
+  position: relative;
+  overflow: hidden;
+  transition: box-shadow .24s var(--md-sys-motion-emphasized),
+              transform .24s var(--md-sys-motion-emphasized),
+              background .18s;
+}
+.suite-card:hover {
+  box-shadow: var(--md-sys-elevation-3);
+  transform: translateY(-2px);
+  background: var(--md-sys-color-surface-container);
+}
+.suite-card:focus-visible {
+  outline: 2px solid var(--md-sys-color-primary);
+  outline-offset: 2px;
+}
+
+.suite-card__icon {
+  width: 44px;
+  height: 44px;
+  border-radius: var(--md-sys-shape-corner-md);
+  display: grid;
+  place-items: center;
+  background: var(--md-sys-color-primary-container);
+  color: var(--md-sys-color-on-primary-container);
+}
+.suite-card__icon svg { width: 24px; height: 24px; }
+
+.suite-card[data-accent="tertiary"] .suite-card__icon {
+  background: var(--md-sys-color-tertiary-container);
+  color: var(--md-sys-color-on-tertiary-container);
+}
+.suite-card[data-accent="secondary"] .suite-card__icon {
+  background: var(--md-sys-color-secondary-container);
+  color: var(--md-sys-color-on-secondary-container);
+}
+.suite-card[data-accent="success"] .suite-card__icon {
+  background: var(--md-sys-color-success-container);
+  color: var(--md-sys-color-on-success-container);
+}
+
+.suite-card__title {
+  font-size: 17px;
+  font-weight: 600;
+  line-height: 1.3;
+  letter-spacing: -.005em;
+  margin: 4px 0 0;
+}
+.suite-card__desc {
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--md-sys-color-on-surface-variant);
+  margin: 0;
+  flex: 1;
+}
+.suite-card__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: auto;
+}
+.suite-card__tag {
+  font-size: 11px;
+  font-weight: 500;
+  padding: 3px 9px;
+  border-radius: var(--md-sys-shape-corner-full);
+  background: color-mix(in oklab, var(--md-sys-color-on-surface) 6%, transparent);
+  color: var(--md-sys-color-on-surface-variant);
+}
+
+/* ---------- Footer ---------- */
+.suite-footer {
+  max-width: var(--suite-max-width);
+  margin: 0 auto;
+  padding: 24px var(--suite-content-pad) 32px;
+  font-size: 12.5px;
+  color: var(--md-sys-color-on-surface-variant);
+  border-top: 1px solid var(--md-sys-color-outline-variant);
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+/* ---------- Print ---------- */
+@media print {
+  .suite-topbar, .suite-footer { display: none; }
+}
+
+/* ---------- Mobile tweaks ---------- */
+@media (max-width: 600px) {
+  .suite-topnav__link { padding: 8px 10px; font-size: 13px; }
+  .suite-brand__name { display: none; }
+}
