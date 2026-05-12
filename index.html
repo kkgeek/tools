@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Wealth Suite — Personal Finance & Wealth Management</title>
+  <meta name="description" content="Unified Material Design 3 hub for tax estimation, asset planning, retirement, and portfolio review.">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto+Flex:opsz,wght@8..144,300..700&display=swap">
+  <link rel="stylesheet" href="assets/suite.css?v=2">
+
+  <!-- Apply theme before paint to avoid flash -->
+  <script>
+    (function () {
+      try {
+        var p = localStorage.getItem('wealthSuite.themePreference');
+        if (!['system','light','dark'].includes(p)) p = 'system';
+        var resolved = p === 'system'
+          ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
+          : p;
+        document.documentElement.setAttribute('data-theme', resolved);
+        document.documentElement.setAttribute('data-theme-pref', p);
+      } catch (e) {}
+    })();
+  </script>
+</head>
+<body class="suite-body">
+
+<header class="suite-topbar">
+  <div class="suite-topbar__inner">
+    <a class="suite-brand" href="index.html">
+      <span class="suite-brand__logo" aria-hidden="true">W</span>
+      <h1 class="suite-brand__name">Wealth Suite</h1>
+    </a>
+    <nav class="suite-topnav" aria-label="Module navigation">
+      <a class="suite-topnav__link is-active" href="index.html" aria-current="page">Dashboard</a>
+      <a class="suite-topnav__link" href="TaxEstimatorV5.html">Tax</a>
+      <a class="suite-topnav__link" href="TaxAssetCalcv4.html">Assets</a>
+      <a class="suite-topnav__link" href="retirement_master_plan_2.html">Retirement</a>
+      <a class="suite-topnav__link" href="portfolio_review.html">Portfolio</a>
+      <a class="suite-topnav__link" href="golden_ratio_portfolio_dashboard.html">Golden φ</a>
+    </nav>
+    <button type="button" class="suite-iconbutton" data-theme-cycle
+            title="Cycle theme: system → light → dark"
+            aria-label="Toggle theme">
+      <!-- Filled by suite.js on load -->
+      <svg viewBox="0 0 24 24" fill="currentColor" width="22" height="22"><path d="M3 5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2h-5l1 2h2v2H7v-2h2l1-2H5a2 2 0 0 1-2-2V5zm2 0v10h14V5H5z"/></svg>
+    </button>
+  </div>
+</header>
+
+<main class="suite-main">
+
+  <section class="suite-hero">
+    <h2>Your <strong>personal finance</strong> command center.</h2>
+    <p>A unified Material Design 3 hub for tax estimation, asset planning, retirement modeling, and portfolio review. Every tool runs locally in your browser — your data stays on your device.</p>
+  </section>
+
+  <h3 class="suite-section-title">Modules</h3>
+  <section class="suite-grid" aria-label="Modules">
+
+    <a class="suite-card" href="TaxEstimatorV5.html" data-accent="primary">
+      <span class="suite-card__icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm-1 7V3.5L18.5 9H13zM8 13h8v2H8v-2zm0 4h5v2H8v-2zm0-8h3v2H8V9z"/></svg>
+      </span>
+      <h4 class="suite-card__title">Tax Estimator</h4>
+      <p class="suite-card__desc">Federal &amp; WA tax, brackets, AMT, LTCG/NIIT, supplemental gap, quarterly payments. 2024–2041.</p>
+      <div class="suite-card__tags">
+        <span class="suite-card__tag">Federal</span>
+        <span class="suite-card__tag">WA State</span>
+        <span class="suite-card__tag">React</span>
+      </div>
+    </a>
+
+    <a class="suite-card" href="TaxAssetCalcv4.html" data-accent="secondary">
+      <span class="suite-card__icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 13h2v8H3v-8zm4-4h2v12H7V9zm4-4h2v16h-2V5zm4 2h2v14h-2V7zm4 4h2v10h-2V11z"/></svg>
+      </span>
+      <h4 class="suite-card__title">Asset &amp; Cap-Gains Calculator</h4>
+      <p class="suite-card__desc">Capital gains scenarios with D3 visualizations — short vs. long-term, lot selection, tax-loss harvesting.</p>
+      <div class="suite-card__tags">
+        <span class="suite-card__tag">D3</span>
+        <span class="suite-card__tag">Scenarios</span>
+      </div>
+    </a>
+
+    <a class="suite-card" href="retirement_master_plan_2.html" data-accent="success">
+      <span class="suite-card__icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm1 17.93V18a1 1 0 0 0-2 0v1.93A8 8 0 0 1 4.07 13H6a1 1 0 0 0 0-2H4.07A8 8 0 0 1 11 4.07V6a1 1 0 0 0 2 0V4.07A8 8 0 0 1 19.93 11H18a1 1 0 0 0 0 2h1.93A8 8 0 0 1 13 19.93zM12 8a4 4 0 1 0 4 4 4 4 0 0 0-4-4z"/></svg>
+      </span>
+      <h4 class="suite-card__title">Retirement Master Plan</h4>
+      <p class="suite-card__desc">Long-horizon projections for a married couple — contributions, growth assumptions, withdrawal phasing.</p>
+      <div class="suite-card__tags">
+        <span class="suite-card__tag">Projections</span>
+        <span class="suite-card__tag">WA Couple</span>
+      </div>
+    </a>
+
+    <a class="suite-card" href="portfolio_review.html" data-accent="tertiary">
+      <span class="suite-card__icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M21 3H3a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h18a1 1 0 0 0 1-1V4a1 1 0 0 0-1-1zM9 18H5v-4h4v4zm0-6H5V8h4v4zm10 6h-8v-4h8v4zm0-6h-8V8h8v4z"/></svg>
+      </span>
+      <h4 class="suite-card__title">Portfolio Review</h4>
+      <p class="suite-card__desc">Diversification analysis, concentration risk, sector &amp; geography breakdowns with rebalancing prompts.</p>
+      <div class="suite-card__tags">
+        <span class="suite-card__tag">Allocation</span>
+        <span class="suite-card__tag">Risk</span>
+      </div>
+    </a>
+
+    <a class="suite-card" href="golden_ratio_portfolio_dashboard.html" data-accent="tertiary">
+      <span class="suite-card__icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 3a9 9 0 1 0 9 9 9 9 0 0 0-9-9zm0 16a7 7 0 1 1 7-7 7 7 0 0 1-7 7zm3.5-7a3.5 3.5 0 1 1-3.5-3.5 3.5 3.5 0 0 1 3.5 3.5z"/></svg>
+      </span>
+      <h4 class="suite-card__title">Golden φ Portfolio</h4>
+      <p class="suite-card__desc">Phi-derived allocation, 15-year projection, sequence-of-returns stress test on $100K with 5% withdrawal.</p>
+      <div class="suite-card__tags">
+        <span class="suite-card__tag">Allocation</span>
+        <span class="suite-card__tag">SRR</span>
+      </div>
+    </a>
+
+  </section>
+
+  <h3 class="suite-section-title">Reference data</h3>
+  <section class="suite-grid" aria-label="Reference">
+    <a class="suite-card" href="irs-rates.json" data-accent="secondary">
+      <span class="suite-card__icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2zm-7 14H7v-2h5v2zm0-4H7v-2h5v2zm0-4H7V7h5v2zm5 8h-3v-2h3v2zm0-4h-3v-2h3v2zm0-4h-3V7h3v2z"/></svg>
+      </span>
+      <h4 class="suite-card__title">IRS Rates Data</h4>
+      <p class="suite-card__desc">Auto-synced tax brackets, standard deductions, contribution limits. Tax Estimator pulls from this on startup.</p>
+      <div class="suite-card__tags">
+        <span class="suite-card__tag">2024–2041</span>
+        <span class="suite-card__tag">JSON</span>
+      </div>
+    </a>
+  </section>
+
+</main>
+
+<footer class="suite-footer">
+  <span>Wealth Suite — runs entirely in your browser. No tracking, no upload.</span>
+  <span>Material Design 3 · Responsive · GitHub Pages ready</span>
+</footer>
+
+<script src="assets/suite.js?v=2" defer></script>
+</body>
+</html>
