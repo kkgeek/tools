@@ -1,0 +1,69 @@
+# Deploy the Wealth Suite to GitHub Pages via GitHub Actions.
+#
+# Replaces the legacy Pages builder. Works on both public and private
+# repos (legacy Pages requires public on free tier; the Actions-based
+# deploy does not). After this workflow is on `main`, flip the Pages
+# source in repo settings to "GitHub Actions":
+#   gh api -X PUT repos/<owner>/<repo>/pages -f build_type=workflow
+#
+# Trigger on push to main or manually via the Actions UI / `gh workflow run pages.yml`.
+
+name: Deploy site to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+    # Skip runs that only touch developer-only paths
+    paths-ignore:
+      - '.claude/**'
+      - '**/*.md'
+      - '.gitignore'
+  workflow_dispatch:
+
+# Required by actions/deploy-pages
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Only one Pages deploy at a time; let in-flight finish (don't cancel)
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Stage site (exclude dev-only paths)
+        run: |
+          mkdir -p _site
+          rsync -a \
+            --exclude='.git' \
+            --exclude='.github' \
+            --exclude='.claude' \
+            --exclude='_site' \
+            --exclude='.DS_Store' \
+            --exclude='node_modules' \
+            --exclude='*.swp' \
+            ./ _site/
+          echo "Staged file count: $(find _site -type f | wc -l)"
+          ls -la _site/
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
