@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto+Flex:opsz,wght@8..144,300..700&display=swap">
-  <link rel="stylesheet" href="assets/suite.css?v=2">
+  <link rel="stylesheet" href="assets/suite.css?v=5">
 
   <!-- Apply theme before paint to avoid flash -->
   <script>
@@ -56,6 +56,17 @@
   <section class="suite-hero">
     <h2>Your <strong>personal finance</strong> command center.</h2>
     <p>A unified Material Design 3 hub for tax estimation, asset planning, retirement modeling, and portfolio review. Every tool runs locally in your browser — your data stays on your device.</p>
+  </section>
+
+  <div class="suite-section-head">
+    <h3 class="suite-section-title">Snapshot</h3>
+    <div class="suite-section-actions" id="suite-snapshot-actions"
+         aria-label="Snapshot actions">
+      <!-- Filled by assets/dashboard.js — Export / Import / status -->
+    </div>
+  </div>
+  <section class="suite-snapshot" id="suite-snapshot" aria-label="Household snapshot">
+    <!-- Filled by assets/dashboard.js — empty state until tool adapters write to the store. -->
   </section>
 
   <h3 class="suite-section-title">Modules</h3>
@@ -146,6 +157,8 @@
   <span>Material Design 3 · Responsive · GitHub Pages ready</span>
 </footer>
 
-<script src="assets/suite.js?v=2" defer></script>
+<script src="assets/suite-state.js?v=4" defer></script>
+<script src="assets/suite.js?v=3" defer></script>
+<script src="assets/dashboard.js?v=6" defer></script>
 </body>
 </html>
