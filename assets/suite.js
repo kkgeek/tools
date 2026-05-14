@@ -184,8 +184,12 @@
     injectTopbarIfMissing();
   }
 
-  // Public API (in case tools want to read theme or rebuild)
-  window.WealthSuite = {
+  // Public API (in case tools want to read theme or rebuild).
+  // IMPORTANT: extend rather than replace — suite-state.js may have already
+  // attached `.store` to window.WealthSuite when loaded as an earlier
+  // defer script. Reassigning the whole namespace would wipe it.
+  window.WealthSuite = window.WealthSuite || {};
+  Object.assign(window.WealthSuite, {
     getTheme: () => resolveTheme(readPreference()),
     getPreference: readPreference,
     setPreference: (p) => {
@@ -195,5 +199,5 @@
     },
     cycle: cycleTheme,
     modules: MODULES.slice(),
-  };
+  });
 })();
