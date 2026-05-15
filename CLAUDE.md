@@ -15,7 +15,7 @@ read first if unfamiliar with the suite.
 | `TaxEstimatorV5.html` | React 18 + Tailwind + Babel inline | `assets/adapters/tax.js` (bidirectional with `taxSuiteInputs_v2`) |
 | `TaxAssetCalcv4.html` | React 18 + Tailwind + D3 | `assets/adapters/asset.js` (opt-in "Apply" buttons) |
 | `retirement_master_plan_2.html` | Vanilla JS + custom CSS vars | `assets/adapters/retirement.js` (RMD slider ↔ store; seeds projection chart from portfolio.totalValue + annualExpenses) |
-| `portfolio_review.html` | Vanilla JS + custom CSS vars | `assets/adapters/portfolio.js` (DOM parse on load) |
+| `portfolio_review.html` | Vanilla JS + custom CSS vars | `assets/adapters/portfolio.js` (DOM parse on load; scales Target Allocation table from portAtRetire; updates buffer target from annualExpenses) |
 | `golden_ratio_portfolio_dashboard.html` | Vanilla JS + artifact tokens | `assets/adapters/golden.js` (read-only: seeds sI from portfolio.totalValue, sW from annualExpenses/totalValue) |
 
 ## Suite shell
@@ -97,6 +97,7 @@ End of Phase 2:
 Phase 3 additions:
 - `assets/adapters/golden.js?v=1` (golden_ratio_portfolio_dashboard.html only)
 - `assets/adapters/retirement.js?v=4` (retirement_master_plan_2.html only)
+- `assets/adapters/portfolio.js?v=4` (portfolio_review.html only)
 
 ## Constraints to preserve
 

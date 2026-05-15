@@ -1,21 +1,28 @@
 /* =============================================================
- * Wealth Suite — Portfolio Review adapter (Phase 2 step 4)
+ * Wealth Suite — Portfolio Review adapter (Phase 2 step 4 / Phase 3)
  *
- * The Portfolio Review page is a static report — its $4.75M total
- * and allocation percentages are baked into the HTML, not entered
- * by the user. The adapter:
- *
+ * Phase 2:
  *   1. Parses the total-portfolio number out of the header on load
- *      and pushes it into suite.portfolio.totalValue, so the
- *      dashboard "Portfolio value" tile and the Asset Calculator
- *      both have something real to work with.
+ *      and pushes it into suite.portfolio.totalValue.
  *   2. Parses the "Current allocation" bars into
  *      suite.portfolio.allocations (decimal fractions).
  *   3. Injects a "Wealth Suite household" subtitle into the header
  *      that surfaces income / contributions / ages from the store.
  *
- * Only writes when the parsed value actually changes — keeps
- * meta.lastEditedBy from flipping to 'portfolio' on every reload.
+ * Phase 3 additions:
+ *   4. Reads retirement.plan.{targetRetireAge, annualExpenses,
+ *      growthAssumption} and household ages from the store and
+ *      derives portAtRetire (compound growth) and bufferNeeded
+ *      (3 × inflation-adjusted annual spend).
+ *   5. Scales the "Target $" column of the Target Allocation table
+ *      to reflect the projected portfolio at retirement rather than
+ *      the hardcoded $6.5M baseline, and updates the card subtitle.
+ *   6. Updates the "Buffer readiness" tile denominator with the
+ *      store-derived buffer target.
+ *   7. Expands the household banner to surface years-to-retirement
+ *      and annual spending alongside income and ages.
+ *
+ * Only writes to the store when the parsed value actually changes.
  * ============================================================= */
 (function () {
   'use strict';
@@ -27,6 +34,10 @@
   }
 
   const EDITED_BY = 'portfolio';
+  const INFLATION  = 0.035;
+  const GROWTH     = 0.07;
+  // The Target Allocation table was built assuming this retirement portfolio.
+  const BASELINE_PORT = 6500000;
 
   // ---------- helpers ----------
   const usd0 = new Intl.NumberFormat('en-US', {
@@ -35,6 +46,15 @@
   function fmtMoney(n) {
     if (n == null || !Number.isFinite(Number(n))) return null;
     return usd0.format(Number(n));
+  }
+  function fmtM(n) {
+    if (!n || !isFinite(n) || n <= 0) return '—';
+    return '$' + (n / 1e6).toFixed(2) + 'M';
+  }
+  function fmtK(n) {
+    if (!n || !isFinite(n) || n <= 0) return '—';
+    if (n >= 1e6) return '$' + (n / 1e6).toFixed(2) + 'M';
+    return '$' + Math.round(n / 1000) + 'k';
   }
   function sumSpouse(o) {
     if (!o) return 0;
@@ -67,18 +87,12 @@
     return m ? parseMoney(m[0]) : null;
   }
 
-  // The "Current allocation" panel sits in the first column of the
-  // grid inside the "Current vs. target allocation" card. Each row
-  // is a .bar-w with a percentage in its header. We take the first
-  // 5 (or however many) rows of the first column.
   function parseCurrentAllocations() {
     const allCards = document.querySelectorAll('.card');
     let currentColumn = null;
     allCards.forEach((card) => {
       const heading = card.querySelector('.ct');
       if (heading && /current vs\.?\s*target allocation/i.test(heading.textContent)) {
-        // Grid: column 1 = current, column 2 = target. Pick the col whose
-        // section header reads "current allocation".
         const cols = card.querySelectorAll(':scope > div > div');
         cols.forEach((col) => {
           const subhdr = col.querySelector('div');
@@ -93,12 +107,11 @@
     const out = {};
     currentColumn.querySelectorAll('.bar-w').forEach((bw) => {
       const labelEl = bw.querySelector('.bar-h span:first-child');
-      const pctEl = bw.querySelector('.bar-h span:last-child');
+      const pctEl   = bw.querySelector('.bar-h span:last-child');
       if (!labelEl || !pctEl) return;
       const label = labelEl.textContent.trim().toLowerCase();
-      const pct = parseFloat(pctEl.textContent);
+      const pct   = parseFloat(pctEl.textContent);
       if (!Number.isFinite(pct)) return;
-      // Camel-case the label: "US stocks" -> "usStocks", "Intl stocks" -> "intlStocks"
       const key = label
         .replace(/[^a-z0-9 ]/g, '')
         .split(/\s+/)
@@ -107,6 +120,92 @@
       out[key] = +(pct / 100).toFixed(4);
     });
     return Object.keys(out).length ? out : null;
+  }
+
+  // ---------- retirement-plan seeding ----------
+  function seedFromStore() {
+    const state = store.export();
+    if (!state || !state.meta || state.meta.lastUpdated == null) return;
+
+    const currentPortfolio = state.portfolio && state.portfolio.totalValue;
+    const retireAge        = state.retirement && state.retirement.plan && state.retirement.plan.targetRetireAge;
+    const annualExpenses   = state.retirement && state.retirement.plan && state.retirement.plan.annualExpenses;
+    const growthAssumption = state.retirement && state.retirement.plan && state.retirement.plan.growthAssumption;
+
+    const spouses = (state.household && state.household.spouses) || [];
+    const rawAges = spouses
+      .map((s) => (s && s.age != null && s.age !== '') ? Number(s.age) : NaN)
+      .filter((n) => !isNaN(n) && n > 0);
+    const currentAge = rawAges.length > 0 ? Math.min(...rawAges) : null;
+
+    const hasPortfolio = currentPortfolio && currentPortfolio > 0;
+    const hasExpenses  = annualExpenses && annualExpenses > 0;
+    if (!hasPortfolio && !hasExpenses) return;
+
+    const growthRate    = (growthAssumption && growthAssumption > 0) ? growthAssumption : GROWTH;
+    const retireAgeVal  = (retireAge && retireAge > 0) ? retireAge : 55;
+    const curAgeVal     = currentAge || 51;
+    const yearsToRetire = Math.max(0, retireAgeVal - curAgeVal);
+
+    const portAtRetire  = hasPortfolio
+      ? currentPortfolio * Math.pow(1 + growthRate, yearsToRetire)
+      : null;
+    const bufferNeeded  = hasExpenses
+      ? annualExpenses * Math.pow(1 + INFLATION, yearsToRetire) * 3
+      : null;
+
+    // --- Scale "Target $" column in the Target Allocation table ---
+    if (portAtRetire) {
+      const scale = portAtRetire / BASELINE_PORT;
+      const tables = document.querySelectorAll('.cmp-tbl');
+      let targetTable = null;
+      for (const t of tables) {
+        const ths = Array.from(t.querySelectorAll('th')).map((h) => h.textContent.trim());
+        if (ths.includes('Target %') && ths.includes('Target $')) {
+          targetTable = t;
+          break;
+        }
+      }
+      if (targetTable) {
+        const rows = targetTable.querySelectorAll('tbody tr');
+        rows.forEach((row) => {
+          const cells = row.querySelectorAll('td');
+          if (cells.length < 3) return;
+          const pct = parseFloat(cells[1].textContent);
+          if (!isFinite(pct) || pct <= 0) return;
+          const dollars = portAtRetire * pct / 100;
+          cells[2].textContent = fmtK(dollars);
+          cells[2].style.color = 'var(--cyan)';
+        });
+
+        const card = targetTable.closest('.card');
+        if (card) {
+          const cs = card.querySelector('.cs');
+          if (cs) {
+            cs.textContent =
+              `~${fmtM(portAtRetire)} projected portfolio at retirement (age ${retireAgeVal}). ` +
+              `Based on ${fmtM(currentPortfolio)} today growing at ${(growthRate * 100).toFixed(0)}%/yr over ${yearsToRetire} years.`;
+          }
+        }
+      }
+    }
+
+    // --- Update "Buffer readiness" tile denominator ---
+    if (bufferNeeded) {
+      for (const el of document.querySelectorAll('.sc')) {
+        const l = el.querySelector('.sc-l');
+        if (l && l.textContent.trim() === 'Buffer readiness') {
+          const v = el.querySelector('.sc-v');
+          if (v) {
+            // Preserve the current buffer amount (the numerator, e.g. $322k)
+            const parts = v.textContent.split('/');
+            const numerator = parts[0] ? parts[0].trim() : '$322k';
+            v.textContent = `${numerator}/${fmtK(bufferNeeded)}`;
+          }
+          break;
+        }
+      }
+    }
   }
 
   // ---------- household banner ----------
@@ -126,14 +225,25 @@
       sumSpouse(c.afterTax401k) + sumSpouse(c.catchup) +
       sumSpouse(c.ira) + (Number(c.hsa) || 0);
 
-    const ages = (state.household?.spouses || [])
+    const expenses  = state.retirement && state.retirement.plan && state.retirement.plan.annualExpenses;
+    const retireAge = state.retirement && state.retirement.plan && state.retirement.plan.targetRetireAge;
+
+    const spouses = (state.household?.spouses || []);
+    const ages = spouses
       .map((s) => (s && s.age != null && s.age !== '') ? `${s.age}` : null)
       .filter(Boolean);
+    const rawAges = spouses
+      .map((s) => (s && s.age != null && s.age !== '') ? Number(s.age) : NaN)
+      .filter((n) => !isNaN(n) && n > 0);
+    const currentAge = rawAges.length > 0 ? Math.min(...rawAges) : null;
+    const yearsToRetire = (retireAge && currentAge) ? Math.max(0, retireAge - currentAge) : null;
 
     const parts = [];
-    if (totalIncome) parts.push(`income ${fmtMoney(totalIncome)}`);
+    if (totalIncome)  parts.push(`income ${fmtMoney(totalIncome)}`);
+    if (expenses)     parts.push(`expenses ${fmtMoney(expenses)}/yr`);
     if (totalContrib) parts.push(`contributions ${fmtMoney(totalContrib)}/yr`);
-    if (ages.length) parts.push(`ages ${ages.join(' & ')}`);
+    if (ages.length)  parts.push(`ages ${ages.join(' & ')}`);
+    if (yearsToRetire != null) parts.push(`retire in ${yearsToRetire} yrs (age ${retireAge})`);
     if (!parts.length) return;
 
     let banner = document.getElementById('suite-household-banner');
@@ -157,6 +267,7 @@
     const allocs = parseCurrentAllocations();
     setObjectIfChanged('portfolio.allocations', allocs);
 
+    seedFromStore();
     renderHouseholdBanner();
     store.subscribe('', renderHouseholdBanner);
   }
@@ -170,6 +281,7 @@
   window.WealthSuite._portfolioAdapter = {
     parseTotal: parseTotalFromHeader,
     parseAllocations: parseCurrentAllocations,
+    seedFromStore,
     rerender: renderHouseholdBanner,
   };
 })();
