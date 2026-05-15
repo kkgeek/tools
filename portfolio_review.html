@@ -15,11 +15,23 @@
   --amber-bg:rgba(251,191,36,0.1);--amber-t:#FBBF24;
   --red-bg:rgba(248,113,113,0.1);--red-t:#F87171;
   --blue-bg:rgba(75,139,245,0.1);--blue-t:#4B8BF5;
+  --hdr-bg:linear-gradient(135deg,#0F1923 0%,#162032 100%);
 }
+[data-theme="light"]{
+  --bg:#F0F2F5;--surface:#FFFFFF;--surface2:#F7F9FB;--border:#E2E6EA;
+  --text:#0F172A;--muted:#475569;--hint:#94A3B8;
+  --blue:#2563EB;--green:#059669;--amber:#D97706;--red:#DC2626;--purple:#7C3AED;--cyan:#0891B2;
+  --green-bg:#ECFDF5;--green-t:#065F46;
+  --amber-bg:#FFFBEB;--amber-t:#92400E;
+  --red-bg:#FEF2F2;--red-t:#991B1B;
+  --blue-bg:#EFF6FF;--blue-t:#1E40AF;
+  --hdr-bg:linear-gradient(135deg,#1E3A5F 0%,#2563EB 100%);
+}
+html[data-theme="light"] body{color-scheme:light}
 body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);font-size:14px;line-height:1.6;min-height:100vh}
-.hdr{background:linear-gradient(135deg,#0F1923 0%,#162032 100%);padding:24px 32px;border-bottom:1px solid var(--border)}
+.hdr{background:var(--hdr-bg);padding:24px 32px;border-bottom:1px solid var(--border);color:#FFFFFF}
 .hdr h1{font-size:18px;font-weight:700;margin-bottom:3px}
-.hdr p{font-size:12px;color:var(--muted)}
+.hdr p{font-size:12px;opacity:.8}
 .nav{background:var(--surface);border-bottom:1px solid var(--border);padding:0 28px;display:flex;overflow-x:auto;gap:2px}
 .nb{padding:12px 16px;border:none;background:transparent;color:var(--hint);cursor:pointer;font-size:12px;font-weight:600;border-bottom:2px solid transparent;white-space:nowrap;font-family:inherit;transition:all .15s;text-transform:uppercase;letter-spacing:.06em}
 .nb:hover{color:var(--muted)}.nb.on{color:var(--cyan);border-bottom-color:var(--cyan)}
@@ -78,7 +90,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
 </style>
 
 <!-- Wealth Suite shared shell -->
-<link rel="stylesheet" href="assets/suite.css?v=3">
+<link rel="stylesheet" href="assets/suite.css?v=4">
 <script>(function(){try{var p=localStorage.getItem('wealthSuite.themePreference');if(!['system','light','dark'].includes(p))p='system';var r=p==='system'?(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'):p;document.documentElement.setAttribute('data-theme',r);document.documentElement.setAttribute('data-theme-pref',p);}catch(e){}})();</script>
 <script src="assets/suite-state.js?v=4" defer></script>
 <script src="assets/suite.js?v=3" defer></script>
