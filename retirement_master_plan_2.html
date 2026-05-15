@@ -16,6 +16,19 @@
   --blue-bg:#EFF6FF;--blue-t:#1E40AF;
   --purple-bg:#F3F0FF;--purple-t:#4C1D95;
 }
+[data-theme="dark"]{
+  --bg:#121318;--surface:#1E1F25;--surface2:#26272D;--border:#34353B;--border2:#45464F;
+  --text:#E3E2E9;--muted:#C5C6D0;--hint:#8F909A;
+  --navy:#AFC6FF;--blue:#7BA8FF;--green:#34D399;--amber:#FBBF24;--red:#F87171;--purple:#C4B5FD;
+  --green-bg:rgba(52,211,153,0.15);--green-t:#6EE7B7;
+  --amber-bg:rgba(251,191,36,0.15);--amber-t:#FCD34D;
+  --red-bg:rgba(248,113,113,0.15);--red-t:#FCA5A5;
+  --blue-bg:rgba(123,168,255,0.15);--blue-t:#93C5FD;
+  --purple-bg:rgba(196,181,253,0.15);--purple-t:#DDD6FE;
+}
+html[data-theme="dark"] body{color-scheme:dark}
+[data-theme="dark"] .hdr{background:#0F1421}
+[data-theme="dark"] .sc-btn.on,[data-theme="dark"] .nb.on{color:#0F1421}
 body{font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;background:var(--bg);color:var(--text);font-size:14px;line-height:1.6;min-height:100vh}
 .hdr{background:var(--navy);color:white;padding:18px 28px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px}
 .hdr-l h1{font-size:17px;font-weight:600}
@@ -118,7 +131,7 @@ body{font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;background:var(
 </style>
 
 <!-- Wealth Suite shared shell -->
-<link rel="stylesheet" href="assets/suite.css?v=3">
+<link rel="stylesheet" href="assets/suite.css?v=4">
 <script>(function(){try{var p=localStorage.getItem('wealthSuite.themePreference');if(!['system','light','dark'].includes(p))p='system';var r=p==='system'?(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'):p;document.documentElement.setAttribute('data-theme',r);document.documentElement.setAttribute('data-theme-pref',p);}catch(e){}})();</script>
 <script src="assets/suite-state.js?v=3" defer></script>
 <script src="assets/suite.js?v=3" defer></script>

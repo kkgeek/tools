@@ -644,3 +644,137 @@ body.suite-tool-shell {
   .suite-topnav__link { padding: 8px 10px; font-size: 13px; }
   .suite-brand__name { display: none; }
 }
+
+/* ---------- Tailwind utility dark overrides ----------
+ * Tax (TaxEstimatorV5.html) and Asset (TaxAssetCalcv4.html) use the
+ * Tailwind CDN with hardcoded utility classes (bg-white, bg-slate-50,
+ * text-slate-700, etc.). Tailwind has no dark: variants here, so these
+ * classes ignore [data-theme="dark"] on <html>. The block below maps
+ * the most common utilities to dark-friendly equivalents using the MD3
+ * tokens that are already theme-aware. Colored pastel surfaces (bg-blue-50,
+ * bg-emerald-50, etc.) become translucent tints over the dark surface so
+ * the original semantic color stays readable. */
+html[data-theme="dark"] {
+  --tw-on-surface:        var(--md-sys-color-on-surface);
+  --tw-on-surface-var:    var(--md-sys-color-on-surface-variant);
+}
+
+/* Page-level backgrounds */
+html[data-theme="dark"] body.bg-slate-50,
+html[data-theme="dark"] body.bg-gray-50,
+html[data-theme="dark"] body.bg-gray-100,
+html[data-theme="dark"] body.bg-white { background-color: var(--md-sys-color-background) !important; color: var(--md-sys-color-on-background); }
+
+/* Neutral surfaces */
+html[data-theme="dark"] .bg-white { background-color: var(--md-sys-color-surface-container-lowest) !important; }
+html[data-theme="dark"] .bg-slate-50,
+html[data-theme="dark"] .bg-gray-50 { background-color: var(--md-sys-color-surface-container-low) !important; }
+html[data-theme="dark"] .bg-slate-100,
+html[data-theme="dark"] .bg-gray-100 { background-color: var(--md-sys-color-surface-container) !important; }
+html[data-theme="dark"] .bg-slate-200,
+html[data-theme="dark"] .bg-gray-200 { background-color: var(--md-sys-color-surface-container-high) !important; }
+
+/* Neutral text */
+html[data-theme="dark"] .text-slate-900,
+html[data-theme="dark"] .text-gray-900,
+html[data-theme="dark"] .text-slate-800,
+html[data-theme="dark"] .text-gray-800 { color: var(--md-sys-color-on-surface) !important; }
+html[data-theme="dark"] .text-slate-700,
+html[data-theme="dark"] .text-gray-700,
+html[data-theme="dark"] .text-slate-600,
+html[data-theme="dark"] .text-gray-600 { color: var(--md-sys-color-on-surface-variant) !important; }
+html[data-theme="dark"] .text-slate-500,
+html[data-theme="dark"] .text-gray-500,
+html[data-theme="dark"] .text-slate-400,
+html[data-theme="dark"] .text-gray-400 { color: color-mix(in oklab, var(--md-sys-color-on-surface-variant) 80%, transparent) !important; }
+
+/* Neutral borders */
+html[data-theme="dark"] .border-slate-100,
+html[data-theme="dark"] .border-gray-100,
+html[data-theme="dark"] .border-slate-200,
+html[data-theme="dark"] .border-gray-200,
+html[data-theme="dark"] .border-slate-300,
+html[data-theme="dark"] .border-gray-300 { border-color: var(--md-sys-color-outline-variant) !important; }
+html[data-theme="dark"] .divide-slate-200 > * + *,
+html[data-theme="dark"] .divide-gray-200 > * + * { border-color: var(--md-sys-color-outline-variant) !important; }
+
+/* Colored pastel SURFACES — keep the hue, use a translucent tint */
+html[data-theme="dark"] .bg-blue-50    { background-color: rgba(123,168,255,.14) !important; }
+html[data-theme="dark"] .bg-blue-100   { background-color: rgba(123,168,255,.22) !important; }
+html[data-theme="dark"] .bg-indigo-50  { background-color: rgba(129,140,248,.14) !important; }
+html[data-theme="dark"] .bg-indigo-100 { background-color: rgba(129,140,248,.22) !important; }
+html[data-theme="dark"] .bg-violet-50  { background-color: rgba(167,139,250,.14) !important; }
+html[data-theme="dark"] .bg-violet-100 { background-color: rgba(167,139,250,.22) !important; }
+html[data-theme="dark"] .bg-purple-50  { background-color: rgba(192,132,252,.14) !important; }
+html[data-theme="dark"] .bg-purple-100 { background-color: rgba(192,132,252,.22) !important; }
+html[data-theme="dark"] .bg-emerald-50  { background-color: rgba(52,211,153,.14) !important; }
+html[data-theme="dark"] .bg-emerald-100 { background-color: rgba(52,211,153,.22) !important; }
+html[data-theme="dark"] .bg-teal-50    { background-color: rgba(45,212,191,.14) !important; }
+html[data-theme="dark"] .bg-teal-100   { background-color: rgba(45,212,191,.22) !important; }
+html[data-theme="dark"] .bg-amber-50   { background-color: rgba(251,191,36,.14) !important; }
+html[data-theme="dark"] .bg-amber-100  { background-color: rgba(251,191,36,.22) !important; }
+html[data-theme="dark"] .bg-orange-50  { background-color: rgba(251,146,60,.14) !important; }
+html[data-theme="dark"] .bg-orange-100 { background-color: rgba(251,146,60,.22) !important; }
+html[data-theme="dark"] .bg-red-50     { background-color: rgba(248,113,113,.14) !important; }
+html[data-theme="dark"] .bg-red-100    { background-color: rgba(248,113,113,.22) !important; }
+html[data-theme="dark"] .bg-pink-50    { background-color: rgba(244,114,182,.14) !important; }
+
+/* Colored pastel TEXT — brighten so it stays legible on dark */
+html[data-theme="dark"] .text-blue-400,
+html[data-theme="dark"] .text-blue-500,
+html[data-theme="dark"] .text-blue-600,
+html[data-theme="dark"] .text-blue-700  { color: #93C5FD !important; }
+html[data-theme="dark"] .text-indigo-400,
+html[data-theme="dark"] .text-indigo-500,
+html[data-theme="dark"] .text-indigo-600,
+html[data-theme="dark"] .text-indigo-700 { color: #A5B4FC !important; }
+html[data-theme="dark"] .text-violet-700 { color: #C4B5FD !important; }
+html[data-theme="dark"] .text-purple-700 { color: #D8B4FE !important; }
+html[data-theme="dark"] .text-emerald-400,
+html[data-theme="dark"] .text-emerald-500,
+html[data-theme="dark"] .text-emerald-600,
+html[data-theme="dark"] .text-emerald-700 { color: #6EE7B7 !important; }
+html[data-theme="dark"] .text-teal-700 { color: #5EEAD4 !important; }
+html[data-theme="dark"] .text-amber-400,
+html[data-theme="dark"] .text-amber-500,
+html[data-theme="dark"] .text-amber-700 { color: #FCD34D !important; }
+html[data-theme="dark"] .text-orange-700 { color: #FDBA74 !important; }
+html[data-theme="dark"] .text-red-400,
+html[data-theme="dark"] .text-red-500,
+html[data-theme="dark"] .text-red-700 { color: #FCA5A5 !important; }
+
+/* Colored pastel BORDERS */
+html[data-theme="dark"] .border-blue-100,
+html[data-theme="dark"] .border-blue-200 { border-color: rgba(123,168,255,.35) !important; }
+html[data-theme="dark"] .border-indigo-100,
+html[data-theme="dark"] .border-indigo-200 { border-color: rgba(129,140,248,.35) !important; }
+html[data-theme="dark"] .border-violet-100,
+html[data-theme="dark"] .border-violet-200 { border-color: rgba(167,139,250,.35) !important; }
+html[data-theme="dark"] .border-purple-100,
+html[data-theme="dark"] .border-purple-200 { border-color: rgba(192,132,252,.35) !important; }
+html[data-theme="dark"] .border-emerald-100,
+html[data-theme="dark"] .border-emerald-200 { border-color: rgba(52,211,153,.35) !important; }
+html[data-theme="dark"] .border-teal-100 { border-color: rgba(45,212,191,.35) !important; }
+html[data-theme="dark"] .border-amber-100,
+html[data-theme="dark"] .border-amber-200 { border-color: rgba(251,191,36,.35) !important; }
+html[data-theme="dark"] .border-orange-200 { border-color: rgba(251,146,60,.35) !important; }
+html[data-theme="dark"] .border-red-100,
+html[data-theme="dark"] .border-red-200,
+html[data-theme="dark"] .border-red-300 { border-color: rgba(248,113,113,.35) !important; }
+
+/* Inputs */
+html[data-theme="dark"] input,
+html[data-theme="dark"] select,
+html[data-theme="dark"] textarea {
+  background-color: var(--md-sys-color-surface-container) !important;
+  color: var(--md-sys-color-on-surface) !important;
+  border-color: var(--md-sys-color-outline-variant) !important;
+}
+html[data-theme="dark"] input::placeholder,
+html[data-theme="dark"] textarea::placeholder { color: color-mix(in oklab, var(--md-sys-color-on-surface-variant) 60%, transparent) !important; }
+
+/* Solid colored buttons (Asset Calc) — keep saturated but slightly muted */
+html[data-theme="dark"] .bg-indigo-600 { background-color: #6366F1 !important; }
+html[data-theme="dark"] .bg-indigo-700 { background-color: #4F46E5 !important; }
+html[data-theme="dark"] .bg-purple-600 { background-color: #A855F7 !important; }
+html[data-theme="dark"] .bg-purple-700 { background-color: #9333EA !important; }
