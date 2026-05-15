@@ -879,25 +879,78 @@ const ResultsPanel = ({results: r, inputs, onExport}) => {
 
       {/* ---- Take-Home ---- */}
       <Card title="Take-Home Summary" titleCls="text-emerald-700">
-        <Row label="Gross Income" value={fmt(r.grossIncome)} />
-        {mfj && <>
-          <Row label="Spouse 1" value={fmt(r.s1W2)} indent sub />
-          <Row label="Spouse 2" value={fmt(r.s2W2)} indent sub />
-        </>}
-        <Row label="Total Taxes" value={`(${fmt(r.totalTax)})`} indent sub />
-        <Row label="Pre-Tax 401k & HSA" value={`(${fmt(r.preTaxDed)})`} indent sub />
-        {mfj && <>
-          <Row label="Spouse 1" value={`(${fmt(r.s1PreTax)})`} indent sub />
-          <Row label="Spouse 2" value={`(${fmt(r.s2PreTax)})`} indent sub />
-        </>}
-        <Row label="Post-Tax Roth 401k" value={`(${fmt(r.postTaxDed)})`} indent sub />
-        {mfj && <>
-          <Row label="Spouse 1" value={`(${fmt(r.s1PostTax)})`} indent sub />
-          <Row label="Spouse 2" value={`(${fmt(r.s2PostTax)})`} indent sub />
-        </>}
-        <Divider />
-        <Row label="Annual Take-Home" value={fmt(r.takeHomeAnnual)} bold highlight />
-        <Row label="Monthly Take-Home" value={fmt(r.takeHomeMonthly)} bold />
+        {(() => {
+          const th = 'text-xs font-semibold uppercase tracking-wider text-slate-500 text-right py-2 px-2 border-b border-slate-200';
+          const thLbl = 'py-2 px-2 border-b border-slate-200';
+          const td = 'text-sm font-mono tabular-nums text-right text-slate-700 py-1 px-2';
+          const tdBold = 'text-sm font-mono tabular-nums text-right font-bold text-slate-900 py-1 px-2';
+          const tdLbl = 'text-sm text-slate-600 py-1 px-2';
+          const tdLblBold = 'text-sm font-semibold text-slate-800 py-1 px-2';
+          const trBorder = 'border-t-2 border-slate-200';
+          const trHighlight = 'bg-blue-50';
+          const s2 = mfj ? fmt(r.s2W2) : '—';
+          const s2Pre = mfj ? `(${fmt(r.s2PreTax)})` : '—';
+          const s2Post = mfj ? `(${fmt(r.s2PostTax)})` : '—';
+          return (
+            <table className="w-full table-fixed">
+              <colgroup>
+                <col style={{width: '40%'}} />
+                <col style={{width: '20%'}} />
+                <col style={{width: '20%'}} />
+                <col style={{width: '20%'}} />
+              </colgroup>
+              <thead>
+                <tr>
+                  <th className={thLbl} />
+                  <th className={th}>Spouse 1</th>
+                  <th className={th}>Spouse 2</th>
+                  <th className={th}>Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td className={tdLbl}>Gross Income</td>
+                  <td className={td}>{fmt(r.s1W2)}</td>
+                  <td className={td}>{s2}</td>
+                  <td className={td}>{fmt(r.grossIncome)}</td>
+                </tr>
+                <tr>
+                  <td className={tdLbl}>Pre-Tax 401k & HSA</td>
+                  <td className={td}>({fmt(r.s1PreTax)})</td>
+                  <td className={td}>{s2Pre}</td>
+                  <td className={td}>({fmt(r.preTaxDed)})</td>
+                </tr>
+                <tr>
+                  <td className={tdLbl}>Post-Tax Roth 401k</td>
+                  <td className={td}>({fmt(r.s1PostTax)})</td>
+                  <td className={td}>{s2Post}</td>
+                  <td className={td}>({fmt(r.postTaxDed)})</td>
+                </tr>
+                <tr aria-hidden="true">
+                  <td className="py-2" colSpan={4}>&nbsp;</td>
+                </tr>
+                <tr className={trBorder}>
+                  <td className={tdLblBold}>Total Taxes</td>
+                  <td className={td} />
+                  <td className={td} />
+                  <td className={tdBold}>({fmt(r.totalTax)})</td>
+                </tr>
+                <tr className={trHighlight}>
+                  <td className={tdLblBold}>Annual Take-Home</td>
+                  <td className={td} />
+                  <td className={td} />
+                  <td className={tdBold}>{fmt(r.takeHomeAnnual)}</td>
+                </tr>
+                <tr>
+                  <td className={tdLblBold}>Monthly Take-Home</td>
+                  <td className={td} />
+                  <td className={td} />
+                  <td className={tdBold}>{fmt(r.takeHomeMonthly)}</td>
+                </tr>
+              </tbody>
+            </table>
+          );
+        })()}
         {r.totalMatch > 0 && (
           <div className="mt-3 p-2.5 bg-indigo-50 border border-indigo-100 rounded-lg">
             <p className="text-sm font-semibold text-indigo-700">
