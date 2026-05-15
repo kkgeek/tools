@@ -73,7 +73,7 @@
     const d = pullSuiteData();
     const yearSelect = document.getElementById('taxYear');
     if (yearSelect && d.taxYear) {
-      // The Capital Gains Calculator only supports 2024 & 2025 — clamp.
+      // Clamp to supported years; new options added to the dropdown are picked up automatically.
       const supported = Array.from(yearSelect.options).map((o) => o.value);
       const wanted = supported.includes(String(d.taxYear))
         ? String(d.taxYear)

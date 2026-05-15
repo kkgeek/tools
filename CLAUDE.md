@@ -92,7 +92,7 @@ End of Phase 2:
 - `assets/adapters/tax.js?v=4` (TaxEstimatorV5.html only)
 - `assets/adapters/retirement.js?v=3` (retirement_master_plan_2.html only)
 - `assets/adapters/portfolio.js?v=3` (portfolio_review.html only)
-- `assets/adapters/asset.js?v=4` (TaxAssetCalcv4.html only)
+- `assets/adapters/asset.js?v=5` (TaxAssetCalcv4.html only)
 
 Phase 3 additions:
 - `assets/adapters/golden.js?v=1` (golden_ratio_portfolio_dashboard.html only)
@@ -130,7 +130,7 @@ Phase 3 additions:
 - `html2canvas` can't parse `color-mix(in oklab, ...)`. For doc
   screenshots, use headless Chrome
   (`google-chrome --headless --screenshot=...`).
-- Asset Calc supports tax years 2024 & 2025 only — adapter clamps.
+- Asset Calc supports tax years 2024, 2025, 2026 — adapter clamps to latest supported year if store has a newer value.
 
 ## Workflow
 
