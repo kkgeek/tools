@@ -579,6 +579,47 @@ body.suite-tool-shell {
   background: color-mix(in oklab, var(--md-sys-color-secondary-container) 90%, black);
 }
 
+/* ---------- CSV export dropdown ---------- */
+.suite-csv-dropdown {
+  position: relative;
+}
+
+.suite-csv-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  z-index: 200;
+  list-style: none;
+  margin: 0;
+  padding: 4px 0;
+  min-width: 160px;
+  background: var(--md-sys-color-surface-container-high);
+  border-radius: 12px;
+  box-shadow: var(--md-sys-elevation-2);
+  white-space: nowrap;
+}
+
+.suite-csv-item {
+  display: block;
+  width: 100%;
+  padding: 10px 16px;
+  border: none;
+  background: none;
+  color: var(--md-sys-color-on-surface);
+  font: inherit;
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+  border-radius: 8px;
+}
+.suite-csv-item:hover {
+  background: color-mix(in oklab, var(--md-sys-color-on-surface) 8%, transparent);
+}
+.suite-csv-item:focus-visible {
+  outline: 2px solid var(--md-sys-color-primary);
+  outline-offset: -2px;
+}
+
 /* ---------- Footer ---------- */
 .suite-footer {
   max-width: var(--suite-max-width);

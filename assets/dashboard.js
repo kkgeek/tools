@@ -204,7 +204,7 @@
     mount.appendChild(meta);
   }
 
-  // ---------- Export / Import (Phase 2 step 5) ----------
+  // ---------- Export / Import ----------
   const EXPORT_FORMAT = 'wealth-suite-export-v1';
 
   function todayISO() {
@@ -231,6 +231,100 @@
       state,
     });
     showStatus('Exported to your downloads folder.');
+  }
+
+  // ---------- CSV export ----------
+  function downloadCSV(filename, rows) {
+    const csv = rows.map((row) =>
+      row.map((cell) => {
+        const s = cell == null ? '' : String(cell);
+        return /[,"\n\r]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+      }).join(',')
+    ).join('\r\n');
+    // BOM helps Excel on Windows open UTF-8 CSV correctly.
+    const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  function spouseCols(state) {
+    const sp = (state.household && state.household.spouses) || [];
+    return [
+      (sp[0] && sp[0].name) ? sp[0].name.trim() : 'Spouse 1',
+      (sp[1] && sp[1].name) ? sp[1].name.trim() : 'Spouse 2',
+    ];
+  }
+
+  function fmtNum(n) {
+    const v = Number(n);
+    return (n == null || !Number.isFinite(v)) ? '' : v;
+  }
+
+  function exportIncomeCSV() {
+    const state = store.export();
+    const inc = state.income || {};
+    const cg = inc.capitalGains || {};
+    const [n1, n2] = spouseCols(state);
+    const rows = [
+      ['Category', 'Item', n1, n2],
+      ['Income', 'Salary', fmtNum(inc.salary && inc.salary.s1), fmtNum(inc.salary && inc.salary.s2)],
+      ['Income', 'Bonus', fmtNum(inc.bonus && inc.bonus.s1), fmtNum(inc.bonus && inc.bonus.s2)],
+      ['Income', 'RSU Vests', fmtNum(inc.rsuVests && inc.rsuVests.s1), fmtNum(inc.rsuVests && inc.rsuVests.s2)],
+      ['Capital Gains', 'Short-term (shared)', fmtNum(cg.shortTerm), ''],
+      ['Capital Gains', 'Long-term (shared)', fmtNum(cg.longTerm), ''],
+    ];
+    downloadCSV(`wealth-suite-income-${todayISO()}.csv`, rows);
+    showStatus('Income CSV downloaded.');
+  }
+
+  function exportRetirementCSV() {
+    const state = store.export();
+    const [n1, n2] = spouseCols(state);
+    const c = (state.retirement && state.retirement.contributions) || {};
+    const bal = (state.retirement && state.retirement.balances) || {};
+    const plan = (state.retirement && state.retirement.plan) || {};
+    const rows = [
+      ['Category', 'Item', n1, n2],
+      ['Contributions', 'Traditional 401(k)', fmtNum(c.traditional401k && c.traditional401k.s1), fmtNum(c.traditional401k && c.traditional401k.s2)],
+      ['Contributions', 'Roth 401(k)', fmtNum(c.roth401k && c.roth401k.s1), fmtNum(c.roth401k && c.roth401k.s2)],
+      ['Contributions', 'After-tax 401(k)', fmtNum(c.afterTax401k && c.afterTax401k.s1), fmtNum(c.afterTax401k && c.afterTax401k.s2)],
+      ['Contributions', 'Catch-up', fmtNum(c.catchup && c.catchup.s1), fmtNum(c.catchup && c.catchup.s2)],
+      ['Contributions', 'IRA', fmtNum(c.ira && c.ira.s1), fmtNum(c.ira && c.ira.s2)],
+      ['Contributions', 'HSA (shared)', fmtNum(c.hsa), ''],
+      ['Balance', 'Total Retirement Balance', fmtNum(bal.total), ''],
+      ['Plan', 'Target Retire Age', fmtNum(plan.targetRetireAge), ''],
+      ['Plan', 'Annual Expenses', fmtNum(plan.annualExpenses), ''],
+      ['Plan', 'Growth Assumption', fmtNum(plan.growthAssumption), ''],
+    ];
+    downloadCSV(`wealth-suite-retirement-${todayISO()}.csv`, rows);
+    showStatus('Retirement CSV downloaded.');
+  }
+
+  function exportPortfolioCSV() {
+    const state = store.export();
+    const port = state.portfolio || {};
+    const total = Number(port.totalValue) || 0;
+    const allocs = port.allocations || {};
+    const rows = [['Asset Class', 'Current %', 'Current $']];
+    for (const [key, fraction] of Object.entries(allocs)) {
+      const label = key
+        .replace(/([A-Z])/g, ' $1')
+        .replace(/\b\w/g, (c) => c.toUpperCase())
+        .trim();
+      const pct = Number.isFinite(Number(fraction)) ? +(Number(fraction) * 100).toFixed(2) : '';
+      const dollars = (total && Number.isFinite(Number(fraction))) ? Math.round(total * Number(fraction)) : '';
+      rows.push([label, pct, dollars]);
+    }
+    rows.push(['', '', '']);
+    rows.push(['Total', '', total || '']);
+    downloadCSV(`wealth-suite-portfolio-${todayISO()}.csv`, rows);
+    showStatus('Portfolio CSV downloaded.');
   }
 
   function handleImportFile(file) {
@@ -326,7 +420,59 @@
     status.className = 'suite-snapshot__status';
     status.setAttribute('aria-live', 'polite');
 
+    // CSV export dropdown
+    const csvWrap = document.createElement('div');
+    csvWrap.className = 'suite-csv-dropdown';
+
+    const csvTrigger = document.createElement('button');
+    csvTrigger.type = 'button';
+    csvTrigger.className = 'suite-action-btn suite-action-btn--ghost';
+    csvTrigger.setAttribute('aria-haspopup', 'menu');
+    csvTrigger.setAttribute('aria-expanded', 'false');
+    csvTrigger.textContent = 'Export CSV ▾';
+
+    const csvMenu = document.createElement('ul');
+    csvMenu.className = 'suite-csv-menu';
+    csvMenu.setAttribute('role', 'menu');
+    csvMenu.hidden = true;
+
+    [
+      { label: 'Income', fn: exportIncomeCSV },
+      { label: 'Retirement', fn: exportRetirementCSV },
+      { label: 'Portfolio', fn: exportPortfolioCSV },
+    ].forEach(({ label, fn }) => {
+      const li = document.createElement('li');
+      li.setAttribute('role', 'none');
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'suite-csv-item';
+      btn.setAttribute('role', 'menuitem');
+      btn.textContent = label;
+      btn.addEventListener('click', () => {
+        csvMenu.hidden = true;
+        csvTrigger.setAttribute('aria-expanded', 'false');
+        fn();
+      });
+      li.appendChild(btn);
+      csvMenu.appendChild(li);
+    });
+
+    csvTrigger.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const open = !csvMenu.hidden;
+      csvMenu.hidden = open;
+      csvTrigger.setAttribute('aria-expanded', String(!open));
+    });
+    document.addEventListener('click', () => {
+      csvMenu.hidden = true;
+      csvTrigger.setAttribute('aria-expanded', 'false');
+    });
+
+    csvWrap.appendChild(csvTrigger);
+    csvWrap.appendChild(csvMenu);
+
     host.appendChild(exportBtn);
+    host.appendChild(csvWrap);
     host.appendChild(importBtn);
     host.appendChild(resetBtn);
     host.appendChild(fileInput);
