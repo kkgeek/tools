@@ -69,6 +69,13 @@
     return new Date(ts).toLocaleDateString();
   }
 
+  // ---------- Scenarios ----------
+  const SCENARIOS = [
+    { id: 'retire-55', label: 'Retire at 55', retireAge: 55 },
+    { id: 'retire-60', label: 'Retire at 60', retireAge: 60 },
+    { id: 'retire-65', label: 'Retire at 65', retireAge: 65 },
+  ];
+
   const TOOL_LABEL = {
     tax: 'Tax Estimator',
     retirement: 'Retirement Planner',
@@ -326,12 +333,56 @@
     host.appendChild(status);
   }
 
+  function renderScenarios() {
+    const host = document.getElementById('suite-scenarios');
+    if (!host || host.dataset.suiteBound) return;
+    host.dataset.suiteBound = '1';
+
+    SCENARIOS.forEach((sc) => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'suite-scenario-chip';
+      btn.dataset.retireAge = sc.retireAge;
+      btn.textContent = sc.label;
+      btn.addEventListener('click', () => {
+        const current = store.get('retirement.plan.targetRetireAge');
+        if (current === sc.retireAge) {
+          store.set('retirement.plan.targetRetireAge', null, { editedBy: 'dashboard' });
+          showStatus('Scenario cleared.');
+        } else {
+          store.set('retirement.plan.targetRetireAge', sc.retireAge, { editedBy: 'dashboard' });
+          showStatus(`Scenario: ${sc.label} active.`);
+        }
+      });
+      host.appendChild(btn);
+    });
+  }
+
+  function updateScenarioChips(state) {
+    const active = state && state.retirement && state.retirement.plan
+      ? state.retirement.plan.targetRetireAge
+      : null;
+    document.querySelectorAll('.suite-scenario-chip').forEach((chip) => {
+      chip.classList.toggle('is-active', Number(chip.dataset.retireAge) === active);
+    });
+  }
+
+  renderScenarios();
   renderActions();
 
   // Initial render + subscribe to any future change
-  render(store.export());
-  store.subscribe('', render);
+  const _initialState = store.export();
+  render(_initialState);
+  updateScenarioChips(_initialState);
+  store.subscribe('', (state) => {
+    render(state);
+    updateScenarioChips(state);
+  });
 
   // Re-render relative time every minute so "3 min ago" stays accurate
-  setInterval(() => render(store.export()), 60_000);
+  setInterval(() => {
+    const s = store.export();
+    render(s);
+    updateScenarioChips(s);
+  }, 60_000);
 })();

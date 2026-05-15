@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto+Flex:opsz,wght@8..144,300..700&display=swap">
-  <link rel="stylesheet" href="assets/suite.css?v=5">
+  <link rel="stylesheet" href="assets/suite.css?v=6">
 
   <!-- Apply theme before paint to avoid flash -->
   <script>
@@ -68,6 +68,13 @@
   <section class="suite-snapshot" id="suite-snapshot" aria-label="Household snapshot">
     <!-- Filled by assets/dashboard.js — empty state until tool adapters write to the store. -->
   </section>
+
+  <div class="suite-section-head">
+    <h3 class="suite-section-title">Scenarios</h3>
+  </div>
+  <div id="suite-scenarios" class="suite-scenarios" aria-label="Retirement scenarios">
+    <!-- Filled by assets/dashboard.js — scenario chips write retirement.plan.targetRetireAge to the store -->
+  </div>
 
   <h3 class="suite-section-title">Modules</h3>
   <section class="suite-grid" aria-label="Modules">
@@ -159,6 +166,6 @@
 
 <script src="assets/suite-state.js?v=4" defer></script>
 <script src="assets/suite.js?v=3" defer></script>
-<script src="assets/dashboard.js?v=6" defer></script>
+<script src="assets/dashboard.js?v=7" defer></script>
 </body>
 </html>

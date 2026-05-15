@@ -535,6 +535,50 @@ body.suite-tool-shell {
   margin: 0;
 }
 
+/* ---------- Scenario chips (dashboard only) ---------- */
+.suite-scenarios {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 40px;
+}
+
+.suite-scenario-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 16px;
+  border-radius: var(--md-sys-shape-corner-full);
+  border: 1px solid var(--md-sys-color-outline);
+  background: transparent;
+  color: var(--md-sys-color-on-surface-variant);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: .01em;
+  cursor: pointer;
+  transition: background .18s var(--md-sys-motion-standard),
+              border-color .18s, color .18s;
+}
+.suite-scenario-chip:hover {
+  background: color-mix(in oklab, var(--md-sys-color-on-surface) 8%, transparent);
+  border-color: var(--md-sys-color-on-surface);
+  color: var(--md-sys-color-on-surface);
+}
+.suite-scenario-chip:focus-visible {
+  outline: 2px solid var(--md-sys-color-primary);
+  outline-offset: 2px;
+}
+.suite-scenario-chip.is-active {
+  background: var(--md-sys-color-secondary-container);
+  border-color: transparent;
+  color: var(--md-sys-color-on-secondary-container);
+  font-weight: 600;
+}
+.suite-scenario-chip.is-active:hover {
+  background: color-mix(in oklab, var(--md-sys-color-secondary-container) 90%, black);
+}
+
 /* ---------- Footer ---------- */
 .suite-footer {
   max-width: var(--suite-max-width);

@@ -98,6 +98,8 @@ Phase 3 additions:
 - `assets/adapters/golden.js?v=1` (golden_ratio_portfolio_dashboard.html only)
 - `assets/adapters/retirement.js?v=4` (retirement_master_plan_2.html only)
 - `assets/adapters/portfolio.js?v=4` (portfolio_review.html only)
+- `assets/suite.css?v=6` (index.html only — adds scenario chip styles)
+- `assets/dashboard.js?v=7` (index.html only — adds scenario switcher)
 
 ## Constraints to preserve
 
