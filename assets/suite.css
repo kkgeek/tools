@@ -505,6 +505,23 @@ body.suite-tool-shell {
   margin-top: auto;
 }
 
+.suite-snapshot__stale {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  margin-top: 4px;
+  padding: 1px 7px;
+  border-radius: 99px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  background: #FEF3C7;
+  color: #92400E;
+  border: 1px solid #FDE68A;
+  width: fit-content;
+}
+
 .suite-snapshot__meta {
   margin-top: 12px;
   font-size: 12px;

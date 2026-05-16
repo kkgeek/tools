@@ -87,14 +87,17 @@
     reset: 'Reset',
   };
 
+  const STALE_DAYS = 30;
+
   // ---------- Tile builders ----------
-  function tile({ label, value, hint }) {
+  function tile({ label, value, hint, stale }) {
     const el = document.createElement('div');
     el.className = 'suite-snapshot__tile';
     el.innerHTML = `
       <div class="suite-snapshot__label">${label}</div>
       <div class="suite-snapshot__value${value ? '' : ' is-empty'}">${value || '—'}</div>
       ${hint ? `<div class="suite-snapshot__hint">${hint}</div>` : ''}
+      ${stale ? `<div class="suite-snapshot__stale" title="Data not updated in over ${STALE_DAYS} days">⚠ stale</div>` : ''}
     `;
     return el;
   }
@@ -137,6 +140,10 @@
     const grid = document.createElement('div');
     grid.className = 'suite-snapshot__grid';
 
+    const isStale = state.meta?.lastUpdated
+      ? (Date.now() - state.meta.lastUpdated) > STALE_DAYS * 86400000
+      : false;
+
     // Household
     const filing = state.household?.filingStatus === 'single' ? 'Single' : 'Married, filing jointly';
     const namesLabel = spouseNames(state.household?.spouses);
@@ -144,6 +151,7 @@
       label: 'Household',
       value: namesLabel ? escapeHtml(namesLabel) : filing,
       hint: namesLabel ? filing : (state.household?.location?.state ? `WA · ${filing}` : null),
+      stale: isStale,
     }));
 
     // Income (household total = salary + bonus + RSU + cap gains)
@@ -159,6 +167,7 @@
       label: 'Projected income',
       value: fmtMoney(totalIncome),
       hint: totalIncome ? 'Salary + bonus + RSU + cap gains' : 'Set in Tax Estimator',
+      stale: isStale && totalIncome != null,
     }));
 
     // Retirement contributions (current-year, traditional + roth + after-tax + IRA + HSA + catch-up)
@@ -175,6 +184,7 @@
       label: 'Retirement contributions',
       value: fmtMoney(totalContrib),
       hint: totalContrib ? '401(k) + IRA + HSA, this year' : 'Set in Tax Estimator',
+      stale: isStale && totalContrib != null,
     }));
 
     // Retirement balance (modeled in Retirement Planner via the RMD slider)
@@ -183,6 +193,7 @@
       label: 'Retirement balance',
       value: fmtMoney(retBal),
       hint: retBal ? 'Modeled in Retirement Planner' : 'Set in Retirement Planner',
+      stale: isStale && retBal != null,
     }));
 
     // Portfolio
@@ -191,6 +202,7 @@
       label: 'Portfolio value',
       value: fmtMoney(portValue),
       hint: portValue ? 'Across all holdings' : 'Set in Portfolio Review',
+      stale: isStale && portValue != null,
     }));
 
     // Liabilities
@@ -199,6 +211,7 @@
       label: 'Total liabilities',
       value: fmtMoney(liabTotal),
       hint: liabTotal ? 'Mortgage, loans & more' : 'Set in Net Worth Tracker',
+      stale: isStale && liabTotal != null,
     }));
 
     // Net Worth
@@ -215,6 +228,7 @@
       label: 'Net worth',
       value: fmtMoney(netWorth),
       hint: netWorth != null ? 'Assets − Liabilities' : 'Set portfolio & liabilities',
+      stale: isStale && netWorth != null,
     }));
 
     mount.appendChild(grid);

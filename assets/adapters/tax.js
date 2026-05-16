@@ -61,6 +61,7 @@
       preferences: { taxYear: t.year != null ? String(t.year) : null },
       household: {
         filingStatus: t.filingStatus === 'single' ? 'single' : 'mfj',
+        spouseNames: [s1.name || '', s2.name || ''],
         spouseAges: [
           s1.age === '' || s1.age == null ? null : num(s1.age),
           s2.age === '' || s2.age == null ? null : num(s2.age),
@@ -101,11 +102,9 @@
     store.set('preferences.taxYear', patch.preferences.taxYear, opts);
     store.set('household.filingStatus', patch.household.filingStatus, opts);
 
-    // Update ages without disturbing names (which Tax Estimator doesn't know).
-    const curSpouses = store.get('household.spouses') || [];
     store.set('household.spouses', [
-      { name: curSpouses[0]?.name || '', age: patch.household.spouseAges[0] },
-      { name: curSpouses[1]?.name || '', age: patch.household.spouseAges[1] },
+      { name: patch.household.spouseNames[0] || '', age: patch.household.spouseAges[0] },
+      { name: patch.household.spouseNames[1] || '', age: patch.household.spouseAges[1] },
     ], opts);
 
     store.set('income.salary',        patch.income.salary,        opts);
@@ -140,6 +139,7 @@
       year: state.preferences?.taxYear || '2026',
       filingStatus: state.household?.filingStatus === 'single' ? 'single' : 'mfj',
       s1: {
+        name: (sp[0] && sp[0].name) || '',
         age: ageOf(sp[0]),
         salary: num(inc.salary?.s1),
         bonus:  num(inc.bonus?.s1),
@@ -154,6 +154,7 @@
         employerMatch: 0,
       },
       s2: {
+        name: (sp[1] && sp[1].name) || '',
         age: ageOf(sp[1]),
         salary: num(inc.salary?.s2),
         bonus:  num(inc.bonus?.s2),

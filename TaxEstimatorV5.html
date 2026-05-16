@@ -21,7 +21,7 @@
   <script>(function(){try{var p=localStorage.getItem('wealthSuite.themePreference');if(!['system','light','dark'].includes(p))p='system';var r=p==='system'?(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'):p;document.documentElement.setAttribute('data-theme',r);document.documentElement.setAttribute('data-theme-pref',p);}catch(e){}})();</script>
   <script src="assets/suite-state.js?v=5" defer></script>
   <script src="assets/suite.js?v=8" defer></script>
-  <script src="assets/adapters/tax.js?v=4" defer></script>
+  <script src="assets/adapters/tax.js?v=5" defer></script>
 </head>
 <body class="bg-slate-50">
 <div id="root"></div>
@@ -1485,7 +1485,7 @@ const AdminPanel = ({onUpdate}) => {
 // ================================================================
 // APP ROOT
 // ================================================================
-const DFLT_SPOUSE = {age:'', salary:0, bonus:0, rsu:0, k401Trad:0, k401Roth:0, k401Catchup:0, k401AfterTax:0, iraTrad:0, iraRoth:0, hsa:0, employerMatch:0};
+const DFLT_SPOUSE = {name:'', age:'', salary:0, bonus:0, rsu:0, k401Trad:0, k401Roth:0, k401Catchup:0, k401AfterTax:0, iraTrad:0, iraRoth:0, hsa:0, employerMatch:0};
 const DFLT_INPUTS = {
   year: '2026', filingStatus: 'mfj',
   s1: {...DFLT_SPOUSE}, s2: {...DFLT_SPOUSE},
@@ -1601,13 +1601,35 @@ const App = () => {
 
             {/* Input column */}
             <div>
-              <Card title="Tax Year &amp; Filing Status">
+              <Card title="Household">
                 <div className="grid grid-cols-2 gap-3">
                   <Sel label="Tax Year"      value={inputs.year}          onChange={set('year')}          options={yrOpts} />
                   <Sel label="Filing Status" value={inputs.filingStatus}  onChange={set('filingStatus')} options={[
                     {v:'single', l:'Single'},
                     {v:'mfj',    l:'Married Filing Jointly'},
                   ]} />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="mb-3">
+                    <label className="block text-xs font-medium text-slate-600 mb-1">{mfj ? 'Spouse 1 Name' : 'Your Name'}</label>
+                    <input type="text"
+                      className="w-full border border-slate-300 rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 bg-white"
+                      placeholder="Optional"
+                      value={inputs.s1.name || ''}
+                      onChange={e => set('s1')({...inputs.s1, name: e.target.value})}
+                    />
+                  </div>
+                  {mfj ? (
+                    <div className="mb-3">
+                      <label className="block text-xs font-medium text-slate-600 mb-1">Spouse 2 Name</label>
+                      <input type="text"
+                        className="w-full border border-slate-300 rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 bg-white"
+                        placeholder="Optional"
+                        value={inputs.s2.name || ''}
+                        onChange={e => set('s2')({...inputs.s2, name: e.target.value})}
+                      />
+                    </div>
+                  ) : <div />}
                 </div>
                 {TAX_DATA[inputs.year]?.status === 'projected' && (
                   <div className="mt-2 p-2 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-700">
@@ -1617,7 +1639,7 @@ const App = () => {
               </Card>
 
               <SpouseCard
-                title={mfj ? 'Spouse 1 — Income &amp; Retirement' : 'Your Income &amp; Retirement'}
+                title={`${inputs.s1.name || (mfj ? 'Spouse 1' : 'You')} — Income & Retirement`}
                 data={inputs.s1} onChange={set('s1')} td={td} mfj={mfj} fs={inputs.filingStatus}
                 titleCls="text-blue-700"
                 otherHsa={mfj ? (inputs.s2.hsa||0) : 0}
@@ -1625,7 +1647,7 @@ const App = () => {
 
               {mfj && (
                 <SpouseCard
-                  title="Spouse 2 — Income &amp; Retirement"
+                  title={`${inputs.s2.name || 'Spouse 2'} — Income & Retirement`}
                   data={inputs.s2} onChange={set('s2')} td={td} mfj={mfj} fs={inputs.filingStatus}
                   titleCls="text-indigo-700"
                   otherHsa={inputs.s1.hsa||0}
