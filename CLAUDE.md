@@ -8,7 +8,7 @@ CDN where used. Deploys to GitHub Pages on every push to `main` via
 End-user docs: [`docs/GETTING_STARTED.md`](docs/GETTING_STARTED.md) —
 read first if unfamiliar with the suite.
 
-## Tools (7 modules)
+## Tools (8 modules)
 
 | File | Stack | Adapter |
 |---|---|---|
@@ -19,6 +19,7 @@ read first if unfamiliar with the suite.
 | `golden_ratio_portfolio_dashboard.html` | Vanilla JS + artifact tokens | `assets/adapters/golden.js` (read-only: seeds sI from portfolio.totalValue, sW from annualExpenses/totalValue) |
 | `roth_conversion.html` | React 18 + Tailwind + Babel inline | `assets/adapters/roth.js` (read-only seed via `window.__rothSeed`) |
 | `portfolio_tracker.html` | React 18 + Tailwind + D3 + Babel inline | `assets/adapters/tracker.js` (store bootstrap; component handles its own reads/writes) |
+| `social_security.html` | Vanilla JS + Chart.js | `assets/adapters/ss.js` (seeds current age from household.spouses) |
 
 ## Suite shell
 
@@ -110,6 +111,10 @@ Phase 4 P1 additions:
 Phase 4 P2 additions:
 - `assets/suite.js?v=5` (all pages — adds Tracker to MODULES registry)
 - `assets/adapters/tracker.js?v=1` (portfolio_tracker.html only)
+
+Phase 5 additions:
+- `assets/suite.js?v=6` (all pages — adds SS to MODULES registry)
+- `assets/adapters/ss.js?v=1` (social_security.html only)
 
 ## Constraints to preserve
 

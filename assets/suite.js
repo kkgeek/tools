@@ -31,6 +31,7 @@
     { href: 'golden_ratio_portfolio_dashboard.html', label: 'Golden φ',  match: ['golden_ratio'] },
     { href: 'roth_conversion.html',                  label: 'Roth',      match: ['roth_conversion'] },
     { href: 'portfolio_tracker.html',                 label: 'Tracker',   match: ['portfolio_tracker'] },
+    { href: 'social_security.html',                   label: 'SS',         match: ['social_security'] },
   ];
 
   // ---------- Theme ----------

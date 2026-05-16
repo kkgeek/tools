@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Social Security Estimator — Wealth Suite</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#F0F2F5;--surface:#FFFFFF;--surface2:#F7F9FB;--border:#E2E6EA;--border2:#CBD5E1;
+  --text:#0F172A;--muted:#64748B;--hint:#94A3B8;
+  --navy:#1E3A5F;--blue:#2563EB;--green:#059669;--amber:#D97706;--red:#DC2626;
+  --green-bg:#ECFDF5;--green-t:#065F46;
+  --amber-bg:#FFFBEB;--amber-t:#92400E;
+  --red-bg:#FEF2F2;--red-t:#991B1B;
+  --blue-bg:#EFF6FF;--blue-t:#1E40AF;
+}
+[data-theme="dark"]{
+  --bg:#121318;--surface:#1E1F25;--surface2:#26272D;--border:#34353B;--border2:#45464F;
+  --text:#E3E2E9;--muted:#C5C6D0;--hint:#8F909A;
+  --navy:#AFC6FF;--blue:#7BA8FF;--green:#34D399;--amber:#FBBF24;--red:#F87171;
+  --green-bg:rgba(52,211,153,0.15);--green-t:#6EE7B7;
+  --amber-bg:rgba(251,191,36,0.15);--amber-t:#FCD34D;
+  --red-bg:rgba(248,113,113,0.15);--red-t:#FCA5A5;
+  --blue-bg:rgba(123,168,255,0.15);--blue-t:#93C5FD;
+}
+html[data-theme="dark"] body{color-scheme:dark}
+body{font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;background:var(--bg);color:var(--text);font-size:14px;line-height:1.6;min-height:100vh;padding-top:64px}
+.main{padding:22px 28px;max-width:980px;margin:0 auto}
+.page-hd{margin-bottom:20px}
+.page-hd h1{font-size:20px;font-weight:700;color:var(--navy)}
+.page-hd p{font-size:13px;color:var(--muted);margin-top:3px}
+
+/* Input grid */
+.ig{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:16px}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px 18px;margin-bottom:14px}
+.card-t{font-size:13px;font-weight:600;margin-bottom:10px;color:var(--text)}
+.field{display:flex;flex-direction:column;gap:3px;margin-bottom:10px}
+.field:last-child{margin-bottom:0}
+.field label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;font-weight:500}
+.field input{font-size:14px;font-weight:500;color:var(--text);background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:7px 10px;font-family:inherit;width:100%}
+.field input:focus{outline:none;border-color:var(--blue)}
+
+/* Slider section */
+.slider-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:22px 24px;margin-bottom:16px;text-align:center}
+.slider-age{font-size:42px;font-weight:700;color:var(--navy);line-height:1}
+.slider-sub{font-size:14px;color:var(--muted);margin-top:4px;margin-bottom:20px;min-height:20px}
+.slider-wrap{position:relative;padding:0 4px}
+input[type=range]{width:100%;height:6px;-webkit-appearance:none;appearance:none;background:var(--border2);border-radius:3px;outline:none;cursor:pointer}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:24px;height:24px;border-radius:50%;background:var(--blue);border:3px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.2);cursor:pointer}
+input[type=range]::-moz-range-thumb{width:24px;height:24px;border-radius:50%;background:var(--blue);border:3px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.2);cursor:pointer;border-width:3px}
+.slider-ticks{display:flex;justify-content:space-between;margin-top:8px;padding:0 4px}
+.slider-ticks span{font-size:11px;color:var(--hint);font-weight:500}
+.slider-ticks span.fra{color:var(--blue);font-weight:600}
+
+/* Stat tiles */
+.sg{display:grid;grid-template-columns:repeat(auto-fit,minmax(155px,1fr));gap:10px;margin-bottom:16px}
+.sc{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:13px 15px}
+.sc-l{font-size:11px;color:var(--muted);margin-bottom:3px;text-transform:uppercase;letter-spacing:.04em}
+.sc-v{font-size:20px;font-weight:600}
+.g{color:var(--green)}.r{color:var(--red)}.b{color:var(--blue)}.a{color:var(--amber)}
+
+/* Chart */
+.cw{position:relative;width:100%;height:320px;margin:10px 0}
+.cl{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;color:var(--muted);margin-top:8px;align-items:center}
+.cl-i{display:flex;align-items:center;gap:5px}
+.cl-d{width:16px;height:3px;border-radius:2px;display:inline-block}
+
+/* Break-even table */
+.be-tbl{width:100%;border-collapse:collapse;font-size:12px;margin-top:10px}
+.be-tbl th{text-align:left;padding:8px 10px;background:var(--surface2);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);border-bottom:1px solid var(--border)}
+.be-tbl td{padding:8px 10px;border-bottom:1px solid var(--border);color:var(--muted)}
+.be-tbl tr:last-child td{border-bottom:none}
+.be-tbl td:first-child{font-weight:600;color:var(--text)}
+.be-tbl .hl{background:rgba(37,99,235,0.06)}
+.be-tbl .hl td{color:var(--blue-t);font-weight:600}
+.be-win{color:var(--green-t);font-weight:600}
+.note{font-size:12px;color:var(--muted);margin-top:10px;line-height:1.6}
+.ib{border-radius:8px;padding:10px 13px;font-size:12px;line-height:1.7;margin-top:10px}
+.ib-b{background:var(--blue-bg);color:var(--blue-t)}
+.ib-g{background:var(--green-bg);color:var(--green-t)}
+
+@media(max-width:640px){
+  .ig{grid-template-columns:1fr}
+  .main{padding:16px}
+  .slider-age{font-size:32px}
+}
+</style>
+
+<!-- Wealth Suite shared shell -->
+<link rel="stylesheet" href="assets/suite.css?v=4">
+<script>(function(){try{var p=localStorage.getItem('wealthSuite.themePreference');if(!['system','light','dark'].includes(p))p='system';var r=p==='system'?(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'):p;document.documentElement.setAttribute('data-theme',r);document.documentElement.setAttribute('data-theme-pref',p);}catch(e){}})();</script>
+<script src="assets/suite-state.js?v=4" defer></script>
+<script src="assets/suite.js?v=6" defer></script>
+<script src="assets/adapters/ss.js?v=1" defer></script>
+</head>
+<body>
+
+<div class="main">
+
+  <div class="page-hd">
+    <h1>Social Security Estimator</h1>
+    <p>Break-even analysis and cumulative lifetime benefit by claiming age. Retirement benefits: earliest age 62, maximum credits at 70.</p>
+  </div>
+
+  <!-- Inputs -->
+  <div class="ig">
+    <div class="card">
+      <div class="card-t">Primary earner</div>
+      <div class="field">
+        <label>Monthly benefit at FRA ($)</label>
+        <input type="number" id="piaPrimary" value="3500" min="0" max="99999" step="100" oninput="recalc()">
+      </div>
+      <div class="field">
+        <label>Full Retirement Age (FRA)</label>
+        <input type="number" id="fra" value="67" min="65" max="67" step="1" oninput="recalc()">
+      </div>
+      <div class="field">
+        <label>Current age</label>
+        <input type="number" id="curAge" value="51" min="30" max="69" step="1" oninput="recalc()">
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-t">Spouse (optional)</div>
+      <div class="field">
+        <label>Monthly benefit at FRA ($)</label>
+        <input type="number" id="piaSpouse" value="" min="0" max="99999" step="100" placeholder="Leave blank if N/A" oninput="recalc()">
+      </div>
+      <div class="field">
+        <label>Spouse FRA</label>
+        <input type="number" id="fraSpouse" value="67" min="65" max="67" step="1" oninput="recalc()">
+      </div>
+      <div class="field">
+        <label>Spouse claiming age</label>
+        <input type="number" id="spouseClaimAge" value="70" min="62" max="70" step="1" oninput="recalc()">
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-t">Assumptions</div>
+      <div class="field">
+        <label>Annual COLA (%)</label>
+        <input type="number" id="cola" value="2.5" min="0" max="6" step="0.1" oninput="recalc()">
+      </div>
+      <div class="field">
+        <label>Chart to age</label>
+        <input type="number" id="maxAge" value="90" min="75" max="100" step="1" oninput="recalc()">
+      </div>
+      <div class="field">
+        <label>Compare selected age vs</label>
+        <select id="compareAge" oninput="recalc()" style="font-size:14px;font-weight:500;color:var(--text);background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:7px 10px;font-family:inherit;width:100%;cursor:pointer">
+          <option value="70">Age 70 (maximum)</option>
+          <option value="67">Age 67 (FRA)</option>
+          <option value="62">Age 62 (earliest)</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <!-- Slider -->
+  <div class="slider-card">
+    <div class="slider-age" id="sliderAge">67</div>
+    <div class="slider-sub" id="sliderSub">Full Retirement Age — $3,500/mo · $42,000/yr</div>
+    <div class="slider-wrap">
+      <input type="range" id="claimSlider" min="62" max="70" step="1" value="67" oninput="onSlider(this.value)">
+    </div>
+    <div class="slider-ticks">
+      <span>62</span><span>63</span><span>64</span><span>65</span>
+      <span>66</span><span class="fra">67 FRA</span><span>68</span><span>69</span><span>70</span>
+    </div>
+  </div>
+
+  <!-- Summary tiles -->
+  <div class="sg">
+    <div class="sc"><div class="sc-l">Monthly benefit</div><div class="sc-v b" id="statMonthly">—</div></div>
+    <div class="sc"><div class="sc-l">Annual benefit</div><div class="sc-v b" id="statAnnual">—</div></div>
+    <div class="sc"><div class="sc-l">vs PIA at FRA</div><div class="sc-v" id="statVsFRA">—</div></div>
+    <div class="sc"><div class="sc-l" id="statBELabel">Break-even vs age 70</div><div class="sc-v a" id="statBE">—</div></div>
+    <div class="sc"><div class="sc-l">Lifetime total to <span id="statMaxAgeLabel">90</span></div><div class="sc-v g" id="statLifetime">—</div></div>
+    <div class="sc"><div class="sc-l">Combined (w/ spouse) at <span id="statMaxAgeLabel2">90</span></div><div class="sc-v" id="statCombined">—</div></div>
+  </div>
+
+  <!-- Chart -->
+  <div class="card">
+    <div class="card-t">Cumulative lifetime benefits by claiming age</div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:8px">All values nominal · Hover for amounts · Highlighted line = selected claiming age</div>
+    <div class="cw"><canvas id="ssChart"></canvas></div>
+    <div class="cl" id="chartLegend"></div>
+  </div>
+
+  <!-- Break-even table -->
+  <div class="card">
+    <div class="card-t">Break-even reference table</div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:10px">
+      Age at which later claiming catches up to earlier claiming, assuming <span id="beColaDisplay">2.5%</span> COLA.
+      Highlighted row = current slider selection.
+    </div>
+    <table class="be-tbl" id="beTable">
+      <thead><tr>
+        <th>Claim at</th><th>Monthly benefit</th><th>vs 62</th><th>vs FRA (67)</th><th>vs 70</th><th>Total to age 90</th>
+      </tr></thead>
+      <tbody id="beTbody"></tbody>
+    </table>
+    <div class="ib ib-b" style="margin-top:12px">
+      <strong>Break-even interpretation:</strong> If you claim at 62 and your comparison is age 70,
+      the break-even age is when age-70 claimer's cumulative total overtakes yours.
+      Living past the break-even means the later claim was the better financial choice.
+      Living short of it means early claiming paid more over your lifetime.
+    </div>
+  </div>
+
+</div><!-- /main -->
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script>
+// ── SS benefit factor ────────────────────────────────────────────────────────
+function benefitFactor(claimAge, fra) {
+  var months = Math.round((claimAge - fra) * 12);
+  if (months >= 0) {
+    return 1 + months * (8 / 12 / 100);
+  }
+  months = -months;
+  var r = Math.min(months, 36) * (5 / 9 / 100);
+  if (months > 36) r += (months - 36) * (5 / 12 / 100);
+  return 1 - r;
+}
+
+// ── Cumulative benefit array for one claiming scenario ───────────────────────
+// Returns array of cumulative $k received by each age in `ages[]`
+function cumBenefits(monthlyPIA, claimAge, fra, cola, ages) {
+  var annual = monthlyPIA * 12 * benefitFactor(claimAge, fra);
+  var cum = 0, result = [];
+  for (var i = 0; i < ages.length; i++) {
+    var age = ages[i];
+    if (age >= claimAge) {
+      cum += annual * Math.pow(1 + cola, age - claimAge);
+    }
+    result.push(+(cum / 1000).toFixed(1));
+  }
+  return result;
+}
+
+// ── Break-even age between two claim ages ────────────────────────────────────
+function breakEven(monthlyPIA, earlyAge, lateAge, fra, cola) {
+  if (earlyAge >= lateAge) return null;
+  var annEarly = monthlyPIA * 12 * benefitFactor(earlyAge, fra);
+  var annLate  = monthlyPIA * 12 * benefitFactor(lateAge,  fra);
+  var cumE = 0, cumL = 0;
+  for (var age = earlyAge; age <= 100; age++) {
+    if (age >= earlyAge) cumE += annEarly * Math.pow(1 + cola, age - earlyAge);
+    if (age >= lateAge)  cumL += annLate  * Math.pow(1 + cola, age - lateAge);
+    if (cumL >= cumE && age > lateAge) return age;
+  }
+  return null;
+}
+
+// ── Chart ────────────────────────────────────────────────────────────────────
+var ssChart = null;
+var CLAIM_AGES = [62, 63, 64, 65, 66, 67, 68, 69, 70];
+// Color spectrum from red (early) through amber/gray to green (late)
+var CLAIM_COLORS = ['#DC2626','#EA580C','#D97706','#CA8A04','#65A30D','#94A3B8','#3B82F6','#6366F1','#059669'];
+
+function buildChart(piaPrimary, fra, cola, maxAge, selectedAge) {
+  var ages = [];
+  for (var a = 62; a <= maxAge; a++) ages.push(a);
+
+  if (ssChart) { ssChart.destroy(); ssChart = null; }
+  var ctx = document.getElementById('ssChart').getContext('2d');
+
+  var datasets = CLAIM_AGES.map(function(ca, i) {
+    var isSelected = ca === selectedAge;
+    return {
+      label: 'Age ' + ca + (ca === fra ? ' (FRA)' : ca === 70 ? ' (max)' : ''),
+      data: cumBenefits(piaPrimary, ca, fra, cola, ages),
+      borderColor: isSelected ? '#2563EB' : 'rgba(148,163,184,0.45)',
+      borderWidth: isSelected ? 3 : 1.2,
+      pointRadius: 0,
+      tension: 0.3,
+      fill: false,
+      order: isSelected ? 0 : 1,
+    };
+  });
+
+  ssChart = new Chart(ctx, {
+    type: 'line',
+    data: { labels: ages, datasets: datasets },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          mode: 'index', intersect: false,
+          callbacks: {
+            title: function(items) { return 'Age ' + items[0].label; },
+            label: function(item) {
+              var isSelected = item.dataset.borderWidth === 3;
+              var prefix = isSelected ? '▶ ' : '  ';
+              return prefix + item.dataset.label + ': $' + item.parsed.y.toFixed(0) + 'k';
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          grid: { color: 'rgba(0,0,0,0.04)' },
+          ticks: { color: '#94A3B8', font: { size: 11 }, autoSkip: false, maxRotation: 0,
+            callback: function(v, i) { return ages[i] % 5 === 0 ? 'Age ' + ages[i] : ''; }
+          }
+        },
+        y: {
+          grid: { color: 'rgba(0,0,0,0.04)' },
+          ticks: { color: '#94A3B8', font: { size: 11 },
+            callback: function(v) { return v >= 1000 ? '$' + (v/1000).toFixed(1) + 'M' : '$' + v + 'k'; }
+          }
+        }
+      }
+    }
+  });
+}
+
+function updateChartHighlight(selectedAge) {
+  if (!ssChart) return;
+  ssChart.data.datasets.forEach(function(ds, i) {
+    var age = CLAIM_AGES[i];
+    var sel = age === selectedAge;
+    ds.borderColor = sel ? '#2563EB' : 'rgba(148,163,184,0.45)';
+    ds.borderWidth = sel ? 3 : 1.2;
+    ds.order = sel ? 0 : 1;
+  });
+  ssChart.update('none');
+}
+
+// ── Break-even table ─────────────────────────────────────────────────────────
+function buildBETable(piaPrimary, fra, cola, selectedAge) {
+  var tbody = document.getElementById('beTbody');
+  tbody.innerHTML = '';
+  var be62 = {}, beFRA = {}, be70 = {};
+  CLAIM_AGES.forEach(function(ca) {
+    be62[ca]  = breakEven(piaPrimary, 62,  ca,  fra, cola);
+    beFRA[ca] = breakEven(piaPrimary, fra, ca,  fra, cola);
+    be70[ca]  = breakEven(piaPrimary, ca,  70,  fra, cola);
+  });
+
+  CLAIM_AGES.forEach(function(ca) {
+    var isSelected = ca === selectedAge;
+    var factor = benefitFactor(ca, fra);
+    var monthly = Math.round(piaPrimary * factor);
+    var lifetime = cumBenefits(piaPrimary, ca, fra, cola, [90])[0];
+
+    var vs62  = ca === 62  ? '—' : (be62[ca]  ? 'Age ' + be62[ca]  : '>100');
+    var vsFRA = ca === fra ? '—' : (ca < fra   ? (beFRA[67] ? 'Age ' + beFRA[ca] : '>100') : (be70[fra] ? 'Age ' + breakEven(piaPrimary, fra, ca, fra, cola) : '>100'));
+    var vs70  = ca === 70  ? '—' : (be70[ca]   ? 'Age ' + be70[ca]  : '>100');
+
+    // Recalculate vs FRA cleanly
+    if (ca < fra) {
+      var be = breakEven(piaPrimary, ca, fra, fra, cola);
+      vsFRA = be ? 'Age ' + be : '>100';
+    } else if (ca > fra) {
+      var be = breakEven(piaPrimary, fra, ca, fra, cola);
+      vsFRA = be ? 'Age ' + be : '>100';
+    } else {
+      vsFRA = '—';
+    }
+
+    var tr = document.createElement('tr');
+    if (isSelected) tr.className = 'hl';
+    tr.innerHTML =
+      '<td>Age ' + ca + (ca === fra ? ' <span style="color:var(--blue-t);font-size:10px">(FRA)</span>' : ca === 70 ? ' <span style="color:var(--green-t);font-size:10px">(max)</span>' : '') + '</td>' +
+      '<td>$' + monthly.toLocaleString() + '/mo</td>' +
+      '<td>' + vs62  + '</td>' +
+      '<td>' + vsFRA + '</td>' +
+      '<td>' + vs70  + '</td>' +
+      '<td>$' + lifetime.toLocaleString() + 'k</td>';
+    tbody.appendChild(tr);
+  });
+}
+
+// ── Legend ───────────────────────────────────────────────────────────────────
+function buildLegend(fra) {
+  var el = document.getElementById('chartLegend');
+  el.innerHTML = '';
+  CLAIM_AGES.forEach(function(ca, i) {
+    var item = document.createElement('span');
+    item.className = 'cl-i';
+    item.innerHTML = '<span class="cl-d" style="background:' + CLAIM_COLORS[i] + ';opacity:0.8"></span>Age ' +
+      ca + (ca === fra ? ' (FRA)' : ca === 70 ? ' (max)' : '');
+    el.appendChild(item);
+  });
+}
+
+// ── Summary tiles ────────────────────────────────────────────────────────────
+function updateTiles(piaPrimary, fra, cola, selectedAge, compareAge, maxAge, piaSpouse, spouseClaimAge, fraSpouse) {
+  var factor  = benefitFactor(selectedAge, fra);
+  var monthly = piaPrimary * factor;
+  var annual  = monthly * 12;
+  var fraFactor = 1; // factor at FRA is always 1
+  var vsSign  = factor >= 1 ? '+' : '';
+
+  document.getElementById('statMonthly').textContent = '$' + Math.round(monthly).toLocaleString() + '/mo';
+  document.getElementById('statAnnual').textContent  = '$' + Math.round(annual).toLocaleString() + '/yr';
+  document.getElementById('statVsFRA').textContent   = vsSign + Math.round((factor - 1) * 100) + '% vs FRA';
+  document.getElementById('statVsFRA').className     = 'sc-v ' + (factor >= 1 ? 'g' : 'r');
+
+  var be = selectedAge === compareAge ? null : breakEven(piaPrimary,
+    Math.min(selectedAge, compareAge), Math.max(selectedAge, compareAge), fra, cola);
+  var beLabel = 'Break-even vs age ' + compareAge;
+  document.getElementById('statBELabel').textContent = beLabel;
+  document.getElementById('statBE').textContent = be ? 'Age ' + be : (selectedAge >= compareAge ? '—' : '>100');
+
+  var maxAgeArr = [maxAge];
+  var lifetime = cumBenefits(piaPrimary, selectedAge, fra, cola, maxAgeArr)[0];
+  document.getElementById('statLifetime').textContent = '$' + lifetime.toLocaleString() + 'k';
+  document.getElementById('statMaxAgeLabel').textContent = maxAge;
+  document.getElementById('statMaxAgeLabel2').textContent = maxAge;
+
+  var spouseVal = piaSpouse > 0
+    ? '$' + Math.round(cumBenefits(piaPrimary, selectedAge, fra, cola, maxAgeArr)[0] +
+        cumBenefits(piaSpouse, spouseClaimAge, fraSpouse, cola, maxAgeArr)[0]).toLocaleString() + 'k'
+    : '—';
+  document.getElementById('statCombined').textContent = spouseVal;
+}
+
+// ── Slider label ─────────────────────────────────────────────────────────────
+function updateSliderLabel(piaPrimary, fra, cola, selectedAge) {
+  var factor  = benefitFactor(selectedAge, fra);
+  var monthly = Math.round(piaPrimary * factor);
+  var annual  = Math.round(monthly * 12);
+  var suffix  = selectedAge < fra ? ' (early — reduced benefit)' :
+                selectedAge > fra ? ' (delayed credits)' : ' — Full Retirement Age';
+  document.getElementById('sliderAge').textContent = 'Age ' + selectedAge;
+  document.getElementById('sliderSub').textContent = suffix.trim() + ' · $' + monthly.toLocaleString() + '/mo · $' + annual.toLocaleString() + '/yr';
+}
+
+// ── Master recalc ─────────────────────────────────────────────────────────────
+var selectedAge = 67;
+var chartBuilt = false;
+
+function recalc() {
+  var piaPrimary   = Math.max(0, Number(document.getElementById('piaPrimary').value)  || 0);
+  var piaSpouse    = Math.max(0, Number(document.getElementById('piaSpouse').value)   || 0);
+  var fra          = Number(document.getElementById('fra').value) || 67;
+  var fraSpouse    = Number(document.getElementById('fraSpouse').value) || 67;
+  var spouseCA     = Number(document.getElementById('spouseClaimAge').value) || 70;
+  var cola         = (Number(document.getElementById('cola').value) || 2.5) / 100;
+  var maxAge       = Number(document.getElementById('maxAge').value) || 90;
+  var compareAge   = Number(document.getElementById('compareAge').value) || 70;
+
+  document.getElementById('beColaDisplay').textContent = (cola * 100).toFixed(1) + '%';
+
+  updateSliderLabel(piaPrimary, fra, cola, selectedAge);
+  updateTiles(piaPrimary, fra, cola, selectedAge, compareAge, maxAge, piaSpouse, spouseCA, fraSpouse);
+
+  if (!chartBuilt) {
+    buildChart(piaPrimary, fra, cola, maxAge, selectedAge);
+    buildLegend(fra);
+    chartBuilt = true;
+  } else {
+    // Rebuild chart when inputs change, update highlight when only slider changes
+    buildChart(piaPrimary, fra, cola, maxAge, selectedAge);
+  }
+
+  buildBETable(piaPrimary, fra, cola, selectedAge);
+}
+
+function onSlider(val) {
+  selectedAge = Number(val);
+  var piaPrimary = Math.max(0, Number(document.getElementById('piaPrimary').value) || 0);
+  var fra        = Number(document.getElementById('fra').value) || 67;
+  var cola       = (Number(document.getElementById('cola').value) || 2.5) / 100;
+  var maxAge     = Number(document.getElementById('maxAge').value) || 90;
+  var compareAge = Number(document.getElementById('compareAge').value) || 70;
+  var piaSpouse  = Math.max(0, Number(document.getElementById('piaSpouse').value) || 0);
+  var fraSpouse  = Number(document.getElementById('fraSpouse').value) || 67;
+  var spouseCA   = Number(document.getElementById('spouseClaimAge').value) || 70;
+
+  updateSliderLabel(piaPrimary, fra, cola, selectedAge);
+  updateTiles(piaPrimary, fra, cola, selectedAge, compareAge, maxAge, piaSpouse, spouseCA, fraSpouse);
+  updateChartHighlight(selectedAge);
+  buildBETable(piaPrimary, fra, cola, selectedAge);
+}
+
+// ── Seed from suite store ─────────────────────────────────────────────────────
+function seedFromStore() {
+  var store = window.WealthSuite && window.WealthSuite.store;
+  if (!store) return;
+  var s = store.export();
+  var hh = s.household || {};
+  var spouses = hh.spouses || [];
+  var ages = spouses.map(function(sp) { return sp && Number(sp.age) > 0 ? Number(sp.age) : NaN; }).filter(function(a) { return !isNaN(a); });
+  if (ages.length > 0) document.getElementById('curAge').value = Math.min.apply(null, ages);
+}
+
+// Init
+window.addEventListener('DOMContentLoaded', function() {
+  setTimeout(seedFromStore, 200);
+  recalc();
+});
+</script>
+</body>
+</html>
