@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Wealth Suite — Household Snapshot</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 12.5px; color: #111; background: #fff; padding: 28px 32px; max-width: 860px; margin: 0 auto; }
+
+    /* ---- screen-only chrome ---- */
+    .screen-only { margin-bottom: 20px; display: flex; gap: 10px; align-items: center; }
+    .print-btn { padding: 7px 18px; background: #2563EB; color: #fff; border: none; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer; }
+    .print-btn:hover { background: #1D4ED8; }
+    .back-link { font-size: 12px; color: #6b7280; text-decoration: none; }
+    .back-link:hover { text-decoration: underline; }
+
+    /* ---- header ---- */
+    .snap-header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #111; padding-bottom: 10px; margin-bottom: 16px; }
+    .snap-title { font-size: 18px; font-weight: 700; letter-spacing: -.01em; }
+    .snap-sub { font-size: 11px; color: #6b7280; margin-top: 3px; }
+    .snap-date { font-size: 11px; color: #6b7280; white-space: nowrap; padding-top: 3px; }
+
+    /* ---- sections ---- */
+    .section { margin-bottom: 14px; }
+    .section-title { font-size: 9.5px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: #6b7280; border-bottom: 1px solid #e5e7eb; padding-bottom: 3px; margin-bottom: 8px; }
+
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+    .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; }
+
+    .kv { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 3px; font-size: 11.5px; gap: 8px; }
+    .kv-l { color: #6b7280; flex-shrink: 0; }
+    .kv-v { font-weight: 600; color: #111; text-align: right; }
+    .kv-lg { display: flex; justify-content: space-between; align-items: baseline; margin-top: 6px; margin-bottom: 2px; gap: 8px; }
+    .kv-lg .kv-l { font-size: 11px; color: #6b7280; }
+    .kv-lg .kv-v { font-size: 16px; font-weight: 700; color: #111; }
+
+    table { width: 100%; border-collapse: collapse; font-size: 11.5px; margin-top: 6px; }
+    th { text-align: left; font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: #9ca3af; padding: 3px 6px 3px 0; border-bottom: 1px solid #e5e7eb; }
+    th.r, td.r { text-align: right; padding-right: 0; padding-left: 6px; }
+    td { padding: 4px 6px 4px 0; border-bottom: 1px solid #f3f4f6; vertical-align: middle; }
+    tr:last-child td { border-bottom: none; }
+    .tfoot td { border-top: 1px solid #d1d5db; font-weight: 600; padding-top: 5px; }
+    .nw-row td { border-top: 2px solid #16a34a; font-weight: 700; color: #15803d; padding-top: 5px; }
+
+    .empty { font-style: italic; color: #9ca3af; font-size: 11px; }
+
+    .disclaimer { font-size: 9.5px; color: #9ca3af; margin-top: 20px; border-top: 1px solid #e5e7eb; padding-top: 8px; line-height: 1.6; }
+
+    @media print {
+      .screen-only { display: none; }
+      body { padding: 0; max-width: 100%; }
+      .section { page-break-inside: avoid; }
+      a { color: inherit; text-decoration: none; }
+    }
+  </style>
+  <script src="assets/suite-state.js?v=5" defer></script>
+</head>
+<body>
+  <div class="screen-only">
+    <button class="print-btn" onclick="window.print()">Print / Save as PDF</button>
+    <a class="back-link" href="index.html">← Back to Dashboard</a>
+  </div>
+  <div id="snap"><p class="empty">Loading…</p></div>
+
+  <script>
+    var usd = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 });
+    function fmtM(n) { n = Number(n); return (n && isFinite(n)) ? usd.format(n) : null; }
+    function fmtPct(n) { n = Number(n); return isFinite(n) ? (n * 100).toFixed(1) + '%' : '—'; }
+    function sumSp(o) { return o ? (Number(o.s1) || 0) + (Number(o.s2) || 0) : 0; }
+    function esc(s) {
+      return String(s || '').replace(/[&<>"']/g, function(c) {
+        return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+      });
+    }
+    function kv(l, v) { return v != null ? '<div class="kv"><span class="kv-l">'+esc(l)+'</span><span class="kv-v">'+esc(v)+'</span></div>' : ''; }
+    function kvLg(l, v) { return v != null ? '<div class="kv-lg"><span class="kv-l">'+esc(l)+'</span><span class="kv-v">'+esc(v)+'</span></div>' : ''; }
+    function spName(sp, i, fb) { return (sp[i] && sp[i].name && sp[i].name.trim()) || fb; }
+
+    function render() {
+      var ws = window.WealthSuite;
+      if (!ws || !ws.store) return;
+      var state = ws.store.export();
+      var mount = document.getElementById('snap');
+      if (!state || !state.meta || state.meta.lastUpdated == null) {
+        mount.innerHTML = '<p class="empty">No data found — open a tool first to populate the suite store.</p>';
+        return;
+      }
+
+      var hh = state.household || {};
+      var sp = hh.spouses || [];
+      var mfj = hh.filingStatus === 'mfj';
+      var n1 = spName(sp, 0, mfj ? 'Spouse 1' : 'You');
+      var n2 = spName(sp, 1, 'Spouse 2');
+      var ages = sp.map(function(s) { return s && s.age ? s.age : null; }).filter(Boolean);
+      var filing = mfj ? 'Married Filing Jointly' : 'Single';
+
+      var inc = state.income || {};
+      var cg = inc.capitalGains || {};
+      var s1W2 = (Number(inc.salary && inc.salary.s1) || 0) + (Number(inc.bonus && inc.bonus.s1) || 0) + (Number(inc.rsuVests && inc.rsuVests.s1) || 0);
+      var s2W2 = (Number(inc.salary && inc.salary.s2) || 0) + (Number(inc.bonus && inc.bonus.s2) || 0) + (Number(inc.rsuVests && inc.rsuVests.s2) || 0);
+      var totalInc = s1W2 + s2W2 + (Number(cg.shortTerm) || 0) + (Number(cg.longTerm) || 0);
+
+      var c = (state.retirement && state.retirement.contributions) || {};
+      var plan = (state.retirement && state.retirement.plan) || {};
+      var bal = (state.retirement && state.retirement.balances) || {};
+      var totalContrib = sumSp(c.traditional401k) + sumSp(c.roth401k) + sumSp(c.afterTax401k) + sumSp(c.catchup) + sumSp(c.ira) + (Number(c.hsa) || 0);
+
+      var port = state.portfolio || {};
+      var portVal = Number(port.totalValue) || 0;
+      var allocs = port.allocations || {};
+
+      var liabs = state.liabilities || {};
+      var liabItems = liabs.items || [];
+      var liabTotal = Number(liabs.total) || 0;
+      var manualAssets = (Number(state.assets && state.assets.realEstate) || 0)
+                       + (Number(state.assets && state.assets.vehicles) || 0)
+                       + (Number(state.assets && state.assets.other) || 0);
+      var retBal = Number(bal.total) || 0;
+      var totalAssets = portVal + retBal + manualAssets;
+      var netWorth = totalAssets - liabTotal;
+
+      var retireAge = plan.targetRetireAge;
+      var currentAge = ages.length ? Math.min.apply(null, ages.map(Number)) : null;
+      var yearsToRetire = (retireAge && currentAge) ? Math.max(0, retireAge - currentAge) : null;
+
+      var dateStr = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+      var nameLabels = sp.filter(function(s) { return s && s.name && s.name.trim(); }).map(function(s) { return esc(s.name.trim()); });
+
+      var html = '';
+
+      // Header
+      html += '<div class="snap-header">'
+            + '<div>'
+            + '<div class="snap-title">Wealth Suite — Household Snapshot</div>'
+            + '<div class="snap-sub">'
+            + (nameLabels.length ? nameLabels.join(' &amp; ') + ' · ' : '')
+            + esc(filing)
+            + (ages.length ? ' · Ages ' + ages.join(' &amp; ') : '')
+            + '</div>'
+            + '</div>'
+            + '<div class="snap-date">' + esc(dateStr) + '</div>'
+            + '</div>';
+
+      // Income & Household
+      html += '<div class="grid-2">';
+
+      // Household
+      html += '<div class="section">'
+            + '<div class="section-title">Household</div>'
+            + kv('Filing status', filing)
+            + (ages.length ? kv('Ages', ages.join(' & ')) : '')
+            + (hh.location && hh.location.state ? kv('State', hh.location.state) : '')
+            + '</div>';
+
+      // Income
+      html += '<div class="section">'
+            + '<div class="section-title">Income</div>'
+            + (s1W2 ? kv(n1 + ' (W-2)', fmtM(s1W2)) : '')
+            + (mfj && s2W2 ? kv(n2 + ' (W-2)', fmtM(s2W2)) : '')
+            + (Number(cg.shortTerm) ? kv('Short-term gains', fmtM(cg.shortTerm)) : '')
+            + (Number(cg.longTerm)  ? kv('Long-term gains',  fmtM(cg.longTerm))  : '')
+            + (totalInc ? kvLg('Total income', fmtM(totalInc)) : '<p class="empty">Set in Tax Estimator</p>')
+            + '</div>';
+
+      html += '</div>';  // grid-2
+
+      // Retirement
+      html += '<div class="section"><div class="section-title">Retirement</div><div class="grid-2"><div>';
+      html += (sumSp(c.traditional401k) ? kv('Traditional 401(k)', fmtM(sumSp(c.traditional401k))) : '')
+            + (sumSp(c.roth401k)        ? kv('Roth 401(k)', fmtM(sumSp(c.roth401k))) : '')
+            + (sumSp(c.afterTax401k)    ? kv('After-tax 401(k)', fmtM(sumSp(c.afterTax401k))) : '')
+            + (sumSp(c.catchup)         ? kv('Catch-up', fmtM(sumSp(c.catchup))) : '')
+            + (sumSp(c.ira)             ? kv('IRA', fmtM(sumSp(c.ira))) : '')
+            + (Number(c.hsa)            ? kv('HSA', fmtM(Number(c.hsa))) : '');
+      if (totalContrib) html += kvLg('Contributions/yr', fmtM(totalContrib));
+      html += '</div><div>';
+      if (retBal)  html += kvLg('Retirement balance', fmtM(retBal));
+      if (retireAge) html += kv('Target retire age', retireAge + (yearsToRetire != null ? ' (' + yearsToRetire + ' yrs)' : ''));
+      if (plan.annualExpenses)   html += kv('Annual expenses', fmtM(plan.annualExpenses));
+      if (plan.growthAssumption) html += kv('Growth assumption', (plan.growthAssumption * 100).toFixed(1) + '%');
+      html += '</div></div></div>';
+
+      // Portfolio
+      html += '<div class="section"><div class="section-title">Portfolio</div>';
+      if (portVal) {
+        html += kvLg('Total value', fmtM(portVal));
+        var allocKeys = Object.keys(allocs);
+        if (allocKeys.length) {
+          html += '<table><thead><tr><th>Asset class</th><th class="r">Allocation</th><th class="r">Value</th></tr></thead><tbody>';
+          allocKeys.forEach(function(key) {
+            var label = key.replace(/([A-Z])/g, ' $1').replace(/\b\w/g, function(c) { return c.toUpperCase(); }).trim();
+            var frac = Number(allocs[key]);
+            html += '<tr><td>' + esc(label) + '</td>'
+                  + '<td class="r">' + fmtPct(frac) + '</td>'
+                  + '<td class="r">' + (fmtM(portVal * frac) || '—') + '</td></tr>';
+          });
+          html += '</tbody></table>';
+        }
+      } else {
+        html += '<p class="empty">No portfolio data — set in Portfolio Review or Portfolio Tracker.</p>';
+      }
+      html += '</div>';
+
+      // Liabilities & Net Worth
+      html += '<div class="section"><div class="section-title">Liabilities &amp; Net Worth</div>';
+      html += '<table><thead><tr><th>Liability</th><th>Type</th><th class="r">Balance</th><th class="r">Rate</th><th class="r">Payment/mo</th></tr></thead><tbody>';
+      if (liabItems.length) {
+        liabItems.forEach(function(item) {
+          html += '<tr>'
+                + '<td>' + esc(item.name || '—') + '</td>'
+                + '<td>' + esc(item.type || '—') + '</td>'
+                + '<td class="r">' + (fmtM(item.balance) || '—') + '</td>'
+                + '<td class="r">' + (item.rate ? item.rate + '%' : '—') + '</td>'
+                + '<td class="r">' + (fmtM(item.monthlyPayment) || '—') + '</td>'
+                + '</tr>';
+        });
+        if (liabTotal) {
+          html += '<tr class="tfoot"><td colspan="2">Total liabilities</td><td class="r">' + fmtM(liabTotal) + '</td><td colspan="2"></td></tr>';
+        }
+      } else {
+        html += '<tr><td colspan="5" class="empty" style="padding:8px 0">No liabilities recorded</td></tr>';
+      }
+      html += '</tbody></table>';
+
+      // Net worth summary row
+      html += '<div style="margin-top:14px"><div class="grid-3">';
+      html += '<div>' + kvLg('Total assets', fmtM(totalAssets) || '—') + '</div>';
+      html += '<div>' + kvLg('Total liabilities', fmtM(liabTotal) || '$0') + '</div>';
+      html += '<div style="border-left:2px solid #16a34a;padding-left:12px">' + kvLg('Net worth', fmtM(netWorth) || '—') + '</div>';
+      html += '</div></div></div>';
+
+      // Disclaimer
+      html += '<div class="disclaimer">'
+            + 'Generated ' + esc(dateStr) + ' · Data stored in browser localStorage · '
+            + 'For planning purposes only · Not financial, tax, or investment advice · '
+            + 'Consult a qualified professional before making any financial decisions.'
+            + '</div>';
+
+      mount.innerHTML = html;
+
+      // Update page title with names
+      if (nameLabels.length) document.title = nameLabels.join(' & ') + ' — Wealth Suite Snapshot';
+    }
+
+    var _tries = 0;
+    var _poll = setInterval(function() {
+      if (window.WealthSuite && window.WealthSuite.store) { clearInterval(_poll); render(); }
+      if (++_tries > 60) clearInterval(_poll);
+    }, 50);
+  </script>
+</body>
+</html>

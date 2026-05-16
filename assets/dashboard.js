@@ -509,8 +509,17 @@
     csvWrap.appendChild(csvTrigger);
     csvWrap.appendChild(csvMenu);
 
+    const printBtn = document.createElement('a');
+    printBtn.href = 'print.html';
+    printBtn.target = '_blank';
+    printBtn.rel = 'noopener';
+    printBtn.className = 'suite-action-btn suite-action-btn--ghost';
+    printBtn.textContent = 'Print Snapshot';
+    printBtn.style.textDecoration = 'none';
+
     host.appendChild(exportBtn);
     host.appendChild(csvWrap);
+    host.appendChild(printBtn);
     host.appendChild(importBtn);
     host.appendChild(resetBtn);
     host.appendChild(fileInput);
