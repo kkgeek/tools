@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Net Worth Tracker — Wealth Suite</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#F0F2F5;--surface:#FFFFFF;--surface2:#F7F9FB;--border:#E2E6EA;--border2:#CBD5E1;
+  --text:#0F172A;--muted:#64748B;--hint:#94A3B8;
+  --navy:#1E3A5F;--blue:#2563EB;--green:#059669;--amber:#D97706;--red:#DC2626;
+  --green-bg:#ECFDF5;--green-t:#065F46;
+  --red-bg:#FEF2F2;--red-t:#991B1B;
+  --blue-bg:#EFF6FF;--blue-t:#1E40AF;
+  --amber-bg:#FFFBEB;--amber-t:#92400E;
+}
+[data-theme="dark"]{
+  --bg:#121318;--surface:#1E1F25;--surface2:#26272D;--border:#34353B;--border2:#45464F;
+  --text:#E3E2E9;--muted:#C5C6D0;--hint:#8F909A;
+  --navy:#AFC6FF;--blue:#7BA8FF;--green:#34D399;--amber:#FBBF24;--red:#F87171;
+  --green-bg:rgba(52,211,153,0.15);--green-t:#6EE7B7;
+  --red-bg:rgba(248,113,113,0.15);--red-t:#FCA5A5;
+  --blue-bg:rgba(123,168,255,0.15);--blue-t:#93C5FD;
+  --amber-bg:rgba(251,191,36,0.15);--amber-t:#FCD34D;
+}
+html[data-theme="dark"] body{color-scheme:dark}
+body{font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;background:var(--bg);color:var(--text);font-size:14px;line-height:1.6;min-height:100vh;padding-top:64px}
+.main{padding:22px 28px;max-width:1000px;margin:0 auto}
+
+.page-hd{margin-bottom:20px}
+.page-hd h1{font-size:20px;font-weight:700;color:var(--navy)}
+.page-hd p{font-size:13px;color:var(--muted);margin-top:3px}
+
+/* Two-column layout */
+.cols{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
+
+/* Cards */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px 18px;margin-bottom:14px}
+.card-t{font-size:13px;font-weight:700;margin-bottom:12px;color:var(--text)}
+.card-sub{font-size:11px;color:var(--muted);font-weight:400;margin-left:6px}
+
+/* Asset rows (read-only) */
+.arow{display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid var(--border);font-size:13px}
+.arow:last-child{border-bottom:none}
+.arow-l{color:var(--muted)}
+.arow-v{font-weight:600}
+.arow-v.from-store{color:var(--blue-t)}
+
+/* Editable asset inputs */
+.ainput-row{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center;padding:7px 0;border-bottom:1px solid var(--border)}
+.ainput-row:last-of-type{border-bottom:none}
+.ainput-row label{font-size:12px;color:var(--muted)}
+.ainput-row input{font-size:13px;font-weight:500;color:var(--text);background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:5px 9px;font-family:inherit;width:130px;text-align:right}
+.ainput-row input:focus{outline:none;border-color:var(--blue)}
+
+/* Total row */
+.total-row{display:flex;justify-content:space-between;align-items:center;padding:10px 0 4px;font-size:14px;font-weight:700;border-top:2px solid var(--border2);margin-top:4px}
+
+/* Add-liability form */
+.add-form{display:grid;grid-template-columns:1fr auto auto auto auto auto;gap:6px;align-items:center;margin-bottom:12px;flex-wrap:wrap}
+.add-form input,.add-form select{font-size:12px;color:var(--text);background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:5px 8px;font-family:inherit;min-width:0}
+.add-form input:focus,.add-form select:focus{outline:none;border-color:var(--blue)}
+.add-form .f-name{grid-column:1}
+.add-form .f-type{width:110px}
+.add-form .f-bal,.add-form .f-rate,.add-form .f-pmt{width:90px;text-align:right}
+.add-btn{padding:5px 13px;background:var(--blue);color:#fff;border:none;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap}
+.add-btn:hover{opacity:.88}
+.add-form-labels{display:grid;grid-template-columns:1fr 110px 90px 90px 90px auto;gap:6px;margin-bottom:4px}
+.add-form-labels span{font-size:10px;color:var(--hint);text-transform:uppercase;letter-spacing:.04em;padding:0 2px}
+
+/* Liabilities table */
+.lb-tbl{width:100%;border-collapse:collapse;font-size:12px}
+.lb-tbl th{text-align:left;padding:7px 8px;background:var(--surface2);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);border-bottom:1px solid var(--border)}
+.lb-tbl td{padding:7px 8px;border-bottom:1px solid var(--border);vertical-align:middle}
+.lb-tbl tr:last-child td{border-bottom:none}
+.lb-tbl .num{text-align:right;font-weight:500}
+.lb-type{display:inline-block;font-size:10px;font-weight:600;padding:1px 6px;border-radius:10px;background:var(--surface2);color:var(--muted)}
+.del-btn{padding:2px 7px;border:1px solid var(--border);background:transparent;color:var(--red);border-radius:5px;cursor:pointer;font-size:11px;font-family:inherit}
+.del-btn:hover{background:var(--red-bg)}
+.empty-liab{text-align:center;color:var(--hint);padding:16px;font-size:13px}
+
+/* Net worth summary */
+.nw-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin-bottom:16px}
+.sc{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:13px 15px}
+.sc-l{font-size:11px;color:var(--muted);margin-bottom:3px;text-transform:uppercase;letter-spacing:.04em}
+.sc-v{font-size:22px;font-weight:700}
+.g{color:var(--green)}.r{color:var(--red)}.b{color:var(--blue)}.a{color:var(--amber)}
+.sc-hint{font-size:11px;color:var(--hint);margin-top:2px}
+
+/* Chart */
+.cw{position:relative;width:100%;height:240px;margin:8px 0}
+.cl{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;color:var(--muted);margin-top:6px}
+.cl-i{display:flex;align-items:center;gap:5px}
+.cl-d{width:12px;height:12px;border-radius:3px;display:inline-block;flex-shrink:0}
+
+@media(max-width:660px){
+  .cols{grid-template-columns:1fr}
+  .main{padding:16px}
+  .add-form{grid-template-columns:1fr 1fr}
+  .add-form-labels{display:none}
+}
+</style>
+
+<!-- Wealth Suite shared shell -->
+<link rel="stylesheet" href="assets/suite.css?v=4">
+<script>(function(){try{var p=localStorage.getItem('wealthSuite.themePreference');if(!['system','light','dark'].includes(p))p='system';var r=p==='system'?(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'):p;document.documentElement.setAttribute('data-theme',r);document.documentElement.setAttribute('data-theme-pref',p);}catch(e){}})();</script>
+<script src="assets/suite-state.js?v=5" defer></script>
+<script src="assets/suite.js?v=7" defer></script>
+<script src="assets/adapters/networth.js?v=1" defer></script>
+</head>
+<body>
+
+<div class="main">
+
+  <div class="page-hd">
+    <h1>Net Worth Tracker</h1>
+    <p>Assets from your suite tools + manual entries. Add liabilities below. Net worth updates in real time.</p>
+  </div>
+
+  <div class="cols">
+
+    <!-- ASSETS -->
+    <div class="card">
+      <div class="card-t">Assets <span class="card-sub">— portfolio &amp; retirement from tools</span></div>
+
+      <div class="arow">
+        <span class="arow-l">Portfolio (Tracker / Review)</span>
+        <span class="arow-v from-store" id="aPortfolio">—</span>
+      </div>
+      <div class="arow">
+        <span class="arow-l">Retirement accounts</span>
+        <span class="arow-v from-store" id="aRetirement">—</span>
+      </div>
+
+      <div class="ainput-row" style="margin-top:8px">
+        <label>Real estate (home value / equity)</label>
+        <input type="number" id="aRealEstate" placeholder="0" min="0" step="1000" oninput="saveAssets()">
+      </div>
+      <div class="ainput-row">
+        <label>Vehicles</label>
+        <input type="number" id="aVehicles" placeholder="0" min="0" step="1000" oninput="saveAssets()">
+      </div>
+      <div class="ainput-row">
+        <label>Other (business, collectibles…)</label>
+        <input type="number" id="aOther" placeholder="0" min="0" step="1000" oninput="saveAssets()">
+      </div>
+
+      <div class="total-row">
+        <span>Total Assets</span>
+        <span class="g" id="totalAssetsDisplay">—</span>
+      </div>
+    </div>
+
+    <!-- LIABILITIES -->
+    <div class="card">
+      <div class="card-t">Liabilities</div>
+
+      <div class="add-form-labels">
+        <span>Name</span><span>Type</span><span>Balance ($)</span><span>Rate (%)</span><span>Monthly ($)</span><span></span>
+      </div>
+      <div class="add-form">
+        <input class="f-name" type="text" id="lName" placeholder="e.g. Home mortgage">
+        <select class="f-type" id="lType">
+          <option value="mortgage">Mortgage</option>
+          <option value="auto">Auto loan</option>
+          <option value="student">Student loan</option>
+          <option value="credit">Credit card</option>
+          <option value="other">Other</option>
+        </select>
+        <input class="f-bal" type="number" id="lBalance" placeholder="Balance" min="0" step="1000">
+        <input class="f-rate" type="number" id="lRate" placeholder="Rate" min="0" max="50" step="0.1">
+        <input class="f-pmt" type="number" id="lPmt" placeholder="Monthly" min="0" step="100">
+        <button class="add-btn" onclick="addLiability()">+ Add</button>
+      </div>
+
+      <table class="lb-tbl">
+        <thead><tr>
+          <th>Name</th><th>Type</th><th style="text-align:right">Balance</th>
+          <th style="text-align:right">Rate</th><th style="text-align:right">Monthly</th><th></th>
+        </tr></thead>
+        <tbody id="liabTbody"></tbody>
+      </table>
+
+      <div class="total-row">
+        <span>Total Liabilities</span>
+        <span class="r" id="totalLiabDisplay">—</span>
+      </div>
+    </div>
+
+  </div><!-- /cols -->
+
+  <!-- NET WORTH SUMMARY -->
+  <div class="nw-grid">
+    <div class="sc"><div class="sc-l">Total Assets</div><div class="sc-v b" id="sumAssets">—</div><div class="sc-hint">Portfolio + Retirement + Manual</div></div>
+    <div class="sc"><div class="sc-l">Total Liabilities</div><div class="sc-v r" id="sumLiab">—</div><div class="sc-hint" id="sumLiabHint">—</div></div>
+    <div class="sc"><div class="sc-l">Net Worth</div><div class="sc-v" id="sumNW">—</div><div class="sc-hint" id="sumNWHint">—</div></div>
+    <div class="sc"><div class="sc-l">Debt-to-asset ratio</div><div class="sc-v" id="sumDTA">—</div><div class="sc-hint">Liabilities ÷ Total assets</div></div>
+    <div class="sc"><div class="sc-l">Monthly obligations</div><div class="sc-v" id="sumMonthly">—</div><div class="sc-hint">Sum of all monthly payments</div></div>
+  </div>
+
+  <!-- CHART -->
+  <div class="card">
+    <div class="card-t">Asset &amp; liability breakdown</div>
+    <div class="cw"><canvas id="nwChart"></canvas></div>
+    <div class="cl" id="chartLegend"></div>
+  </div>
+
+</div><!-- /main -->
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script>
+// ── Formatters ───────────────────────────────────────────────────────────────
+var usd0 = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 });
+function fmt(n) { return n == null ? '—' : usd0.format(n); }
+function fmtM(n) { return n == null ? '—' : (Math.abs(n) >= 1e6 ? '$' + (n/1e6).toFixed(2) + 'M' : usd0.format(n)); }
+function pct(n) { return n == null ? '—' : (n * 100).toFixed(1) + '%'; }
+
+var TYPE_LABELS = { mortgage: 'Mortgage', auto: 'Auto', student: 'Student', credit: 'Credit', other: 'Other' };
+var TYPE_COLORS = { mortgage: '#2563EB', auto: '#7C3AED', student: '#0891B2', credit: '#DC2626', other: '#D97706' };
+
+// ── State ────────────────────────────────────────────────────────────────────
+var nwChart = null;
+var storePortfolio = null, storeRetirement = null;
+
+function getStore() { return window.WealthSuite && window.WealthSuite.store; }
+
+function loadFromStore() {
+  var store = getStore();
+  if (!store) return;
+  var s = store.export();
+  storePortfolio  = (s.portfolio  && Number(s.portfolio.totalValue) > 0)  ? Number(s.portfolio.totalValue)       : null;
+  storeRetirement = (s.retirement && Number(s.retirement.balances && s.retirement.balances.total) > 0) ? Number(s.retirement.balances.total) : null;
+
+  // Manual assets
+  var a = s.assets || {};
+  if (a.realEstate != null) document.getElementById('aRealEstate').value = a.realEstate;
+  if (a.vehicles   != null) document.getElementById('aVehicles').value   = a.vehicles;
+  if (a.other      != null) document.getElementById('aOther').value      = a.other;
+
+  // Liabilities
+  var liab = s.liabilities || {};
+  renderLiabilities(Array.isArray(liab.items) ? liab.items : []);
+  updateAll();
+}
+
+// ── Asset helpers ─────────────────────────────────────────────────────────────
+function manualAssets() {
+  return {
+    realEstate: parseNum('aRealEstate'),
+    vehicles:   parseNum('aVehicles'),
+    other:      parseNum('aOther'),
+  };
+}
+
+function parseNum(id) {
+  var v = Number(document.getElementById(id).value);
+  return Number.isFinite(v) && v > 0 ? v : null;
+}
+
+function totalAssets() {
+  var a = manualAssets();
+  var sum = 0, any = false;
+  [storePortfolio, storeRetirement, a.realEstate, a.vehicles, a.other].forEach(function(v) {
+    if (v != null && Number.isFinite(v)) { sum += v; any = true; }
+  });
+  return any ? sum : null;
+}
+
+function saveAssets() {
+  var store = getStore();
+  if (!store) return;
+  var a = manualAssets();
+  store.set('assets.realEstate', a.realEstate, { editedBy: 'networth' });
+  store.set('assets.vehicles',   a.vehicles,   { editedBy: 'networth' });
+  store.set('assets.other',      a.other,      { editedBy: 'networth' });
+  updateAll();
+}
+
+// ── Liability helpers ─────────────────────────────────────────────────────────
+function getLiabilities() {
+  var store = getStore();
+  if (!store) return [];
+  var s = store.export();
+  return (s.liabilities && Array.isArray(s.liabilities.items)) ? s.liabilities.items : [];
+}
+
+function saveLiabilities(items) {
+  var store = getStore();
+  if (!store) return;
+  var total = items.reduce(function(s, i) { return s + (Number(i.balance) || 0); }, 0);
+  store.set('liabilities.items', items, { editedBy: 'networth' });
+  store.set('liabilities.total', total || null, { editedBy: 'networth' });
+  updateAll();
+}
+
+function addLiability() {
+  var name    = document.getElementById('lName').value.trim();
+  var type    = document.getElementById('lType').value;
+  var balance = Number(document.getElementById('lBalance').value);
+  var rate    = Number(document.getElementById('lRate').value);
+  var pmt     = Number(document.getElementById('lPmt').value);
+  if (!name || !balance || balance <= 0) {
+    document.getElementById('lName').focus();
+    return;
+  }
+  var items = getLiabilities();
+  items.push({ id: Date.now() + '-' + Math.random().toString(36).slice(2, 7), name: name, type: type,
+    balance: balance, rate: rate || null, monthlyPayment: pmt || null });
+  saveLiabilities(items);
+  renderLiabilities(items);
+  // Clear form
+  ['lName','lBalance','lRate','lPmt'].forEach(function(id) { document.getElementById(id).value = ''; });
+}
+
+function removeLiability(id) {
+  var items = getLiabilities().filter(function(i) { return i.id !== id; });
+  saveLiabilities(items);
+  renderLiabilities(items);
+}
+
+function renderLiabilities(items) {
+  var tbody = document.getElementById('liabTbody');
+  if (!items.length) {
+    tbody.innerHTML = '<tr><td colspan="6" class="empty-liab">No liabilities yet — use the form above to add one.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = items.map(function(i) {
+    return '<tr>' +
+      '<td>' + escHtml(i.name) + '</td>' +
+      '<td><span class="lb-type">' + (TYPE_LABELS[i.type] || i.type) + '</span></td>' +
+      '<td class="num">' + fmt(i.balance) + '</td>' +
+      '<td class="num">' + (i.rate != null ? i.rate.toFixed(2) + '%' : '—') + '</td>' +
+      '<td class="num">' + (i.monthlyPayment != null ? fmt(i.monthlyPayment) + '/mo' : '—') + '</td>' +
+      '<td><button class="del-btn" onclick="removeLiability(\'' + i.id + '\')">✕</button></td>' +
+    '</tr>';
+  }).join('');
+}
+
+function escHtml(s) {
+  return String(s).replace(/[&<>"']/g, function(c) {
+    return { '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c];
+  });
+}
+
+// ── Master update ─────────────────────────────────────────────────────────────
+function updateAll() {
+  var a = manualAssets();
+  var portVal  = storePortfolio  || 0;
+  var retVal   = storeRetirement || 0;
+  var reVal    = a.realEstate || 0;
+  var vehVal   = a.vehicles   || 0;
+  var othVal   = a.other      || 0;
+  var ta       = portVal + retVal + reVal + vehVal + othVal;
+
+  // Asset panel
+  document.getElementById('aPortfolio').textContent  = storePortfolio  ? fmtM(storePortfolio)  : '—';
+  document.getElementById('aRetirement').textContent = storeRetirement ? fmtM(storeRetirement) : '—';
+  document.getElementById('totalAssetsDisplay').textContent = ta > 0 ? fmtM(ta) : '—';
+
+  // Liability panel
+  var items   = getLiabilities();
+  var tl      = items.reduce(function(s, i) { return s + (Number(i.balance) || 0); }, 0);
+  var monthly = items.reduce(function(s, i) { return s + (Number(i.monthlyPayment) || 0); }, 0);
+  document.getElementById('totalLiabDisplay').textContent = tl > 0 ? fmtM(tl) : '—';
+
+  // Summary tiles
+  document.getElementById('sumAssets').textContent  = ta > 0 ? fmtM(ta) : '—';
+  document.getElementById('sumLiab').textContent    = tl > 0 ? fmtM(tl) : '—';
+  document.getElementById('sumLiabHint').textContent = items.length ? items.length + ' item' + (items.length !== 1 ? 's' : '') : 'None entered';
+  document.getElementById('sumMonthly').textContent = monthly > 0 ? fmt(monthly) + '/mo' : '—';
+
+  var nw  = ta > 0 || tl > 0 ? ta - tl : null;
+  var nwEl = document.getElementById('sumNW');
+  nwEl.textContent = nw != null ? fmtM(nw) : '—';
+  nwEl.className = 'sc-v ' + (nw == null ? '' : nw >= 0 ? 'g' : 'r');
+
+  var dta = ta > 0 && tl > 0 ? tl / ta : null;
+  document.getElementById('sumDTA').textContent = dta != null ? pct(dta) : '—';
+  document.getElementById('sumDTA').className = 'sc-v ' + (dta == null ? '' : dta < 0.2 ? 'g' : dta < 0.4 ? 'a' : 'r');
+  document.getElementById('sumNWHint').textContent = dta != null ? 'Debt ratio: ' + pct(dta) : (ta > 0 ? 'No liabilities — debt free!' : '—');
+
+  buildChart(portVal, retVal, reVal, vehVal, othVal, items);
+}
+
+// ── Chart ─────────────────────────────────────────────────────────────────────
+var ASSET_COLORS = { portfolio: '#2563EB', retirement: '#059669', realEstate: '#0891B2', vehicles: '#7C3AED', other: '#94A3B8' };
+
+function buildChart(portVal, retVal, reVal, vehVal, othVal, liabItems) {
+  var ctx = document.getElementById('nwChart').getContext('2d');
+
+  // Build liability stacks by type
+  var liabByType = {};
+  liabItems.forEach(function(i) {
+    var t = i.type || 'other';
+    liabByType[t] = (liabByType[t] || 0) + (Number(i.balance) || 0);
+  });
+
+  var ta = portVal + retVal + reVal + vehVal + othVal;
+  var tl = Object.values(liabByType).reduce(function(s, v) { return s + v; }, 0);
+  var nw = ta - tl;
+
+  var labels = ['Assets', 'Liabilities', 'Net Worth'];
+
+  // Each dataset = one colour segment
+  var assetSegments = [
+    { label: 'Portfolio',    color: ASSET_COLORS.portfolio,   vals: [portVal, 0, 0] },
+    { label: 'Retirement',   color: ASSET_COLORS.retirement,  vals: [retVal,  0, 0] },
+    { label: 'Real Estate',  color: ASSET_COLORS.realEstate,  vals: [reVal,   0, 0] },
+    { label: 'Vehicles',     color: ASSET_COLORS.vehicles,    vals: [vehVal,  0, 0] },
+    { label: 'Other Assets', color: ASSET_COLORS.other,       vals: [othVal,  0, 0] },
+  ].filter(function(s) { return s.vals[0] > 0; });
+
+  var liabSegments = Object.keys(liabByType).map(function(t) {
+    return { label: TYPE_LABELS[t] || t, color: TYPE_COLORS[t] || '#94A3B8', vals: [0, liabByType[t], 0] };
+  });
+
+  var nwDataset = {
+    label: 'Net Worth', color: nw >= 0 ? '#059669' : '#DC2626',
+    vals: [0, 0, nw >= 0 ? nw : 0],
+  };
+  var nwNegDataset = nw < 0 ? {
+    label: 'Deficit', color: '#DC2626', vals: [0, 0, -nw],
+  } : null;
+
+  var allDatasets = [...assetSegments, ...liabSegments, nwDataset];
+  if (nwNegDataset) allDatasets.push(nwNegDataset);
+
+  if (nwChart) { nwChart.destroy(); nwChart = null; }
+
+  nwChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: labels,
+      datasets: allDatasets.map(function(s) {
+        return {
+          label: s.label,
+          data: s.vals.map(function(v) { return v > 0 ? +(v/1e6).toFixed(4) : 0; }),
+          backgroundColor: s.color,
+          borderRadius: 4, borderSkipped: false,
+        };
+      }),
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          mode: 'index', intersect: false,
+          callbacks: {
+            label: function(item) {
+              if (item.parsed.y === 0) return null;
+              return '  ' + item.dataset.label + ': $' + item.parsed.y.toFixed(2) + 'M';
+            }
+          }
+        }
+      },
+      scales: {
+        x: { stacked: true, grid: { color: 'rgba(0,0,0,0.04)' }, ticks: { color: '#94A3B8', font: { size: 12 } } },
+        y: { stacked: true, grid: { color: 'rgba(0,0,0,0.04)' },
+          ticks: { color: '#94A3B8', font: { size: 11 },
+            callback: function(v) { return '$' + v.toFixed(1) + 'M'; }
+          }
+        }
+      }
+    }
+  });
+
+  // Legend
+  var legendEl = document.getElementById('chartLegend');
+  legendEl.innerHTML = '';
+  allDatasets.forEach(function(s) {
+    var item = document.createElement('span');
+    item.className = 'cl-i';
+    item.innerHTML = '<span class="cl-d" style="background:' + s.color + '"></span>' + s.label;
+    legendEl.appendChild(item);
+  });
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded', function() {
+  renderLiabilities([]);
+  // Wait for store to be ready (suite-state.js is defer)
+  var tries = 0;
+  var poll = setInterval(function() {
+    if (window.WealthSuite && window.WealthSuite.store) {
+      clearInterval(poll);
+      loadFromStore();
+      // Subscribe to cross-tool updates (e.g. Portfolio Tracker refreshes portfolio value)
+      window.WealthSuite.store.subscribe('portfolio.totalValue', function(v) {
+        storePortfolio = (v != null && Number(v) > 0) ? Number(v) : null;
+        updateAll();
+      });
+      window.WealthSuite.store.subscribe('retirement.balances.total', function(v) {
+        storeRetirement = (v != null && Number(v) > 0) ? Number(v) : null;
+        updateAll();
+      });
+    }
+    if (++tries > 40) clearInterval(poll);
+  }, 50);
+});
+</script>
+</body>
+</html>

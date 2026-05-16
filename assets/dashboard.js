@@ -193,6 +193,30 @@
       hint: portValue ? 'Across all holdings' : 'Set in Portfolio Review',
     }));
 
+    // Liabilities
+    const liabTotal = state.liabilities?.total;
+    grid.appendChild(tile({
+      label: 'Total liabilities',
+      value: fmtMoney(liabTotal),
+      hint: liabTotal ? 'Mortgage, loans & more' : 'Set in Net Worth Tracker',
+    }));
+
+    // Net Worth
+    const manualAssets = sumNumbers(
+      state.assets?.realEstate,
+      state.assets?.vehicles,
+      state.assets?.other,
+    );
+    const totalAssets = sumNumbers(portValue, state.retirement?.balances?.total, manualAssets);
+    const netWorth = totalAssets != null || liabTotal != null
+      ? (totalAssets || 0) - (liabTotal || 0)
+      : null;
+    grid.appendChild(tile({
+      label: 'Net worth',
+      value: fmtMoney(netWorth),
+      hint: netWorth != null ? 'Assets − Liabilities' : 'Set portfolio & liabilities',
+    }));
+
     mount.appendChild(grid);
 
     // Meta line

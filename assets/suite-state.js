@@ -30,7 +30,7 @@
   'use strict';
 
   const STORAGE_KEY = 'wealthSuite.state';
-  const CURRENT_VERSION = 1;
+  const CURRENT_VERSION = 2;
 
   function emptySpouse() { return { s1: null, s2: null }; }
 
@@ -85,6 +85,15 @@
       preferences: {
         taxYear: null,
       },
+      assets: {
+        realEstate: null,
+        vehicles:   null,
+        other:      null,
+      },
+      liabilities: {
+        items: [],
+        total: null,
+      },
     };
   }
 
@@ -134,7 +143,16 @@
   // ---------- Migrations ----------
   function migrate(state) {
     if (!state || typeof state !== 'object') return initialState();
-    const v = state.meta && state.meta.version;
+    let v = state.meta && state.meta.version;
+
+    // v1 → v2: add liabilities and manual-assets sections
+    if (v === 1) {
+      if (!state.liabilities) state.liabilities = { items: [], total: null };
+      if (!state.assets) state.assets = { realEstate: null, vehicles: null, other: null };
+      state.meta.version = 2;
+      v = 2;
+    }
+
     if (v === CURRENT_VERSION) return state;
     // Unknown / missing version: merge into initial schema so future
     // additions get defaults without clobbering existing user data.
