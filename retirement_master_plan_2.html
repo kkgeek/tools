@@ -133,7 +133,7 @@ body{font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;background:var(
 <!-- Wealth Suite shared shell -->
 <link rel="stylesheet" href="assets/suite.css?v=4">
 <script>(function(){try{var p=localStorage.getItem('wealthSuite.themePreference');if(!['system','light','dark'].includes(p))p='system';var r=p==='system'?(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'):p;document.documentElement.setAttribute('data-theme',r);document.documentElement.setAttribute('data-theme-pref',p);}catch(e){}})();</script>
-<script src="assets/suite-state.js?v=3" defer></script>
+<script src="assets/suite-state.js?v=4" defer></script>
 <script src="assets/suite.js?v=5" defer></script>
 <script src="assets/adapters/retirement.js?v=4" defer></script>
 </head>
@@ -262,6 +262,7 @@ body{font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;background:var(
     <div class="sc"><div class="sc-l">Base case — age 70</div><div class="sc-v b" id="v70">—</div></div>
     <div class="sc"><div class="sc-l">Base case — age 85</div><div class="sc-v g" id="v85">—</div></div>
     <div class="sc"><div class="sc-l">Stress case — age 85</div><div class="sc-v a" id="v85s">—</div></div>
+    <div class="sc"><div class="sc-l">MC success rate (age 90)</div><div class="sc-v g" id="mc-rate">—</div></div>
   </div>
 
   <div class="card">
@@ -272,15 +273,22 @@ body{font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;background:var(
       <button class="sc-btn" onclick="switchScen('stress',this)">Stress (5%, 4% inf)</button>
       <button class="sc-btn" onclick="switchScen('bull',this)">Bull (9%, 3.5% inf)</button>
       <button class="sc-btn" onclick="switchScen('all',this)">All 3 scenarios</button>
+      <button class="sc-btn" onclick="switchScen('mc',this)">Monte Carlo (1k)</button>
     </div>
     <div class="cw">
       <canvas id="projChart" role="img" aria-label="Portfolio projection from age 55 to 90 for married couple.">Portfolio projection chart comparing three scenarios.</canvas>
     </div>
-    <div class="cl">
+    <div class="cl" id="proj-legend">
       <span class="cl-i"><span class="cl-d" style="background:var(--green)"></span>Bull (9%)</span>
       <span class="cl-i"><span class="cl-d" style="background:var(--blue)"></span>Base (7%)</span>
       <span class="cl-i"><span class="cl-d" style="background:var(--amber);border-top:2px dashed var(--amber);height:0"></span>Stress (5%, 4% inflation)</span>
       <span style="font-size:11px">Combined SS at age 70 | Stress line is dashed</span>
+    </div>
+    <div class="cl" id="mc-legend" style="display:none">
+      <span class="cl-i"><span class="cl-d" style="background:rgba(37,99,235,0.18);width:18px;height:10px;border-radius:2px;display:inline-block"></span>p10–p90 range</span>
+      <span class="cl-i"><span class="cl-d" style="background:var(--blue)"></span>Median (p50)</span>
+      <span class="cl-i"><span class="cl-d" style="background:#94A3B8;border-top:2px dashed #94A3B8;height:0"></span>Base 7% (fixed)</span>
+      <span style="font-size:11px">1,000 simulations · μ = 7%, σ = 15% · 3.5% inflation</span>
     </div>
   </div>
 
@@ -774,7 +782,95 @@ function switchScen(scen, btn) {
   var sibs = btn.parentElement.querySelectorAll('.sc-btn');
   for (var i = 0; i < sibs.length; i++) sibs[i].classList.remove('on');
   btn.classList.add('on');
-  buildProjChart(scen);
+  if (scen === 'mc') {
+    buildMCChart();
+    document.getElementById('proj-legend').style.display = 'none';
+    document.getElementById('mc-legend').style.display = 'flex';
+  } else {
+    buildProjChart(scen);
+    document.getElementById('proj-legend').style.display = 'flex';
+    document.getElementById('mc-legend').style.display = 'none';
+  }
+}
+
+// ===== Monte Carlo simulation =====
+function randn() {
+  var u = 0, v = 0;
+  while (u === 0) u = Math.random();
+  while (v === 0) v = Math.random();
+  return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
+}
+
+var mcCache = null;
+
+function runMC(N, mu, sigma, ir) {
+  var YEARS = 35, successes = 0, paths = [];
+  for (var s = 0; s < N; s++) {
+    var port = 6520000, spend = 287000;
+    var path = [+(port / 1e6).toFixed(2)];
+    for (var yr = 0; yr < YEARS; yr++) {
+      var age = 55 + yr;
+      var r = mu + sigma * randn();
+      var ss = 0;
+      if (age >= 70) {
+        var ssAt70 = 124872 * Math.pow(1 + ir, 19);
+        ss = ssAt70 * Math.pow(1.025, age - 70);
+      }
+      port = Math.max(0, port * (1 + r) - Math.max(0, spend - ss));
+      spend *= (1 + ir);
+      path.push(+(port / 1e6).toFixed(2));
+    }
+    if (port > 0) successes++;
+    paths.push(path);
+  }
+  return { paths: paths, successRate: successes / N };
+}
+
+function mcPercentiles(paths) {
+  var nPts = paths[0].length, p10 = [], p50 = [], p90 = [];
+  for (var i = 0; i < nPts; i++) {
+    var col = paths.map(function(p) { return p[i]; }).sort(function(a, b) { return a - b; });
+    var N = col.length;
+    p10.push(col[Math.floor(N * 0.10)]);
+    p50.push(col[Math.floor(N * 0.50)]);
+    p90.push(col[Math.floor(N * 0.90)]);
+  }
+  return { p10: p10, p50: p50, p90: p90 };
+}
+
+function buildMCChart() {
+  if (projChart) { projChart.destroy(); projChart = null; }
+  if (!mcCache) mcCache = runMC(1000, 0.07, 0.15, 0.035);
+  var pct = mcPercentiles(mcCache.paths);
+  var rate = Math.round(mcCache.successRate * 100);
+  document.getElementById('mc-rate').textContent = rate + '%';
+
+  var labels = Array.from({ length: 36 }, function(_, i) { return 55 + i; });
+  var ctx = document.getElementById('projChart').getContext('2d');
+  projChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: labels,
+      datasets: [
+        // p10 anchor — invisible, used as fill target for p90
+        { label: 'p10', data: pct.p10, borderColor: 'transparent', backgroundColor: 'transparent', pointRadius: 0, fill: false },
+        // p90 fills down to p10 (dataset index 0)
+        { label: 'p90', data: pct.p90, borderColor: 'transparent', backgroundColor: 'rgba(37,99,235,0.13)', pointRadius: 0, fill: 0 },
+        // Median
+        { label: 'Median (p50)', data: pct.p50, borderColor: '#2563EB', backgroundColor: 'transparent', borderWidth: 2.5, pointRadius: 0, tension: 0.3, fill: false },
+        // Deterministic base for reference
+        { label: 'Base 7% (fixed)', data: baseD.vals, borderColor: '#94A3B8', backgroundColor: 'transparent', borderWidth: 1.5, borderDash: [5, 4], pointRadius: 0, tension: 0.3, fill: false },
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { grid: { color: 'rgba(0,0,0,0.04)' }, ticks: { color: '#94A3B8', font: { size: 11 }, autoSkip: false, maxRotation: 0, callback: function(v, i) { return (55 + i) % 5 === 0 ? 'Age ' + (55 + i) : ''; } } },
+        y: { grid: { color: 'rgba(0,0,0,0.04)' }, ticks: { color: '#94A3B8', font: { size: 11 }, callback: function(v) { return '$' + v.toFixed(0) + 'M'; } } }
+      }
+    }
+  });
 }
 
 // ===== SS chart =====
