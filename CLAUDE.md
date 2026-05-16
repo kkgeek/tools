@@ -98,8 +98,12 @@ Phase 3 additions:
 - `assets/adapters/golden.js?v=1` (golden_ratio_portfolio_dashboard.html only)
 - `assets/adapters/retirement.js?v=4` (retirement_master_plan_2.html only)
 - `assets/adapters/portfolio.js?v=4` (portfolio_review.html only)
-- `assets/suite.css?v=7` (index.html only — adds CSV dropdown styles)
+- `assets/suite.css?v=8` (index.html only — v=4 on all tool pages after dark-mode extension)
 - `assets/dashboard.js?v=8` (index.html only — adds CSV section export)
+
+Phase 4 P1 additions:
+- `assets/suite.js?v=4` (all pages — adds Roth to MODULES registry)
+- `assets/adapters/roth.js?v=1` (roth_conversion.html only)
 
 ## Constraints to preserve
 
@@ -144,14 +148,121 @@ Phase 3 additions:
 - Pages workflow path filter skips `.claude/**`, `*.md`, `.gitignore`,
   but `docs/` IS deployed.
 
-## Phase 3 candidates
+## Phase 3 candidates (all complete)
 
-- Refactor Portfolio Review to take portfolio data as input.
-- Refactor Retirement Master Plan to compute projection inputs from
-  household data (`port`, `spend`, etc. currently hardcoded).
-- Extend Asset Calc tax-year support beyond 2024/2025.
-- Golden φ adapter.
-- Named scenarios ("retire at 55", "retire at 60") switchable from
-  dashboard.
-- CSV export per section.
+- ~~Refactor Portfolio Review to take portfolio data as input.~~ ✓
+- ~~Refactor Retirement Master Plan to compute projection inputs from
+  household data.~~ ✓
+- ~~Extend Asset Calc tax-year support beyond 2024/2025.~~ ✓ (2024–2026)
+- ~~Golden φ adapter.~~ ✓
+- ~~Named scenarios switchable from dashboard.~~ ✓
+- ~~CSV export per section.~~ ✓
+- Vite migration — deferred indefinitely.
+
+## Phase 4 plan
+
+### P1 — Roth Conversion Planner (`roth_conversion.html`)
+
+Standalone single-file tool (React 18 + Tailwind, same stack as Asset
+Calc). Seeded from suite store on load; writes back target conversion
+schedule.
+
+**Inputs (from store + user):**
+- Current traditional IRA / 401k balance (from `retirement.balances`)
+- Current income & filing status (from `income`, `household`)
+- Ages, target retire age (from `household`, `retirement.plan`)
+- User-adjustable: annual conversion cap, expected return, future
+  ordinary income in retirement
+
+**Outputs:**
+- Year-by-year conversion schedule: amount converted, marginal bracket
+  used, tax owed
+- Side-by-side projection: no-conversion vs. optimal-conversion —
+  RMDs, total tax drag, net Roth balance at retirement
+- Break-even year chart (D3)
+
+**Suite adapter:** `assets/adapters/roth.js` — reads store on load,
+writes `retirement.plan.rothConversionSchedule` on calculate.
+
+---
+
+### P2 — Portfolio Tracker (`portfolio_tracker.html`)
+
+New standalone tool. Replaces the static `portfolio_review.html`
+hardcoded data with live holdings and projections.
+
+**Brokerage CSV import** — parser handles four formats:
+| Brokerage | Key columns |
+|---|---|
+| Fidelity | `Symbol`, `Quantity`, `Current Value`, `Average Cost Basis` |
+| Schwab | `Symbol`, `Quantity`, `Market Value`, `Cost Basis` |
+| Vanguard | `Symbol`, `Shares`, `Current Value`, `Cost Basis Total` |
+| Generic | `ticker`, `shares`, `cost_basis` (3-col, any brokerage) |
+
+**Live prices** — Yahoo Finance public endpoint
+(`https://query1.finance.yahoo.com/v8/finance/chart/{ticker}`).
+Fetched client-side; no API key required. Cached in
+`sessionStorage` for 15 min to avoid hammering the endpoint.
+Quote data (price, day change %) is public market data — no personal
+info leaves the browser.
+
+**Holdings store:** `portfolio.holdings[]` array, each entry:
+```js
+{ ticker, name, shares, costBasis, currentPrice, priceUpdatedAt,
+  assetClass }  // assetClass: 'equity'|'bond'|'cash'|'other'
+```
+
+**Dashboard panels:**
+1. Holdings table — ticker, shares, cost basis, current value,
+   day $ / day %, total gain/loss %
+2. Allocation donut — current vs. target (reads `portfolio.allocations`)
+3. Projection chart (D3 line) — 1 / 3 / 5 / 10 / 15 yr at
+   configurable CAGR per asset class (default: equity 7%, bond 3.5%,
+   cash 0.5%)
+4. Daily P&L summary tile
+
+**Suite adapter:** `assets/adapters/tracker.js` — on holdings change,
+recomputes `portfolio.totalValue` and `portfolio.allocations` from
+live holdings and pushes to store.
+
+**Constraints:**
+- Yahoo Finance endpoint is unofficial and may change. Wrap in a
+  try/catch; fall back to last known price from holdings store if
+  fetch fails (show "stale" badge).
+- GitHub Pages serves from `https://` so mixed-content blocks HTTP
+  fetches — Yahoo Finance endpoint must be HTTPS (it is).
+- Add `portfolio_tracker.html` to the module grid in `index.html`
+  and to the topnav in `suite.js`.
+
+---
+
+### P3 candidates (post-tracker)
+
+- **Monte Carlo retirement projections** — replace single growth-assumption
+  line in Retirement Planner with p10/p50/p90 distribution of outcomes.
+- **Social Security estimator** — age-based benefit curves, breakeven
+  analysis vs. early retirement age.
+- **Net worth tracker / liabilities** — add liabilities side (mortgage
+  balance, loans) to complement the asset picture; requires
+  `suite-state.js` schema v2 migration with liabilities fields.
+- **Asset Calc: AMT** — Alternative Minimum Tax calculation; NIIT is
+  already there, AMT is the next relevant complexity for RSU-heavy
+  households.
+- **Print / PDF snapshot** — clean single-page household summary suitable
+  for a financial advisor meeting; note `html2canvas` can't parse
+  `color-mix(in oklab,...)` so use headless Chrome or a CSS print
+  stylesheet instead.
+- **Stale-data indicators** — warning chip on each snapshot tile when
+  that section hasn't been updated in >30 days (compare
+  `meta.lastUpdated` per section once schema supports per-section
+  timestamps).
+- **Shared household banner** — each adapter currently reimplements the
+  banner independently; extract to a shared renderer in `suite.js` or a
+  new `assets/banner.js` to reduce drift.
+- **Dashboard compact mode** — collapse module cards, surface key input
+  fields inline on the dashboard for fast data-entry without opening
+  each tool.
+
+### Deferred indefinitely
+
 - Vite migration — only if scope demands it.

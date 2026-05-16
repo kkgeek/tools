@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Roth Conversion Planner — Wealth Suite</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+    <style>body { font-family: 'Inter', sans-serif; }</style>
+
+    <!-- Wealth Suite shared shell -->
+    <link rel="stylesheet" href="assets/suite.css?v=4">
+    <script>(function(){try{var p=localStorage.getItem('wealthSuite.themePreference');if(!['system','light','dark'].includes(p))p='system';var r=p==='system'?(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'):p;document.documentElement.setAttribute('data-theme',r);document.documentElement.setAttribute('data-theme-pref',p);}catch(e){}})();</script>
+    <script src="assets/suite-state.js?v=4" defer></script>
+    <script src="assets/suite.js?v=4" defer></script>
+    <script src="assets/adapters/roth.js?v=1" defer></script>
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <div id="root"></div>
+
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+
+    <script type="text/babel">
+    // ── Tax data (2026 federal, IRS Rev. Proc. 2025-32) ──────────────────────
+    const BRACKETS = {
+      single: [
+        { rate: 0.10, upTo: 12400 },
+        { rate: 0.12, upTo: 50400 },
+        { rate: 0.22, upTo: 105700 },
+        { rate: 0.24, upTo: 201775 },
+        { rate: 0.32, upTo: 256225 },
+        { rate: 0.35, upTo: 640600 },
+        { rate: 0.37, upTo: Infinity },
+      ],
+      married: [
+        { rate: 0.10, upTo: 24800 },
+        { rate: 0.12, upTo: 100800 },
+        { rate: 0.22, upTo: 211400 },
+        { rate: 0.24, upTo: 403550 },
+        { rate: 0.32, upTo: 512450 },
+        { rate: 0.35, upTo: 768700 },
+        { rate: 0.37, upTo: Infinity },
+      ],
+    };
+
+    const STD_DEDUCTION = { single: 16100, married: 32200 };
+
+    // IRS Uniform Lifetime Table (SECURE 2.0 — RMDs begin at 73)
+    const RMD_FACTORS = {
+      73: 26.5, 74: 25.5, 75: 24.6, 76: 23.7, 77: 22.9,
+      78: 22.0, 79: 21.1, 80: 20.2, 81: 19.4, 82: 18.5,
+      83: 17.7, 84: 16.8, 85: 16.0, 86: 15.2, 87: 14.4,
+      88: 13.7, 89: 12.9, 90: 12.2, 91: 11.5, 92: 10.8,
+      93: 10.1, 94: 9.5,  95: 8.9,
+    };
+
+    // ── Formatters ────────────────────────────────────────────────────────────
+    const usd0 = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 });
+    const fmt = (n) => (n == null || !Number.isFinite(n)) ? '—' : usd0.format(n);
+
+    // ── Tax helpers (pure functions, take statusKey as param) ─────────────────
+    function computeTax(taxableIncome, sk) {
+      if (taxableIncome <= 0) return 0;
+      let tax = 0, prev = 0;
+      for (const { rate, upTo } of BRACKETS[sk]) {
+        if (taxableIncome <= prev) break;
+        tax += (Math.min(taxableIncome, upTo) - prev) * rate;
+        if (upTo === Infinity) break;
+        prev = upTo;
+      }
+      return tax;
+    }
+
+    function marginalTax(income, conversion, sk) {
+      const stdDed = STD_DEDUCTION[sk];
+      const base = Math.max(0, income - stdDed);
+      return computeTax(base + conversion, sk) - computeTax(base, sk);
+    }
+
+    function conversionRoomForBracket(income, targetRate, sk) {
+      const stdDed = STD_DEDUCTION[sk];
+      const base = Math.max(0, income - stdDed);
+      for (const b of BRACKETS[sk]) {
+        if (Math.abs(b.rate - targetRate) < 0.001) {
+          return Math.max(0, b.upTo - base);
+        }
+      }
+      return 0;
+    }
+
+    // ── Main component ────────────────────────────────────────────────────────
+    const RothConversionPlanner = () => {
+      const [filingStatus, setFilingStatus] = React.useState('married');
+      const [tradBalance,  setTradBalance]  = React.useState('');
+      const [rothBalance,  setRothBalance]  = React.useState('');
+      const [currentAge,   setCurrentAge]   = React.useState('');
+      const [retireAge,    setRetireAge]     = React.useState('');
+      const [currentIncome,    setCurrentIncome]    = React.useState('');
+      const [retirementIncome, setRetirementIncome] = React.useState('');
+      const [growthRate,   setGrowthRate]   = React.useState('7');
+      const [targetBracket, setTargetBracket] = React.useState('22');
+      const [errorMessage, setErrorMessage] = React.useState('');
+
+      const [convSchedule,   setConvSchedule]   = React.useState([]);
+      const [noConvSchedule, setNoConvSchedule] = React.useState([]);
+      const [summary, setSummary] = React.useState(null);
+      const chartRef = React.useRef(null);
+
+      const sk = filingStatus === 'married' ? 'married' : 'single';
+
+      // Expose seed function so the adapter can pre-fill from suite store
+      React.useEffect(() => {
+        window.__rothSeed = (d) => {
+          if (d.filingStatus != null) setFilingStatus(d.filingStatus);
+          if (d.currentAge   != null) setCurrentAge(String(d.currentAge));
+          if (d.retireAge    != null) setRetireAge(String(d.retireAge));
+          if (d.tradBalance  != null) setTradBalance(String(d.tradBalance));
+          if (d.currentIncome != null) setCurrentIncome(String(d.currentIncome));
+        };
+        return () => { delete window.__rothSeed; };
+      }, []);
+
+      // ── Build year-by-year projection ──────────────────────────────────────
+      function buildSchedules() {
+        const income    = Number(currentIncome)    || 0;
+        const retIncome = Number(retirementIncome) || 0;
+        const rate      = (Number(growthRate) || 7) / 100;
+        const startAge  = Number(currentAge);
+        const endAge    = Number(retireAge);
+        const showThru  = Math.max(endAge + 20, 90);
+        const curYear   = new Date().getFullYear();
+        const targetRate = Number(targetBracket) / 100;
+        const room = conversionRoomForBracket(income, targetRate, sk);
+
+        let tradA = Number(tradBalance) || 0;
+        let rothA = Number(rothBalance) || 0;
+        let tradB = Number(tradBalance) || 0;
+
+        const cSched = [], ncSched = [];
+        let totalConvTax = 0, totalRmdTaxA = 0, totalRmdTaxB = 0;
+
+        for (let yr = 0; yr <= showThru - startAge; yr++) {
+          const age  = startAge + yr;
+          const year = curYear  + yr;
+          const pre  = age < endAge;
+
+          tradA *= (1 + rate);
+          tradB *= (1 + rate);
+          rothA *= (1 + rate);
+
+          let conversion = 0, taxConv = 0;
+          let rmdA = 0, taxRmdA = 0;
+          let rmdB = 0, taxRmdB = 0;
+
+          if (pre) {
+            conversion = Math.min(room, tradA);
+            taxConv    = marginalTax(income, conversion, sk);
+            tradA      = Math.max(0, tradA - conversion);
+            rothA     += conversion;
+            totalConvTax += taxConv;
+          } else if (age >= 73) {
+            const factor = RMD_FACTORS[Math.min(age, 95)] || 8.9;
+            if (tradA > 1) {
+              rmdA    = tradA / factor;
+              tradA   = Math.max(0, tradA - rmdA);
+              taxRmdA = marginalTax(retIncome, rmdA, sk);
+              totalRmdTaxA += taxRmdA;
+            }
+            if (tradB > 1) {
+              rmdB    = tradB / factor;
+              tradB   = Math.max(0, tradB - rmdB);
+              taxRmdB = marginalTax(retIncome, rmdB, sk);
+              totalRmdTaxB += taxRmdB;
+            }
+          }
+
+          cSched.push({
+            year, age, pre, conversion, taxConv, rmdA, taxRmdA,
+            tradA: Math.max(0, tradA),
+            rothA: Math.max(0, rothA),
+            totalA: Math.max(0, tradA) + Math.max(0, rothA),
+          });
+          ncSched.push({
+            year, age,
+            tradB: Math.max(0, tradB),
+            rmdB, taxRmdB,
+          });
+        }
+
+        const retireIdx = endAge - startAge - 1;
+        return {
+          cSched, ncSched, room,
+          summary: {
+            room,
+            rothAtRetire: cSched[retireIdx]?.rothA ?? 0,
+            tradAtRetire: cSched[retireIdx]?.tradA ?? 0,
+            noConvTradAtRetire: ncSched[retireIdx]?.tradB ?? 0,
+            totalConvTax,
+            totalRmdTaxB,
+            // Savings = (RMD tax you'd pay without converting) minus
+            //           (conversion tax + residual RMD tax with converting)
+            taxSavings: totalRmdTaxB - (totalConvTax + totalRmdTaxA),
+          },
+        };
+      }
+
+      // ── Handle calculate ───────────────────────────────────────────────────
+      function handleCalculate() {
+        setErrorMessage('');
+        const age = Number(currentAge);
+        const ret = Number(retireAge);
+        if (!tradBalance || !currentAge || !retireAge || !currentIncome) {
+          setErrorMessage('Please fill in all required fields (marked *).');
+          return;
+        }
+        if (age >= ret) {
+          setErrorMessage('Retirement age must be greater than current age.');
+          return;
+        }
+        if (age < 18 || age > 72) {
+          setErrorMessage('Current age must be between 18 and 72.');
+          return;
+        }
+        const { cSched, ncSched, summary: sum } = buildSchedules();
+        setConvSchedule(cSched);
+        setNoConvSchedule(ncSched);
+        setSummary(sum);
+      }
+
+      // ── D3 chart ───────────────────────────────────────────────────────────
+      React.useEffect(() => {
+        if (!summary || !convSchedule.length || !chartRef.current) return;
+
+        const container = chartRef.current;
+        d3.select(container).selectAll('*').remove();
+
+        const margin = { top: 16, right: 140, bottom: 36, left: 72 };
+        const W = Math.max(300, container.clientWidth - margin.left - margin.right);
+        const H = 300 - margin.top - margin.bottom;
+
+        const svg = d3.select(container)
+          .append('svg')
+          .attr('width',  W + margin.left + margin.right)
+          .attr('height', H + margin.top  + margin.bottom)
+          .append('g')
+          .attr('transform', `translate(${margin.left},${margin.top})`);
+
+        const allYears = convSchedule.map(d => d.year);
+        const yMax = d3.max([
+          ...convSchedule.map(d => d.totalA),
+          ...noConvSchedule.map(d => d.tradB),
+        ]) * 1.05;
+
+        const x = d3.scaleLinear().domain(d3.extent(allYears)).range([0, W]);
+        const y = d3.scaleLinear().domain([0, yMax]).range([H, 0]).nice();
+
+        // Grid
+        svg.append('g').call(
+          d3.axisLeft(y).tickSize(-W).tickFormat('')
+        ).selectAll('line')
+          .style('stroke', '#e5e7eb').style('stroke-dasharray', '3,3');
+        svg.selectAll('.domain').remove();
+
+        svg.append('g').attr('transform', `translate(0,${H})`)
+          .call(d3.axisBottom(x).tickFormat(d3.format('d')).ticks(6));
+        svg.append('g')
+          .call(d3.axisLeft(y).tickFormat(v => '$' + d3.format('.2s')(v)));
+
+        const mkLine = (acc) => d3.line()
+          .x(d => x(d.year)).y(d => y(acc(d))).curve(d3.curveMonotoneX);
+
+        const series = [
+          { data: convSchedule,   acc: d => d.rothA,  color: '#10b981', label: 'Roth (convert)',      dash: null },
+          { data: convSchedule,   acc: d => d.tradA,  color: '#3b82f6', label: 'Trad (convert)',      dash: null },
+          { data: noConvSchedule, acc: d => d.tradB,  color: '#9ca3af', label: 'Trad (no convert)',   dash: '5,4' },
+        ];
+
+        series.forEach(({ data, acc, color, label, dash }) => {
+          svg.append('path').datum(data)
+            .attr('fill', 'none').attr('stroke', color).attr('stroke-width', 2)
+            .attr('stroke-dasharray', dash || null)
+            .attr('d', mkLine(acc));
+        });
+
+        // Retirement age line
+        const retYear = new Date().getFullYear() + (Number(retireAge) - Number(currentAge));
+        if (retYear <= d3.max(allYears)) {
+          svg.append('line')
+            .attr('x1', x(retYear)).attr('x2', x(retYear))
+            .attr('y1', 0).attr('y2', H)
+            .attr('stroke', '#f59e0b').attr('stroke-width', 1.5).attr('stroke-dasharray', '5,3');
+          svg.append('text')
+            .attr('x', x(retYear) + 4).attr('y', 14)
+            .attr('font-size', 11).attr('fill', '#f59e0b')
+            .text(`Age ${retireAge}`);
+        }
+
+        // Legend
+        const leg = svg.append('g').attr('transform', `translate(${W + 10}, 10)`);
+        series.forEach(({ color, label, dash }, i) => {
+          const g = leg.append('g').attr('transform', `translate(0,${i * 22})`);
+          g.append('line').attr('x2', 18).attr('y1', 8).attr('y2', 8)
+            .attr('stroke', color).attr('stroke-width', 2)
+            .attr('stroke-dasharray', dash || null);
+          g.append('text').attr('x', 22).attr('y', 12)
+            .attr('font-size', 11).attr('fill', '#374151').text(label);
+        });
+
+      }, [summary, convSchedule, noConvSchedule]);
+
+      // ── JSX ───────────────────────────────────────────────────────────────
+      const preRows = convSchedule.filter(r => r.pre);
+      const stdDed  = STD_DEDUCTION[sk];
+
+      return (
+        <div className="max-w-5xl mx-auto px-4 py-8 pt-24">
+          <h1 className="text-2xl font-bold text-gray-800 mb-1">Roth Conversion Planner</h1>
+          <p className="text-gray-500 text-sm mb-6">
+            Find the optimal annual amount to convert from traditional IRA / 401(k) to Roth before retirement.
+            Uses 2026 federal income brackets. Tax on each conversion is assumed paid from outside funds
+            (maximizes Roth growth).
+          </p>
+
+          {/* ── Input form ── */}
+          <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
+            <h2 className="font-semibold text-gray-700 mb-4">Household &amp; Balances</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-4">
+
+              {/* Filing status */}
+              <div className="lg:col-span-3">
+                <span className="block text-sm font-medium text-gray-700 mb-1">Filing Status</span>
+                <div className="flex gap-6">
+                  {[['married', 'Married Filing Jointly'], ['single', 'Single']].map(([v, l]) => (
+                    <label key={v} className="inline-flex items-center gap-2 cursor-pointer">
+                      <input type="radio" name="filing" value={v}
+                        checked={filingStatus === v} onChange={() => setFilingStatus(v)} />
+                      <span className="text-sm">{l}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              {[
+                { label: 'Current Age *',          id: 'rothCurrentAge',   val: currentAge,   set: setCurrentAge,   ph: '45', hint: null },
+                { label: 'Target Retire Age *',    id: 'rothRetireAge',    val: retireAge,    set: setRetireAge,    ph: '60', hint: null },
+                { label: 'Traditional IRA / 401(k) Balance *', id: 'rothTradBalance', val: tradBalance, set: setTradBalance, ph: '500000', hint: 'Pre-tax balance today' },
+                { label: 'Roth IRA / 401(k) Balance', id: 'rothRothBalance', val: rothBalance, set: setRothBalance, ph: '100000', hint: 'After-tax balance today' },
+                { label: 'Current Annual Ordinary Income *', id: 'rothCurrentIncome', val: currentIncome, set: setCurrentIncome, ph: '150000', hint: 'Salary + bonus + RSU; not capital gains' },
+                { label: 'Estimated Retirement Income', id: 'rothRetirementIncome', val: retirementIncome, set: setRetirementIncome, ph: '40000', hint: 'Social Security + pension (for RMD tax estimate)' },
+              ].map(({ label, id, val, set, ph, hint }) => (
+                <div key={id}>
+                  <label htmlFor={id} className="block text-sm font-medium text-gray-700 mb-1">{label}</label>
+                  <input id={id} type="number" value={val} min="0" placeholder={ph}
+                    onChange={e => set(e.target.value)}
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400" />
+                  {hint && <p className="text-xs text-gray-400 mt-1">{hint}</p>}
+                </div>
+              ))}
+            </div>
+
+            <h2 className="font-semibold text-gray-700 mt-6 mb-4">Conversion Strategy</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-4">
+              <div>
+                <label htmlFor="targetBracket" className="block text-sm font-medium text-gray-700 mb-1">
+                  Fill conversions through bracket
+                </label>
+                <select id="targetBracket" value={targetBracket} onChange={e => setTargetBracket(e.target.value)}
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400">
+                  <option value="12">12% — conservative</option>
+                  <option value="22">22% — balanced (recommended)</option>
+                  <option value="24">24% — aggressive</option>
+                  <option value="32">32% — max before 35%</option>
+                </select>
+                <p className="text-xs text-gray-400 mt-1">
+                  Converts up to the ceiling of this bracket each year
+                </p>
+              </div>
+              <div>
+                <label htmlFor="growthRate" className="block text-sm font-medium text-gray-700 mb-1">
+                  Expected Annual Return (%)
+                </label>
+                <input id="growthRate" type="number" value={growthRate} min="1" max="15" step="0.5"
+                  onChange={e => setGrowthRate(e.target.value)}
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400" />
+              </div>
+            </div>
+
+            {errorMessage && (
+              <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-md text-sm text-red-700">
+                {errorMessage}
+              </div>
+            )}
+
+            <button onClick={handleCalculate}
+              className="mt-6 px-8 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition-colors text-sm">
+              Calculate Conversion Schedule
+            </button>
+          </div>
+
+          {/* ── Results ── */}
+          {summary && (
+            <>
+              {/* Summary cards */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                <div className="bg-white rounded-xl shadow-sm p-5">
+                  <div className="text-xs text-gray-500 uppercase tracking-wide mb-1">Annual conversion</div>
+                  <div className="text-2xl font-bold text-blue-600">{fmt(summary.room)}</div>
+                  <div className="text-xs text-gray-400 mt-1">
+                    Fills the {targetBracket}% bracket ceiling
+                    {summary.room === 0 && ' — income already above ceiling'}
+                  </div>
+                </div>
+                <div className="bg-white rounded-xl shadow-sm p-5">
+                  <div className="text-xs text-gray-500 uppercase tracking-wide mb-1">Roth at retirement (age {retireAge})</div>
+                  <div className="text-2xl font-bold text-emerald-600">{fmt(summary.rothAtRetire)}</div>
+                  <div className="text-xs text-gray-400 mt-1">Tax-free; no RMDs during owner's lifetime</div>
+                </div>
+                <div className="bg-white rounded-xl shadow-sm p-5">
+                  <div className="text-xs text-gray-500 uppercase tracking-wide mb-1">
+                    Estimated lifetime tax {summary.taxSavings >= 0 ? 'savings' : 'extra cost'}
+                  </div>
+                  <div className={`text-2xl font-bold ${summary.taxSavings >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                    {summary.taxSavings < 0 ? '−' : ''}{fmt(Math.abs(summary.taxSavings))}
+                  </div>
+                  <div className="text-xs text-gray-400 mt-1">
+                    Convert tax {fmt(summary.totalConvTax)} · est. RMD tax without {fmt(summary.totalRmdTaxB)}
+                  </div>
+                </div>
+              </div>
+
+              {/* Chart */}
+              <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
+                <h2 className="font-semibold text-gray-700 mb-3">Balance Projection (to age {Math.max(Number(retireAge) + 20, 90)})</h2>
+                <div ref={chartRef} className="w-full overflow-x-auto" />
+                <p className="text-xs text-gray-400 mt-2">
+                  {growthRate}% annual return. RMDs from IRS Uniform Lifetime Table, starting age 73 (SECURE 2.0).
+                  Roth has no RMDs during owner's lifetime.
+                </p>
+              </div>
+
+              {/* Conversion schedule table */}
+              {preRows.length > 0 && (
+                <div className="bg-white rounded-xl shadow-sm p-6 mb-6 overflow-x-auto">
+                  <h2 className="font-semibold text-gray-700 mb-3">Pre-Retirement Conversion Schedule</h2>
+                  <table className="min-w-full text-sm">
+                    <thead>
+                      <tr className="text-xs text-gray-400 uppercase border-b border-gray-100">
+                        {['Year','Age','Convert','Tax on Convert','Trad Balance','Roth Balance','Total'].map(h => (
+                          <th key={h} className="pb-2 pr-6 text-left font-medium">{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {preRows.map(r => (
+                        <tr key={r.year} className="border-b border-gray-50 hover:bg-gray-50">
+                          <td className="py-2 pr-6 text-gray-500">{r.year}</td>
+                          <td className="py-2 pr-6 font-medium">{r.age}</td>
+                          <td className="py-2 pr-6 text-blue-600">{fmt(r.conversion)}</td>
+                          <td className="py-2 pr-6 text-orange-500">{fmt(r.taxConv)}</td>
+                          <td className="py-2 pr-6">{fmt(r.tradA)}</td>
+                          <td className="py-2 pr-6 text-emerald-600">{fmt(r.rothA)}</td>
+                          <td className="py-2 font-medium">{fmt(r.totalA)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+
+              {summary.room === 0 && (
+                <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-6 text-sm text-amber-800">
+                  Your current ordinary income ({fmt(Number(currentIncome))}) minus the standard deduction
+                  ({fmt(stdDed)}) already meets or exceeds the {targetBracket}% bracket ceiling.
+                  Consider selecting a higher target bracket, or reducing pre-retirement income (e.g., delaying RSU vests).
+                </div>
+              )}
+
+              <p className="text-xs text-gray-400 text-center mb-10">
+                Estimates use 2026 federal income tax brackets. State income taxes are not included.
+                RMD calculations are approximations. This tool is for planning purposes only — consult a
+                qualified tax professional before converting.
+              </p>
+            </>
+          )}
+        </div>
+      );
+    };
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<RothConversionPlanner />);
+    </script>
+</body>
+</html>

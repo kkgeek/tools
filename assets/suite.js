@@ -28,7 +28,8 @@
     { href: 'TaxAssetCalcv4.html',                 label: 'Assets',      match: ['TaxAssetCalc'] },
     { href: 'retirement_master_plan_2.html',       label: 'Retirement',  match: ['retirement_master_plan'] },
     { href: 'portfolio_review.html',               label: 'Portfolio',   match: ['portfolio_review'] },
-    { href: 'golden_ratio_portfolio_dashboard.html', label: 'Golden φ', match: ['golden_ratio'] },
+    { href: 'golden_ratio_portfolio_dashboard.html', label: 'Golden φ',  match: ['golden_ratio'] },
+    { href: 'roth_conversion.html',                  label: 'Roth',      match: ['roth_conversion'] },
   ];
 
   // ---------- Theme ----------
