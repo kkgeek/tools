@@ -227,47 +227,12 @@
 
   // ---------- household banner ----------
   function renderHouseholdBanner() {
-    const state = store.export();
-    if (!state || !state.meta || state.meta.lastUpdated == null) return;
-
-    const inc = state.income || {};
-    const totalIncome =
-      sumSpouse(inc.salary) + sumSpouse(inc.bonus) + sumSpouse(inc.rsuVests) +
-      (Number(inc.capitalGains?.shortTerm) || 0) +
-      (Number(inc.capitalGains?.longTerm) || 0);
-
-    const c = state.retirement?.contributions || {};
-    const totalContrib =
-      sumSpouse(c.traditional401k) + sumSpouse(c.roth401k) +
-      sumSpouse(c.afterTax401k) + sumSpouse(c.catchup) +
-      sumSpouse(c.ira) + (Number(c.hsa) || 0);
-
-    const portVal  = state.portfolio && state.portfolio.totalValue;
-    const expenses = state.retirement && state.retirement.plan && state.retirement.plan.annualExpenses;
-
-    const ages = (state.household?.spouses || [])
-      .map((s) => (s && s.age != null && s.age !== '') ? `${s.age}` : null)
-      .filter(Boolean);
-
-    const parts = [];
-    if (portVal)      parts.push(`portfolio ${fmtMoney(portVal)}`);
-    if (expenses)     parts.push(`expenses ${fmtMoney(expenses)}/yr`);
-    if (totalIncome)  parts.push(`income ${fmtMoney(totalIncome)}`);
-    if (totalContrib) parts.push(`contributions ${fmtMoney(totalContrib)}/yr`);
-    if (ages.length)  parts.push(`ages ${ages.join(' & ')}`);
-    if (!parts.length) return;
-
-    let banner = document.getElementById('suite-household-banner');
-    if (!banner) {
-      const headerSub = document.querySelector('.hdr-l p');
-      if (!headerSub) return;
-      banner = document.createElement('p');
-      banner.id = 'suite-household-banner';
-      banner.style.cssText =
-        'margin-top:4px;font-size:11px;letter-spacing:.04em;opacity:.7;text-transform:uppercase';
-      headerSub.parentNode.insertBefore(banner, headerSub.nextSibling);
-    }
-    banner.textContent = 'Wealth Suite household · ' + parts.join(' · ');
+    var WS = window.WealthSuite;
+    if (!WS || !WS.renderHouseholdBanner) return;
+    WS.renderHouseholdBanner({
+      anchor: '.hdr-l p',
+      fields: ['portfolio', 'expenses', 'income', 'contributions', 'ages'],
+    });
   }
 
   // ---------- bootstrap ----------

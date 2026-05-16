@@ -81,34 +81,15 @@
 
   // ---------- household banner ----------
   function renderHouseholdBanner() {
-    const state = store.export();
-    if (!state || !state.meta || state.meta.lastUpdated == null) return;
-
-    const portVal  = state.portfolio && state.portfolio.totalValue;
-    const expenses =
-      state.retirement && state.retirement.plan && state.retirement.plan.annualExpenses;
-    const ages = (state.household && state.household.spouses || [])
-      .map((s) => (s && s.age != null && s.age !== '') ? `${s.age}` : null)
-      .filter(Boolean);
-
-    const parts = [];
-    if (portVal)   parts.push(`portfolio ${fmtMoney(portVal)}`);
-    if (expenses)  parts.push(`expenses ${fmtMoney(expenses)}/yr`);
-    if (ages.length) parts.push(`ages ${ages.join(' & ')}`);
-    if (!parts.length) return;
-
-    let banner = document.getElementById('suite-household-banner');
-    if (!banner) {
-      const codeEl = Array.from(document.querySelectorAll('code'))
-        .find((el) => el.textContent.includes('1/φ'));
-      if (!codeEl) return;
-      banner = document.createElement('p');
-      banner.id = 'suite-household-banner';
-      banner.style.cssText =
-        'margin-top:4px;font-size:11px;letter-spacing:.04em;opacity:.7;text-transform:uppercase';
-      codeEl.parentNode.insertBefore(banner, codeEl.nextSibling);
-    }
-    banner.textContent = 'Wealth Suite household · ' + parts.join(' · ');
+    var WS = window.WealthSuite;
+    if (!WS || !WS.renderHouseholdBanner) return;
+    WS.renderHouseholdBanner({
+      anchor: function() {
+        return Array.from(document.querySelectorAll('code'))
+          .find(function(el) { return el.textContent.includes('1/φ'); });
+      },
+      fields: ['portfolio', 'expenses', 'ages'],
+    });
   }
 
   // ---------- bootstrap ----------

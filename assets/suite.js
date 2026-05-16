@@ -188,6 +188,86 @@
     injectTopbarIfMissing();
   }
 
+  // ---------- Shared household banner ----------
+  // Adapters call WealthSuite.renderHouseholdBanner(opts) instead of
+  // reimplementing the create/update logic themselves.
+  //
+  // opts.anchor  — CSS selector string OR function() → Element
+  //                (where to insert the banner on first render)
+  // opts.fields  — ordered array of field keys to show; supported:
+  //                'portfolio' | 'expenses' | 'income' | 'contributions'
+  //                | 'ages' | 'yearsToRetire'
+  function renderHouseholdBanner(opts) {
+    var store = window.WealthSuite && window.WealthSuite.store;
+    if (!store) return;
+    var state = store.export();
+    if (!state || !state.meta || state.meta.lastUpdated == null) return;
+
+    function fmtM(n) {
+      n = Number(n);
+      if (!n || !isFinite(n)) return null;
+      if (n >= 1e6) return '$' + (n / 1e6).toFixed(1) + 'M';
+      if (n >= 1e3) return '$' + Math.round(n / 1e3) + 'K';
+      return '$' + Math.round(n);
+    }
+    function sumSp(o) {
+      return o ? (Number(o.s1) || 0) + (Number(o.s2) || 0) : 0;
+    }
+
+    var inc     = state.income || {};
+    var c       = (state.retirement && state.retirement.contributions) || {};
+    var plan    = (state.retirement && state.retirement.plan) || {};
+    var spouses = (state.household && state.household.spouses) || [];
+
+    var totalIncome   = sumSp(inc.salary) + sumSp(inc.bonus) + sumSp(inc.rsuVests)
+                      + (Number((inc.capitalGains || {}).shortTerm) || 0)
+                      + (Number((inc.capitalGains || {}).longTerm)  || 0);
+    var totalContrib  = sumSp(c.traditional401k) + sumSp(c.roth401k) + sumSp(c.afterTax401k)
+                      + sumSp(c.catchup) + sumSp(c.ira) + (Number(c.hsa) || 0);
+    var portVal       = state.portfolio && state.portfolio.totalValue;
+    var expenses      = plan.annualExpenses;
+    var retireAge     = plan.targetRetireAge;
+    var ages          = spouses.map(function(s) {
+      return (s && s.age != null && s.age !== '') ? String(s.age) : null;
+    }).filter(Boolean);
+    var rawAges       = spouses.map(function(s) {
+      return (s && s.age != null && s.age !== '') ? Number(s.age) : NaN;
+    }).filter(function(n) { return !isNaN(n) && n > 0; });
+    var currentAge    = rawAges.length ? Math.min.apply(null, rawAges) : null;
+    var yearsToRetire = (retireAge && currentAge) ? Math.max(0, retireAge - currentAge) : null;
+
+    var COMPUTED = {
+      portfolio:     portVal      ? 'portfolio '     + fmtM(portVal)              : null,
+      expenses:      expenses     ? 'expenses '      + fmtM(expenses) + '/yr'     : null,
+      income:        totalIncome  ? 'income '        + fmtM(totalIncome)          : null,
+      contributions: totalContrib ? 'contributions ' + fmtM(totalContrib) + '/yr' : null,
+      ages:          ages.length  ? 'ages '          + ages.join(' & ')           : null,
+      yearsToRetire: yearsToRetire != null
+        ? 'retire in ' + yearsToRetire + ' yrs (age ' + retireAge + ')' : null,
+    };
+
+    var fields = (opts && opts.fields) || [];
+    var parts  = fields.map(function(f) { return COMPUTED[f]; }).filter(Boolean);
+    if (!parts.length) return;
+
+    var banner = document.getElementById('suite-household-banner');
+    if (!banner) {
+      var anchor = null;
+      if (opts && typeof opts.anchor === 'function') {
+        anchor = opts.anchor();
+      } else if (opts && typeof opts.anchor === 'string') {
+        anchor = document.querySelector(opts.anchor);
+      }
+      if (!anchor) return;
+      banner = document.createElement('p');
+      banner.id = 'suite-household-banner';
+      banner.style.cssText =
+        'margin-top:4px;font-size:11px;letter-spacing:.04em;opacity:.7;text-transform:uppercase';
+      anchor.parentNode.insertBefore(banner, anchor.nextSibling);
+    }
+    banner.textContent = 'Wealth Suite household · ' + parts.join(' · ');
+  }
+
   // Public API (in case tools want to read theme or rebuild).
   // IMPORTANT: extend rather than replace — suite-state.js may have already
   // attached `.store` to window.WealthSuite when loaded as an earlier
@@ -203,5 +283,6 @@
     },
     cycle: cycleTheme,
     modules: MODULES.slice(),
+    renderHouseholdBanner,
   });
 })();

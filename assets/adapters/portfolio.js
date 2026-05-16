@@ -210,53 +210,12 @@
 
   // ---------- household banner ----------
   function renderHouseholdBanner() {
-    const state = store.export();
-    if (!state || !state.meta || state.meta.lastUpdated == null) return;
-
-    const inc = state.income || {};
-    const totalIncome =
-      sumSpouse(inc.salary) + sumSpouse(inc.bonus) + sumSpouse(inc.rsuVests) +
-      (Number(inc.capitalGains?.shortTerm) || 0) +
-      (Number(inc.capitalGains?.longTerm) || 0);
-
-    const c = state.retirement?.contributions || {};
-    const totalContrib =
-      sumSpouse(c.traditional401k) + sumSpouse(c.roth401k) +
-      sumSpouse(c.afterTax401k) + sumSpouse(c.catchup) +
-      sumSpouse(c.ira) + (Number(c.hsa) || 0);
-
-    const expenses  = state.retirement && state.retirement.plan && state.retirement.plan.annualExpenses;
-    const retireAge = state.retirement && state.retirement.plan && state.retirement.plan.targetRetireAge;
-
-    const spouses = (state.household?.spouses || []);
-    const ages = spouses
-      .map((s) => (s && s.age != null && s.age !== '') ? `${s.age}` : null)
-      .filter(Boolean);
-    const rawAges = spouses
-      .map((s) => (s && s.age != null && s.age !== '') ? Number(s.age) : NaN)
-      .filter((n) => !isNaN(n) && n > 0);
-    const currentAge = rawAges.length > 0 ? Math.min(...rawAges) : null;
-    const yearsToRetire = (retireAge && currentAge) ? Math.max(0, retireAge - currentAge) : null;
-
-    const parts = [];
-    if (totalIncome)  parts.push(`income ${fmtMoney(totalIncome)}`);
-    if (expenses)     parts.push(`expenses ${fmtMoney(expenses)}/yr`);
-    if (totalContrib) parts.push(`contributions ${fmtMoney(totalContrib)}/yr`);
-    if (ages.length)  parts.push(`ages ${ages.join(' & ')}`);
-    if (yearsToRetire != null) parts.push(`retire in ${yearsToRetire} yrs (age ${retireAge})`);
-    if (!parts.length) return;
-
-    let banner = document.getElementById('suite-household-banner');
-    if (!banner) {
-      const headerSub = document.querySelector('.hdr p');
-      if (!headerSub) return;
-      banner = document.createElement('p');
-      banner.id = 'suite-household-banner';
-      banner.style.cssText =
-        'margin-top:4px;font-size:11px;letter-spacing:.04em;opacity:.7;text-transform:uppercase';
-      headerSub.parentNode.insertBefore(banner, headerSub.nextSibling);
-    }
-    banner.textContent = 'Wealth Suite household · ' + parts.join(' · ');
+    var WS = window.WealthSuite;
+    if (!WS || !WS.renderHouseholdBanner) return;
+    WS.renderHouseholdBanner({
+      anchor: '.hdr p',
+      fields: ['income', 'expenses', 'contributions', 'ages', 'yearsToRetire'],
+    });
   }
 
   // ---------- bootstrap ----------
