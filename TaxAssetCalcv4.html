@@ -143,6 +143,10 @@
             const [rawLongTermGains, setRawLongTermGains] = React.useState(0);
             const [rawItemizedDeductions, setRawItemizedDeductions] = React.useState(0);
 
+            const [isoSpread, setIsoSpread] = React.useState('');
+            const [rawIsoSpread, setRawIsoSpread] = React.useState(0);
+            const [amtResult, setAmtResult] = React.useState(null);
+
             // State for LLM features
             const [taxTips, setTaxTips] = React.useState('');
             const [capitalGainsExplanation, setCapitalGainsExplanation] = React.useState('');
@@ -297,6 +301,22 @@
                 'married': 250000
             };
 
+            const AMT_PARAMS = {
+                '2024': {
+                    'single':  { exemption: 85700,  phaseOutStart: 609350,  rateChangePt: 232600 },
+                    'married': { exemption: 137000, phaseOutStart: 1218700, rateChangePt: 232600 }
+                },
+                '2025': {
+                    'single':  { exemption: 88100,  phaseOutStart: 626350,  rateChangePt: 239900 },
+                    'married': { exemption: 140300, phaseOutStart: 1252700, rateChangePt: 239900 }
+                },
+                '2026': {
+                    // Projected with TCJA extension; IRS has not published official 2026 AMT figures
+                    'single':  { exemption: 90600,  phaseOutStart: 643000,  rateChangePt: 246300 },
+                    'married': { exemption: 144100, phaseOutStart: 1286000, rateChangePt: 246300 }
+                }
+            };
+
             // Helper function to calculate progressive tax and provide breakdown
             const calculateProgressiveTax = (income, brackets) => {
                 let tax = 0;
@@ -414,6 +434,33 @@
                 return tax;
             };
 
+            const calculateAMT = (ordInc, stGains, ltGains, itemizedDed, isoSpr, yr, fStatus, regOrdTax, regLTCGTax) => {
+                const p = AMT_PARAMS[yr][fStatus];
+                const stdDed = STANDARD_DEDUCTIONS[yr][fStatus];
+                const usedStd = itemizedDed < stdDed;
+                // AMTI: AGI minus only AMT-allowed deductions, plus ISO spread add-back
+                // Standard deduction is disallowed under AMT; add it back if taken
+                const agi = ordInc + stGains + ltGains;
+                const amti = Math.max(0, agi - (usedStd ? 0 : itemizedDed) + isoSpr);
+                // Exemption with 25-cent phase-out per dollar over threshold
+                const exemption = Math.max(0, p.exemption - Math.max(0, amti - p.phaseOutStart) * 0.25);
+                const amtTaxable = Math.max(0, amti - exemption);
+                // LTCG still taxed at preferential rates inside AMT — carve it out
+                const ncg = Math.min(ltGains, amtTaxable);
+                const amtOrdinary = Math.max(0, amtTaxable - ncg);
+                // 26% / 28% on ordinary AMT income
+                const ordAMT = amtOrdinary <= p.rateChangePt
+                    ? amtOrdinary * 0.26
+                    : p.rateChangePt * 0.26 + (amtOrdinary - p.rateChangePt) * 0.28;
+                // Preferential LTCG rates; ordinary fills brackets first, then LTCG stacks on top
+                const { totalTax: ltcgAMT } = calculateFederalLTCGTax(
+                    amtOrdinary + ncg, ncg, FEDERAL_LTCG_BRACKETS[yr][fStatus]
+                );
+                const tentativeMin = ordAMT + ltcgAMT;
+                const amtOwed = Math.max(0, tentativeMin - (regOrdTax + regLTCGTax));
+                return { amti, exemption, amtTaxable, ordAMT, ltcgAMT, tentativeMin, amtOwed };
+            };
+
             const handleCalculate = (e) => {
                 e.preventDefault();
 
@@ -479,7 +526,15 @@
                 const calculatedWaCapitalGainsTax = calculateWACapitalGainsTax(parsedLongTermGains, taxYear);
                 setWaCapitalGainsTax(calculatedWaCapitalGainsTax);
 
-                const totalCalculatedTax = calculatedFederalOrdinaryTax + calculatedFederalLTCGTax + calculatedNIIT + calculatedWaCapitalGainsTax;
+                const amtRes = calculateAMT(
+                    parsedOrdinaryIncome, parsedShortTermGains, parsedLongTermGains,
+                    parsedItemizedDeductions, rawIsoSpread,
+                    taxYear, filingStatus,
+                    calculatedFederalOrdinaryTax, calculatedFederalLTCGTax
+                );
+                setAmtResult(amtRes);
+
+                const totalCalculatedTax = calculatedFederalOrdinaryTax + calculatedFederalLTCGTax + calculatedNIIT + calculatedWaCapitalGainsTax + amtRes.amtOwed;
                 setTotalTax(totalCalculatedTax);
 
                 setShowResults(true);
@@ -651,6 +706,23 @@
                             </p>
                         </div>
 
+                        <div>
+                            <label htmlFor="isoSpread" className="block text-sm font-medium text-gray-700 mb-1">ISO Exercise Spread — optional (incentive stock option spread, a primary AMT trigger):</label>
+                            <input
+                                type="text"
+                                id="isoSpread"
+                                value={isoSpread}
+                                onChange={(e) => handleInputChangeFormatted(e, setRawIsoSpread, setIsoSpread)}
+                                onBlur={() => handleInputBlurFormatted(setIsoSpread, rawIsoSpread)}
+                                onFocus={() => handleInputFocusFormatted(setIsoSpread, rawIsoSpread)}
+                                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                                placeholder="e.g., $50,000 (leave blank if no ISOs exercised)"
+                            />
+                            <p className="mt-1 text-xs text-gray-500">
+                                AMT is calculated automatically. The standard deduction is disallowed under AMT, and ISO spreads are added back to compute AMTI. AMT owed is the excess of tentative minimum tax over regular federal tax.
+                            </p>
+                        </div>
+
                         {/* Calculate Button */}
                         <button
                             type="submit"
@@ -717,6 +789,13 @@
                                 <div className="flex justify-between items-center bg-gray-50 p-3 rounded-md">
                                     <span className="font-medium">Federal Net Investment Income Tax (NIIT):</span>
                                     <span className="font-semibold text-lg text-green-700">{formatCurrencyWithCents(netInvestmentIncomeTax)}</span>
+                                </div>
+                                <div className="flex justify-between items-center bg-gray-50 p-3 rounded-md">
+                                    <span className="font-medium">
+                                        Alternative Minimum Tax (AMT):
+                                        {amtResult && amtResult.amtOwed === 0 && <span className="ml-2 text-xs font-normal text-gray-400">no AMT owed</span>}
+                                    </span>
+                                    <span className={`font-semibold text-lg ${amtResult && amtResult.amtOwed > 0 ? 'text-orange-600' : 'text-green-700'}`}>{formatCurrencyWithCents(amtResult ? amtResult.amtOwed : 0)}</span>
                                 </div>
                                 <div className="flex justify-between items-center bg-gray-50 p-3 rounded-md">
                                     <span className="font-medium">Washington State Capital Gains Tax:</span>
@@ -794,6 +873,50 @@
                                             <span className="font-medium">Effective Tax Rate (on LTCG):</span>
                                             <span className="font-semibold">{formatPercentage(federalLTCGEffectiveRate)}</span>
                                         </div>
+                                    </div>
+                                )}
+
+                                {/* AMT detail breakdown */}
+                                {amtResult && (
+                                    <div className="bg-amber-50 border border-amber-200 p-3 rounded-md mt-4">
+                                        <h3 className="text-md font-semibold text-gray-800 mb-2">Alternative Minimum Tax Detail:</h3>
+                                        <div className="space-y-1 text-sm text-gray-700">
+                                            <div className="flex justify-between">
+                                                <span>Alternative Minimum Taxable Income (AMTI):</span>
+                                                <span className="font-medium">{formatCurrencyWithCents(amtResult.amti)}</span>
+                                            </div>
+                                            <div className="flex justify-between">
+                                                <span>AMT Exemption (with phase-out):</span>
+                                                <span className="font-medium text-red-600">− {formatCurrencyWithCents(amtResult.exemption)}</span>
+                                            </div>
+                                            <div className="flex justify-between border-t border-amber-200 pt-1">
+                                                <span>AMT Taxable Income:</span>
+                                                <span className="font-medium">{formatCurrencyWithCents(amtResult.amtTaxable)}</span>
+                                            </div>
+                                            <div className="flex justify-between">
+                                                <span>26%/28% on ordinary AMT income:</span>
+                                                <span className="font-medium">{formatCurrencyWithCents(amtResult.ordAMT)}</span>
+                                            </div>
+                                            <div className="flex justify-between">
+                                                <span>Preferential rate on LTCG within AMT:</span>
+                                                <span className="font-medium">{formatCurrencyWithCents(amtResult.ltcgAMT)}</span>
+                                            </div>
+                                            <div className="flex justify-between border-t border-amber-200 pt-1">
+                                                <span>Tentative Minimum Tax:</span>
+                                                <span className="font-medium">{formatCurrencyWithCents(amtResult.tentativeMin)}</span>
+                                            </div>
+                                            <div className="flex justify-between">
+                                                <span>Less: Regular federal income + LTCG tax:</span>
+                                                <span className="font-medium text-red-600">− {formatCurrencyWithCents(federalOrdinaryTax + federalLTCGTax)}</span>
+                                            </div>
+                                            <div className="flex justify-between border-t border-amber-200 pt-1 font-semibold">
+                                                <span>AMT Owed (incremental):</span>
+                                                <span className={amtResult.amtOwed > 0 ? 'text-orange-600' : 'text-green-700'}>{formatCurrencyWithCents(amtResult.amtOwed)}</span>
+                                            </div>
+                                        </div>
+                                        {taxYear === '2026' && (
+                                            <p className="mt-2 text-xs text-amber-700 italic">2026 AMT figures are projected assuming TCJA extension; IRS has not published official 2026 amounts.</p>
+                                        )}
                                     </div>
                                 )}
 
