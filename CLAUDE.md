@@ -8,7 +8,7 @@ CDN where used. Deploys to GitHub Pages on every push to `main` via
 End-user docs: [`docs/GETTING_STARTED.md`](docs/GETTING_STARTED.md) —
 read first if unfamiliar with the suite.
 
-## Tools (5 modules)
+## Tools (7 modules)
 
 | File | Stack | Adapter |
 |---|---|---|
@@ -17,6 +17,8 @@ read first if unfamiliar with the suite.
 | `retirement_master_plan_2.html` | Vanilla JS + custom CSS vars | `assets/adapters/retirement.js` (RMD slider ↔ store; seeds projection chart from portfolio.totalValue + annualExpenses) |
 | `portfolio_review.html` | Vanilla JS + custom CSS vars | `assets/adapters/portfolio.js` (DOM parse on load; scales Target Allocation table from portAtRetire; updates buffer target from annualExpenses) |
 | `golden_ratio_portfolio_dashboard.html` | Vanilla JS + artifact tokens | `assets/adapters/golden.js` (read-only: seeds sI from portfolio.totalValue, sW from annualExpenses/totalValue) |
+| `roth_conversion.html` | React 18 + Tailwind + Babel inline | `assets/adapters/roth.js` (read-only seed via `window.__rothSeed`) |
+| `portfolio_tracker.html` | React 18 + Tailwind + D3 + Babel inline | `assets/adapters/tracker.js` (store bootstrap; component handles its own reads/writes) |
 
 ## Suite shell
 
@@ -104,6 +106,10 @@ Phase 3 additions:
 Phase 4 P1 additions:
 - `assets/suite.js?v=4` (all pages — adds Roth to MODULES registry)
 - `assets/adapters/roth.js?v=1` (roth_conversion.html only)
+
+Phase 4 P2 additions:
+- `assets/suite.js?v=5` (all pages — adds Tracker to MODULES registry)
+- `assets/adapters/tracker.js?v=1` (portfolio_tracker.html only)
 
 ## Constraints to preserve
 

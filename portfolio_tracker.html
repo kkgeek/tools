@@ -1,0 +1,643 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Portfolio Tracker — Wealth Suite</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+    <style>body { font-family: 'Inter', sans-serif; }</style>
+
+    <!-- Wealth Suite shared shell -->
+    <link rel="stylesheet" href="assets/suite.css?v=4">
+    <script>(function(){try{var p=localStorage.getItem('wealthSuite.themePreference');if(!['system','light','dark'].includes(p))p='system';var r=p==='system'?(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'):p;document.documentElement.setAttribute('data-theme',r);document.documentElement.setAttribute('data-theme-pref',p);}catch(e){}})();</script>
+    <script src="assets/suite-state.js?v=4" defer></script>
+    <script src="assets/suite.js?v=5" defer></script>
+    <script src="assets/adapters/tracker.js?v=1" defer></script>
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <div id="root"></div>
+
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+
+    <script type="text/babel">
+    // ── Constants ─────────────────────────────────────────────────────────────
+    const ASSET_CLASSES = ['equity', 'bond', 'cash', 'other'];
+    const ASSET_LABELS  = { equity: 'Equity', bond: 'Bond', cash: 'Cash', other: 'Other' };
+    const ASSET_COLORS  = { equity: '#3b82f6', bond: '#f59e0b', cash: '#10b981', other: '#8b5cf6' };
+    const PROJ_YEARS    = [1, 3, 5, 10, 15];
+    const DEFAULT_RATES = { equity: 7, bond: 3.5, cash: 0.5, other: 5 };
+    const PRICE_TTL_MS  = 15 * 60 * 1000;  // 15-min sessionStorage cache
+
+    // ── Formatters ────────────────────────────────────────────────────────────
+    const usd0 = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 });
+    const usd2 = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const pct1 = (n) => (n == null || !Number.isFinite(n)) ? '—' : (n >= 0 ? '+' : '') + n.toFixed(2) + '%';
+    const fmt0 = (n) => (n == null || !Number.isFinite(Number(n))) ? '—' : usd0.format(Number(n));
+    const fmt2 = (n) => (n == null || !Number.isFinite(Number(n))) ? '—' : usd2.format(Number(n));
+
+    // ── Price fetch (Yahoo Finance v8 chart, unofficial, best-effort) ─────────
+    async function fetchQuote(ticker) {
+      const key = `yf_${ticker.toUpperCase()}`;
+      try {
+        const cached = sessionStorage.getItem(key);
+        if (cached) {
+          const { data, ts } = JSON.parse(cached);
+          if (Date.now() - ts < PRICE_TTL_MS) return { ...data, stale: false };
+        }
+      } catch (_) {}
+
+      // Try query2 first (slightly different CDN, sometimes better CORS luck), then query1.
+      for (const host of ['query2', 'query1']) {
+        try {
+          const url = `https://${host}.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(ticker.toUpperCase())}?interval=1d&range=2d`;
+          const res = await fetch(url, { signal: AbortSignal.timeout(6000) });
+          if (!res.ok) continue;
+          const json = await res.json();
+          const meta = json.chart?.result?.[0]?.meta;
+          if (!meta?.regularMarketPrice) continue;
+          const prev = meta.previousClose || meta.chartPreviousClose || meta.regularMarketPrice;
+          const data = {
+            currentPrice:  meta.regularMarketPrice,
+            prevClose:     prev,
+            dayChange:     meta.regularMarketPrice - prev,
+            dayChangePct:  prev ? ((meta.regularMarketPrice - prev) / prev) * 100 : 0,
+            name:          meta.longName || meta.shortName || ticker.toUpperCase(),
+          };
+          try { sessionStorage.setItem(key, JSON.stringify({ data, ts: Date.now() })); } catch (_) {}
+          return { ...data, stale: false };
+        } catch (_) { continue; }
+      }
+      throw new Error('unavailable');
+    }
+
+    // ── CSV parsing ───────────────────────────────────────────────────────────
+    function parseRow(line) {
+      const cells = []; let cur = '', q = false;
+      for (const ch of line) {
+        if (ch === '"') q = !q;
+        else if (ch === ',' && !q) { cells.push(cur.trim()); cur = ''; }
+        else cur += ch;
+      }
+      cells.push(cur.trim());
+      return cells.map(c => c.replace(/^["']|["']$/g, '').trim());
+    }
+
+    function parseMoney(s) {
+      if (!s) return null;
+      const n = Number(String(s).replace(/[$,%"'\s]/g, ''));
+      return Number.isFinite(n) && n !== 0 ? n : null;
+    }
+
+    function parseCSV(text) {
+      const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+      // Skip leading non-data lines (Fidelity/Schwab add a preamble)
+      let headerIdx = lines.findIndex(l => /symbol|ticker/i.test(l));
+      if (headerIdx < 0) headerIdx = 0;
+      if (lines.length - headerIdx < 2) throw new Error('No data rows found');
+
+      const headers = parseRow(lines[headerIdx]);
+      const hLow = headers.map(h => h.toLowerCase());
+      const col = (...names) => {
+        for (const n of names) {
+          const i = hLow.findIndex(h => h === n.toLowerCase() || h.includes(n.toLowerCase()));
+          if (i >= 0) return i;
+        }
+        return -1;
+      };
+
+      // Detect brokerage format
+      let fmt = 'generic';
+      if (hLow.some(h => h.includes('average cost basis'))) fmt = 'fidelity';
+      else if (hLow.some(h => h === 'market value') && hLow.some(h => h === 'cost basis')) fmt = 'schwab';
+      else if (hLow.some(h => h.includes('cost basis total'))) fmt = 'vanguard';
+
+      const tickerCol = col('symbol', 'ticker');
+      const sharesCol = col('quantity', 'shares');
+      let costCol, valueCol;
+      if (fmt === 'fidelity')  { costCol = col('average cost basis');  valueCol = col('current value'); }
+      else if (fmt === 'schwab') { costCol = col('cost basis');          valueCol = col('market value'); }
+      else if (fmt === 'vanguard') { costCol = col('cost basis total');  valueCol = col('current value'); }
+      else { costCol = col('cost_basis', 'cost basis', 'avg cost', 'average cost'); valueCol = col('current value', 'market value', 'value'); }
+
+      if (tickerCol < 0 || sharesCol < 0)
+        throw new Error(`Could not find ticker/shares columns (detected: ${fmt}). Headers: ${headers.slice(0,6).join(', ')}`);
+
+      const results = [];
+      for (let i = headerIdx + 1; i < lines.length; i++) {
+        const cells = parseRow(lines[i]);
+        const ticker = cells[tickerCol]?.toUpperCase();
+        if (!ticker || ticker === '--' || /[^A-Z0-9.\-^]/.test(ticker) || ticker.length > 10) continue;
+        const shares = parseMoney(cells[sharesCol]);
+        if (!shares || shares <= 0) continue;
+        const mktValue = valueCol >= 0 ? parseMoney(cells[valueCol]) : null;
+        const costTotal = costCol >= 0 ? parseMoney(cells[costCol]) : null;
+        // Fidelity/Schwab cost is per-share; Vanguard is total
+        const costPerShare = (fmt === 'vanguard' && costTotal && shares) ? costTotal / shares : costTotal;
+        const priceFromValue = mktValue && shares ? mktValue / shares : null;
+        results.push({
+          id: `${ticker}-${Date.now()}-${i}`,
+          ticker, name: ticker, shares,
+          costBasis: costPerShare,
+          currentPrice: priceFromValue,
+          prevClose: null, dayChange: null, dayChangePct: null,
+          priceUpdatedAt: priceFromValue ? Date.now() : null,
+          assetClass: 'equity',
+        });
+      }
+      if (!results.length) throw new Error('No valid holdings rows found');
+      return { holdings: results, format: fmt };
+    }
+
+    // ── Main component ────────────────────────────────────────────────────────
+    const PortfolioTracker = () => {
+      const [holdings,    setHoldings]    = React.useState([]);
+      const [pxStatus,    setPxStatus]    = React.useState({});   // ticker → 'loading'|'ok'|'error'
+      const [refreshing,  setRefreshing]  = React.useState(false);
+      const [activeTab,   setActiveTab]   = React.useState('holdings');
+      const [growthRates, setGrowthRates] = React.useState(DEFAULT_RATES);
+      const [importMsg,   setImportMsg]   = React.useState('');
+      const [addForm,     setAddForm]     = React.useState({ ticker: '', shares: '', costBasis: '', assetClass: 'equity' });
+
+      const donutRef = React.useRef(null);
+      const projRef  = React.useRef(null);
+      const fileRef  = React.useRef(null);
+      const store    = window.WealthSuite && window.WealthSuite.store;
+
+      // Load from suite store on mount
+      React.useEffect(() => {
+        if (!store) return;
+        const s = store.export();
+        const h = s.portfolio?.holdings;
+        if (Array.isArray(h) && h.length > 0) setHoldings(h);
+      }, []);
+
+      // Sync to suite store (debounced)
+      const syncTimer = React.useRef(null);
+      React.useEffect(() => {
+        if (!store) return;
+        clearTimeout(syncTimer.current);
+        syncTimer.current = setTimeout(() => {
+          const totalValue = holdings.reduce((s, h) => s + (h.currentPrice || 0) * (h.shares || 0), 0);
+          const allocs = {};
+          ASSET_CLASSES.forEach(cls => {
+            const v = holdings.filter(h => h.assetClass === cls)
+              .reduce((s, h) => s + (h.currentPrice || 0) * (h.shares || 0), 0);
+            if (v > 0 && totalValue > 0) allocs[cls] = +(v / totalValue).toFixed(4);
+          });
+          store.set('portfolio.holdings', holdings, { editedBy: 'tracker' });
+          if (totalValue > 0) store.set('portfolio.totalValue', totalValue, { editedBy: 'tracker' });
+          if (Object.keys(allocs).length) store.set('portfolio.allocations', allocs, { editedBy: 'tracker' });
+        }, 400);
+      }, [holdings]);
+
+      // ── Derived values ──────────────────────────────────────────────────────
+      const totalValue  = holdings.reduce((s, h) => s + (h.currentPrice || 0) * (h.shares || 0), 0);
+      const totalCost   = holdings.reduce((s, h) => s + (h.costBasis || 0) * (h.shares || 0), 0);
+      const totalDayPnL = holdings.reduce((s, h) => s + (h.dayChange != null ? h.dayChange * (h.shares || 0) : 0), 0);
+      const totalGain   = totalCost > 0 ? totalValue - totalCost : null;
+      const hasDayData  = holdings.some(h => h.dayChange != null);
+
+      const allocation = ASSET_CLASSES.map(cls => ({
+        cls,
+        label: ASSET_LABELS[cls],
+        color: ASSET_COLORS[cls],
+        value: holdings.filter(h => h.assetClass === cls)
+                       .reduce((s, h) => s + (h.currentPrice || 0) * (h.shares || 0), 0),
+      })).filter(a => a.value > 0).map(a => ({ ...a, pct: totalValue > 0 ? a.value / totalValue : 0 }));
+
+      const projData = PROJ_YEARS.map(yr => {
+        const proj = holdings.reduce((s, h) => {
+          const val  = (h.currentPrice || 0) * (h.shares || 0);
+          const rate = (growthRates[h.assetClass] || 7) / 100;
+          return s + val * Math.pow(1 + rate, yr);
+        }, 0);
+        return { yr, value: proj };
+      });
+      const projWithToday = [{ yr: 0, value: totalValue }, ...projData];
+
+      // ── Price refresh ───────────────────────────────────────────────────────
+      async function refreshAllPrices() {
+        setRefreshing(true);
+        const tickers = [...new Set(holdings.map(h => h.ticker).filter(Boolean))];
+        const updates = {};
+        for (const ticker of tickers) {
+          setPxStatus(s => ({ ...s, [ticker]: 'loading' }));
+          try {
+            const q = await fetchQuote(ticker);
+            updates[ticker] = q;
+            setPxStatus(s => ({ ...s, [ticker]: 'ok' }));
+          } catch (_) {
+            setPxStatus(s => ({ ...s, [ticker]: 'error' }));
+          }
+          await new Promise(r => setTimeout(r, 150));
+        }
+        setHoldings(prev => prev.map(h => {
+          const u = updates[h.ticker];
+          return u ? { ...h, ...u, priceUpdatedAt: Date.now() } : h;
+        }));
+        setRefreshing(false);
+      }
+
+      // ── Add holding manually ────────────────────────────────────────────────
+      async function addHolding(e) {
+        e.preventDefault();
+        const ticker = addForm.ticker.trim().toUpperCase();
+        const shares = Number(addForm.shares);
+        if (!ticker || !shares || shares <= 0) return;
+        const newH = {
+          id: `${ticker}-${Date.now()}`,
+          ticker, name: ticker, shares,
+          costBasis:      Number(addForm.costBasis) || null,
+          currentPrice:   null, prevClose: null,
+          dayChange: null, dayChangePct: null,
+          priceUpdatedAt: null,
+          assetClass:     addForm.assetClass,
+        };
+        setHoldings(prev => [...prev, newH]);
+        setAddForm({ ticker: '', shares: '', costBasis: '', assetClass: 'equity' });
+        // Try fetching price immediately
+        setPxStatus(s => ({ ...s, [ticker]: 'loading' }));
+        try {
+          const q = await fetchQuote(ticker);
+          setHoldings(prev => prev.map(h => h.id === newH.id ? { ...h, ...q, priceUpdatedAt: Date.now() } : h));
+          setPxStatus(s => ({ ...s, [ticker]: 'ok' }));
+        } catch (_) {
+          setPxStatus(s => ({ ...s, [ticker]: 'error' }));
+        }
+      }
+
+      function removeHolding(id) {
+        setHoldings(prev => prev.filter(h => h.id !== id));
+      }
+
+      function updateHolding(id, field, value) {
+        setHoldings(prev => prev.map(h => h.id === id ? { ...h, [field]: value } : h));
+      }
+
+      // ── CSV import ──────────────────────────────────────────────────────────
+      function handleFile(e) {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        e.target.value = '';
+        setImportMsg('');
+        const reader = new FileReader();
+        reader.onload = () => {
+          try {
+            const { holdings: parsed, format } = parseCSV(String(reader.result));
+            // Merge: update existing tickers, append new ones
+            setHoldings(prev => {
+              const merged = [...prev];
+              for (const p of parsed) {
+                const idx = merged.findIndex(h => h.ticker === p.ticker);
+                if (idx >= 0) {
+                  merged[idx] = { ...merged[idx], shares: p.shares, costBasis: p.costBasis ?? merged[idx].costBasis,
+                    currentPrice: p.currentPrice ?? merged[idx].currentPrice };
+                } else {
+                  merged.push(p);
+                }
+              }
+              return merged;
+            });
+            setImportMsg(`Imported ${parsed.length} holdings from ${format} CSV.`);
+          } catch (err) {
+            setImportMsg(`Import failed: ${err.message}`);
+          }
+        };
+        reader.readAsText(file);
+      }
+
+      // ── D3 donut ────────────────────────────────────────────────────────────
+      React.useEffect(() => {
+        if (activeTab !== 'allocation' || !donutRef.current || !allocation.length) return;
+        const el = donutRef.current;
+        d3.select(el).selectAll('*').remove();
+        const size = Math.min(el.clientWidth, 320);
+        const R = size / 2, r = R * 0.55;
+        const svg = d3.select(el).append('svg').attr('width', size).attr('height', size)
+          .append('g').attr('transform', `translate(${R},${R})`);
+        const pie = d3.pie().value(d => d.value).sort(null);
+        const arc = d3.arc().innerRadius(r).outerRadius(R - 4);
+        const arcs = svg.selectAll('path').data(pie(allocation)).enter().append('path')
+          .attr('d', arc).attr('fill', d => d.data.color).attr('stroke', '#fff').attr('stroke-width', 2);
+        svg.append('text').attr('text-anchor', 'middle').attr('dy', '-0.2em')
+          .attr('font-size', 13).attr('fill', '#6b7280').text('Total');
+        svg.append('text').attr('text-anchor', 'middle').attr('dy', '1.1em')
+          .attr('font-size', 16).attr('font-weight', '700').attr('fill', '#111827').text(fmt0(totalValue));
+      }, [activeTab, allocation, totalValue]);
+
+      // ── D3 projection chart ─────────────────────────────────────────────────
+      React.useEffect(() => {
+        if (activeTab !== 'projections' || !projRef.current || totalValue === 0) return;
+        const el = projRef.current;
+        d3.select(el).selectAll('*').remove();
+        const margin = { top: 16, right: 24, bottom: 36, left: 72 };
+        const W = Math.max(260, el.clientWidth - margin.left - margin.right);
+        const H = 260 - margin.top - margin.bottom;
+        const svg = d3.select(el).append('svg')
+          .attr('width', W + margin.left + margin.right)
+          .attr('height', H + margin.top  + margin.bottom)
+          .append('g').attr('transform', `translate(${margin.left},${margin.top})`);
+        const x = d3.scaleLinear().domain([0, 15]).range([0, W]);
+        const y = d3.scaleLinear().domain([0, d3.max(projWithToday, d => d.value) * 1.08]).range([H, 0]).nice();
+        svg.append('g').call(d3.axisLeft(y).tickFormat(v => '$' + d3.format('.2s')(v)));
+        svg.append('g').attr('transform', `translate(0,${H})`).call(d3.axisBottom(x).tickValues(PROJ_YEARS).tickFormat(d => `${d}yr`));
+        svg.append('g').call(d3.axisLeft(y).tickSize(-W).tickFormat(''))
+          .selectAll('line').style('stroke', '#e5e7eb').style('stroke-dasharray', '3,3');
+        svg.selectAll('.domain').remove();
+        const line = d3.line().x(d => x(d.yr)).y(d => y(d.value)).curve(d3.curveMonotoneX);
+        const area = d3.area().x(d => x(d.yr)).y0(H).y1(d => y(d.value)).curve(d3.curveMonotoneX);
+        svg.append('path').datum(projWithToday).attr('fill', '#dbeafe').attr('opacity', 0.6).attr('d', area);
+        svg.append('path').datum(projWithToday).attr('fill', 'none')
+          .attr('stroke', '#3b82f6').attr('stroke-width', 2.5).attr('d', line);
+        svg.selectAll('circle').data(projWithToday).enter().append('circle')
+          .attr('cx', d => x(d.yr)).attr('cy', d => y(d.value)).attr('r', 4)
+          .attr('fill', '#3b82f6').attr('stroke', '#fff').attr('stroke-width', 2);
+        // Value labels on points
+        svg.selectAll('.lbl').data(projWithToday).enter().append('text')
+          .attr('x', d => x(d.yr)).attr('y', d => y(d.value) - 10)
+          .attr('text-anchor', 'middle').attr('font-size', 10).attr('fill', '#374151')
+          .text(d => '$' + d3.format('.2s')(d.value));
+      }, [activeTab, projWithToday, totalValue]);
+
+      // ── Helpers ─────────────────────────────────────────────────────────────
+      const staleThreshold = Date.now() - PRICE_TTL_MS;
+      function priceTag(h) {
+        if (pxStatus[h.ticker] === 'loading') return <span className="text-xs text-gray-400 ml-1">…</span>;
+        if (pxStatus[h.ticker] === 'error' || (h.priceUpdatedAt && h.priceUpdatedAt < staleThreshold && pxStatus[h.ticker] !== 'ok'))
+          return <span className="text-xs text-amber-500 ml-1" title="Price may be stale">⚠</span>;
+        return null;
+      }
+
+      // ── JSX ─────────────────────────────────────────────────────────────────
+      return (
+        <div className="max-w-6xl mx-auto px-4 py-8 pt-24">
+          <div className="flex items-center justify-between mb-1 flex-wrap gap-2">
+            <h1 className="text-2xl font-bold text-gray-800">Portfolio Tracker</h1>
+            <div className="flex gap-2 flex-wrap">
+              <button onClick={() => fileRef.current?.click()}
+                className="px-4 py-2 text-sm font-medium bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
+                Import CSV
+              </button>
+              <input ref={fileRef} type="file" accept=".csv,text/csv" hidden onChange={handleFile} />
+              <button onClick={refreshAllPrices} disabled={refreshing || holdings.length === 0}
+                className="px-4 py-2 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors">
+                {refreshing ? 'Refreshing…' : '↻ Refresh Prices'}
+              </button>
+            </div>
+          </div>
+
+          {/* Import status */}
+          {importMsg && (
+            <div className={`mb-3 px-4 py-2 rounded-lg text-sm ${importMsg.startsWith('Import failed') ? 'bg-red-50 text-red-700' : 'bg-emerald-50 text-emerald-700'}`}>
+              {importMsg}
+              <span className="text-xs text-gray-400 ml-2">Supports: Fidelity, Schwab, Vanguard, Generic (ticker,shares,cost_basis)</span>
+            </div>
+          )}
+
+          {/* ── Summary tiles ── */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+            {[
+              { label: 'Portfolio Value',  value: fmt0(totalValue),  sub: null, color: 'text-gray-800' },
+              { label: 'Day P&L',  value: hasDayData ? (totalDayPnL >= 0 ? '+' : '') + fmt0(totalDayPnL) : '—',
+                sub: null, color: hasDayData ? (totalDayPnL >= 0 ? 'text-emerald-600' : 'text-red-500') : 'text-gray-400' },
+              { label: 'Total Gain / Loss',
+                value: totalGain != null ? (totalGain >= 0 ? '+' : '') + fmt0(totalGain) : '—',
+                sub: totalGain != null && totalCost > 0 ? pct1(totalGain / totalCost * 100) : null,
+                color: totalGain != null ? (totalGain >= 0 ? 'text-emerald-600' : 'text-red-500') : 'text-gray-400' },
+              { label: 'Holdings', value: holdings.length, sub: null, color: 'text-gray-700' },
+            ].map(({ label, value, sub, color }) => (
+              <div key={label} className="bg-white rounded-xl shadow-sm p-4">
+                <div className="text-xs text-gray-400 uppercase tracking-wide mb-1">{label}</div>
+                <div className={`text-xl font-bold ${color}`}>{value}</div>
+                {sub && <div className="text-xs text-gray-400 mt-0.5">{sub}</div>}
+              </div>
+            ))}
+          </div>
+
+          {/* ── Tabs ── */}
+          <div className="flex gap-1 mb-4">
+            {[['holdings','Holdings'], ['allocation','Allocation'], ['projections','Projections']].map(([id,label]) => (
+              <button key={id} onClick={() => setActiveTab(id)}
+                className={`px-5 py-2 text-sm font-medium rounded-lg transition-colors ${activeTab === id
+                  ? 'bg-blue-600 text-white shadow-sm'
+                  : 'bg-white text-gray-600 hover:bg-gray-50 border border-gray-200'}`}>
+                {label}
+              </button>
+            ))}
+          </div>
+
+          {/* ── Holdings tab ── */}
+          {activeTab === 'holdings' && (
+            <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+              {holdings.length > 0 ? (
+                <div className="overflow-x-auto">
+                  <table className="min-w-full text-sm">
+                    <thead className="bg-gray-50">
+                      <tr className="text-xs text-gray-400 uppercase">
+                        {['Ticker','Shares','Cost/Share','Price','Day $','Day %','Mkt Value','Total Cost','Gain/Loss','Class',''].map(h => (
+                          <th key={h} className="px-3 py-3 text-left font-medium whitespace-nowrap">{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-50">
+                      {holdings.map(h => {
+                        const mktVal  = (h.currentPrice || 0) * (h.shares || 0);
+                        const totCost = (h.costBasis    || 0) * (h.shares || 0);
+                        const gain    = totCost > 0 ? mktVal - totCost : null;
+                        const gainPct = totCost > 0 ? (mktVal - totCost) / totCost * 100 : null;
+                        return (
+                          <tr key={h.id} className="hover:bg-gray-50">
+                            <td className="px-3 py-2 font-semibold text-gray-800 whitespace-nowrap">
+                              {h.ticker}
+                              {h.name && h.name !== h.ticker && (
+                                <div className="text-xs text-gray-400 font-normal truncate max-w-24">{h.name}</div>
+                              )}
+                            </td>
+                            <td className="px-3 py-2">
+                              <input type="number" value={h.shares} min="0" step="0.001"
+                                onChange={e => updateHolding(h.id, 'shares', Number(e.target.value))}
+                                className="w-20 border border-gray-200 rounded px-2 py-0.5 text-sm" />
+                            </td>
+                            <td className="px-3 py-2">
+                              <input type="number" value={h.costBasis ?? ''} min="0" step="0.01" placeholder="—"
+                                onChange={e => updateHolding(h.id, 'costBasis', e.target.value ? Number(e.target.value) : null)}
+                                className="w-24 border border-gray-200 rounded px-2 py-0.5 text-sm" />
+                            </td>
+                            <td className="px-3 py-2 whitespace-nowrap">
+                              {h.currentPrice ? fmt2(h.currentPrice) : (
+                                <input type="number" placeholder="Enter" min="0" step="0.01"
+                                  onChange={e => updateHolding(h.id, 'currentPrice', e.target.value ? Number(e.target.value) : null)}
+                                  className="w-20 border border-amber-200 bg-amber-50 rounded px-2 py-0.5 text-sm" />
+                              )}
+                              {priceTag(h)}
+                            </td>
+                            <td className={`px-3 py-2 whitespace-nowrap ${h.dayChange != null ? (h.dayChange >= 0 ? 'text-emerald-600' : 'text-red-500') : 'text-gray-300'}`}>
+                              {h.dayChange != null ? (h.dayChange >= 0 ? '+' : '') + fmt2(h.dayChange) : '—'}
+                            </td>
+                            <td className={`px-3 py-2 whitespace-nowrap ${h.dayChangePct != null ? (h.dayChangePct >= 0 ? 'text-emerald-600' : 'text-red-500') : 'text-gray-300'}`}>
+                              {h.dayChangePct != null ? pct1(h.dayChangePct) : '—'}
+                            </td>
+                            <td className="px-3 py-2 whitespace-nowrap font-medium">{mktVal > 0 ? fmt0(mktVal) : '—'}</td>
+                            <td className="px-3 py-2 whitespace-nowrap text-gray-500">{totCost > 0 ? fmt0(totCost) : '—'}</td>
+                            <td className={`px-3 py-2 whitespace-nowrap ${gain != null ? (gain >= 0 ? 'text-emerald-600' : 'text-red-500') : 'text-gray-300'}`}>
+                              {gain != null ? (gain >= 0 ? '+' : '') + fmt0(gain) : '—'}
+                              {gainPct != null && <span className="text-xs ml-1 opacity-70">{pct1(gainPct)}</span>}
+                            </td>
+                            <td className="px-3 py-2">
+                              <select value={h.assetClass} onChange={e => updateHolding(h.id, 'assetClass', e.target.value)}
+                                className="border border-gray-200 rounded px-1 py-0.5 text-xs">
+                                {ASSET_CLASSES.map(c => <option key={c} value={c}>{ASSET_LABELS[c]}</option>)}
+                              </select>
+                            </td>
+                            <td className="px-3 py-2">
+                              <button onClick={() => removeHolding(h.id)}
+                                className="text-gray-300 hover:text-red-400 transition-colors text-lg leading-none">×</button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div className="p-12 text-center text-gray-400">
+                  <div className="text-4xl mb-3">📊</div>
+                  <div className="font-medium text-gray-500 mb-1">No holdings yet</div>
+                  <p className="text-sm">Import a brokerage CSV or add a holding below.</p>
+                </div>
+              )}
+
+              {/* Add holding form */}
+              <div className="border-t border-gray-100 px-4 py-3 bg-gray-50">
+                <form onSubmit={addHolding} className="flex gap-2 flex-wrap items-end">
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-1">Ticker *</label>
+                    <input required value={addForm.ticker} placeholder="AAPL"
+                      onChange={e => setAddForm(f => ({ ...f, ticker: e.target.value.toUpperCase() }))}
+                      className="w-20 border border-gray-300 rounded px-2 py-1.5 text-sm uppercase" />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-1">Shares *</label>
+                    <input required type="number" value={addForm.shares} placeholder="100" min="0" step="0.001"
+                      onChange={e => setAddForm(f => ({ ...f, shares: e.target.value }))}
+                      className="w-24 border border-gray-300 rounded px-2 py-1.5 text-sm" />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-1">Cost / Share</label>
+                    <input type="number" value={addForm.costBasis} placeholder="150.00" min="0" step="0.01"
+                      onChange={e => setAddForm(f => ({ ...f, costBasis: e.target.value }))}
+                      className="w-28 border border-gray-300 rounded px-2 py-1.5 text-sm" />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-1">Class</label>
+                    <select value={addForm.assetClass} onChange={e => setAddForm(f => ({ ...f, assetClass: e.target.value }))}
+                      className="border border-gray-300 rounded px-2 py-1.5 text-sm">
+                      {ASSET_CLASSES.map(c => <option key={c} value={c}>{ASSET_LABELS[c]}</option>)}
+                    </select>
+                  </div>
+                  <button type="submit"
+                    className="px-4 py-1.5 bg-blue-600 text-white text-sm font-medium rounded hover:bg-blue-700 transition-colors">
+                    + Add
+                  </button>
+                </form>
+              </div>
+            </div>
+          )}
+
+          {/* ── Allocation tab ── */}
+          {activeTab === 'allocation' && (
+            <div className="bg-white rounded-xl shadow-sm p-6">
+              {allocation.length > 0 ? (
+                <div className="flex flex-col md:flex-row gap-8 items-center">
+                  <div ref={donutRef} className="flex-shrink-0" style={{ minWidth: 260 }} />
+                  <div className="flex-1 space-y-3">
+                    {allocation.map(a => (
+                      <div key={a.cls}>
+                        <div className="flex justify-between text-sm mb-1">
+                          <span className="font-medium" style={{ color: a.color }}>{a.label}</span>
+                          <span className="text-gray-600">{fmt0(a.value)} · {(a.pct * 100).toFixed(1)}%</span>
+                        </div>
+                        <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                          <div className="h-full rounded-full" style={{ width: `${(a.pct * 100).toFixed(1)}%`, background: a.color }} />
+                        </div>
+                      </div>
+                    ))}
+                    <p className="text-xs text-gray-400 pt-2">
+                      Asset class is set per holding in the Holdings tab.
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <p className="text-gray-400 text-center py-12">Add holdings to see allocation.</p>
+              )}
+            </div>
+          )}
+
+          {/* ── Projections tab ── */}
+          {activeTab === 'projections' && (
+            <div className="bg-white rounded-xl shadow-sm p-6">
+              {totalValue > 0 ? (
+                <>
+                  {/* Growth rate inputs */}
+                  <div className="flex flex-wrap gap-4 mb-6">
+                    {ASSET_CLASSES.map(cls => (
+                      <div key={cls}>
+                        <label className="block text-xs font-medium mb-1" style={{ color: ASSET_COLORS[cls] }}>
+                          {ASSET_LABELS[cls]} CAGR (%)
+                        </label>
+                        <input type="number" value={growthRates[cls]} min="0" max="30" step="0.5"
+                          onChange={e => setGrowthRates(r => ({ ...r, [cls]: Number(e.target.value) || 0 }))}
+                          className="w-20 border border-gray-300 rounded px-2 py-1 text-sm" />
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Projection table */}
+                  <div className="overflow-x-auto mb-6">
+                    <table className="min-w-full text-sm">
+                      <thead>
+                        <tr className="text-xs text-gray-400 uppercase border-b border-gray-100">
+                          <th className="pb-2 pr-8 text-left">Horizon</th>
+                          <th className="pb-2 pr-8 text-right">Projected Value</th>
+                          <th className="pb-2 text-right">Gain</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {projData.map(({ yr, value }) => (
+                          <tr key={yr} className="border-b border-gray-50">
+                            <td className="py-2 pr-8 font-medium">{yr} year{yr > 1 ? 's' : ''}</td>
+                            <td className="py-2 pr-8 text-right font-semibold text-blue-600">{fmt0(value)}</td>
+                            <td className="py-2 text-right text-emerald-600">+{fmt0(value - totalValue)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* D3 chart */}
+                  <div ref={projRef} className="w-full overflow-x-auto" />
+                  <p className="text-xs text-gray-400 mt-2">
+                    Per-holding growth applied based on asset class CAGR above. Not a guarantee of future returns.
+                  </p>
+                </>
+              ) : (
+                <p className="text-gray-400 text-center py-12">Add holdings with prices to see projections.</p>
+              )}
+            </div>
+          )}
+
+          <p className="text-xs text-gray-400 text-center mt-6 mb-10">
+            Live prices sourced from Yahoo Finance (unofficial, delayed). Holdings stored locally — no data leaves your browser.
+          </p>
+        </div>
+      );
+    };
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<PortfolioTracker />);
+    </script>
+</body>
+</html>
