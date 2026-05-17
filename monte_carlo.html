@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Monte Carlo Projections — Wealth Suite</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#F0F2F5;--surface:#FFFFFF;--surface2:#F7F9FB;--border:#E2E6EA;
+  --text:#0F172A;--muted:#64748B;
+  --navy:#1E3A5F;--blue:#2563EB;--green:#059669;--amber:#D97706;--red:#DC2626;
+  --green-bg:#ECFDF5;--green-t:#065F46;
+  --amber-bg:#FFFBEB;--amber-t:#92400E;
+  --red-bg:#FEF2F2;--red-t:#991B1B;
+}
+[data-theme="dark"]{
+  --bg:#121318;--surface:#1E1F25;--surface2:#26272D;--border:#34353B;
+  --text:#E3E2E9;--muted:#C5C6D0;
+  --navy:#AFC6FF;--blue:#7BA8FF;--green:#34D399;--amber:#FBBF24;--red:#F87171;
+  --green-bg:rgba(52,211,153,.15);--green-t:#6EE7B7;
+  --amber-bg:rgba(251,191,36,.15);--amber-t:#FCD34D;
+  --red-bg:rgba(248,113,113,.15);--red-t:#FCA5A5;
+}
+html[data-theme="dark"] body{color-scheme:dark}
+[data-theme="dark"] .hdr{background:#0F1421}
+body{font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;background:var(--bg);color:var(--text);font-size:14px;line-height:1.6;min-height:100vh}
+
+.hdr{background:var(--navy);color:#fff;padding:18px 28px;display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px}
+.hdr-l h1{font-size:17px;font-weight:600}
+.hdr-l p{font-size:11px;opacity:.6;margin-top:2px}
+
+.main{padding:20px 28px;max-width:960px;margin:0 auto}
+
+/* KPI tiles */
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px;margin-bottom:14px}
+.tile{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 16px;transition:border-color .2s}
+.tile-l{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px}
+.tile-v{font-size:24px;font-weight:700;line-height:1.2}
+.tile-h{font-size:11px;color:var(--muted);margin-top:2px}
+.tile--green{border-color:var(--green)}.tile--green .tile-v{color:var(--green)}
+.tile--amber{border-color:var(--amber)}.tile--amber .tile-v{color:var(--amber)}
+.tile--red{border-color:var(--red)}.tile--red   .tile-v{color:var(--red)}
+
+/* Cards */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:17px 19px;margin-bottom:14px}
+.card-t{font-size:14px;font-weight:600;margin-bottom:12px;display:flex;align-items:center;gap:10px}
+.run-status{font-size:11px;color:var(--muted);font-weight:400}
+
+/* Params */
+.params{display:flex;flex-wrap:wrap;gap:10px 18px;align-items:flex-end}
+.pf{display:flex;flex-direction:column;gap:3px}
+.pf label{font-size:11px;color:var(--muted);font-weight:500;letter-spacing:.03em;white-space:nowrap}
+.pf input{height:31px;padding:0 8px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text);font:inherit;font-size:13px;outline:none}
+.pf input:focus{border-color:var(--blue);box-shadow:0 0 0 2px rgba(37,99,235,.18)}
+.pf--sm input{width:72px}
+.pf--md input{width:108px}
+.pf--lg input{width:140px}
+
+.param-sep{width:1px;height:36px;background:var(--border);margin:0 4px;align-self:flex-end;flex-shrink:0}
+
+/* Chart */
+#mc-chart{width:100%;height:320px}
+#mc-chart svg{overflow:visible}
+.axis text{font-size:11px;fill:var(--muted)}
+.axis path,.axis line{stroke:var(--border)}
+.grid line{stroke:var(--border);stroke-opacity:.7}
+.grid .domain{display:none}
+
+/* Legend */
+.legend{display:flex;flex-wrap:wrap;gap:8px 18px;font-size:12px;color:var(--muted);margin-top:10px;align-items:center}
+.lg-sw{display:inline-block;width:22px;height:10px;border-radius:2px;vertical-align:middle;margin-right:4px}
+.lg-ln{display:inline-block;width:22px;height:2.5px;border-radius:2px;vertical-align:middle;margin-right:4px}
+.lg-dash{display:inline-block;width:22px;height:2px;vertical-align:middle;margin-right:4px;border-top:2px dashed #2563EB;opacity:.55}
+
+/* Note */
+.note{font-size:12px;color:var(--muted);line-height:1.7;margin-top:4px}
+
+@media(max-width:600px){.main{padding:14px 16px}.hdr{padding:14px 16px}}
+</style>
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<script src="assets/suite-state.js?v=5" defer></script>
+<script src="assets/suite.js?v=9" defer></script>
+<script src="assets/adapters/mc.js?v=1" defer></script>
+</head>
+<body>
+
+<header class="hdr">
+  <div class="hdr-l">
+    <h1>Monte Carlo Retirement Projections</h1>
+    <p>Probability-weighted outcomes across simulated market sequences</p>
+  </div>
+</header>
+
+<div class="main">
+
+  <div class="tiles">
+    <div class="tile" id="tile-success">
+      <div class="tile-l">Probability of success</div>
+      <div class="tile-v" id="v-success">—</div>
+      <div class="tile-h" id="h-success">Portfolio survives to end age</div>
+    </div>
+    <div class="tile" id="tile-median">
+      <div class="tile-l">Median final balance</div>
+      <div class="tile-v" id="v-median">—</div>
+      <div class="tile-h">p50 at end age</div>
+    </div>
+    <div class="tile" id="tile-p10bal">
+      <div class="tile-l">Worst 10% balance</div>
+      <div class="tile-v" id="v-p10bal">—</div>
+      <div class="tile-h">p10 at end age</div>
+    </div>
+    <div class="tile" id="tile-p10age">
+      <div class="tile-l">p10 survival age</div>
+      <div class="tile-v" id="v-p10age">—</div>
+      <div class="tile-h" id="h-p10age">Bottom 10% runs out at…</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-t">
+      Simulation parameters
+      <span class="run-status" id="run-status"></span>
+    </div>
+    <div class="params">
+      <div class="pf pf--lg">
+        <label for="p-balance">Starting balance</label>
+        <input id="p-balance" type="text" placeholder="$1,500,000">
+      </div>
+      <div class="pf pf--lg">
+        <label for="p-withdraw">Withdrawal / yr</label>
+        <input id="p-withdraw" type="text" placeholder="$120,000">
+      </div>
+      <div class="pf pf--md">
+        <label for="p-contrib">Addition / yr</label>
+        <input id="p-contrib" type="text" placeholder="$0">
+      </div>
+
+      <div class="param-sep"></div>
+
+      <div class="pf pf--sm">
+        <label for="p-return">Return %</label>
+        <input id="p-return" type="number" min="0" max="30" step="0.5" placeholder="7">
+      </div>
+      <div class="pf pf--sm">
+        <label for="p-vol">Volatility %</label>
+        <input id="p-vol" type="number" min="0" max="40" step="0.5" placeholder="12">
+      </div>
+      <div class="pf pf--sm">
+        <label for="p-inf">Inflation %</label>
+        <input id="p-inf" type="number" min="0" max="15" step="0.5" placeholder="3.5">
+      </div>
+
+      <div class="param-sep"></div>
+
+      <div class="pf pf--sm">
+        <label for="p-cage">Current age</label>
+        <input id="p-cage" type="number" min="20" max="80" step="1" placeholder="45">
+      </div>
+      <div class="pf pf--sm">
+        <label for="p-rage">Retire age</label>
+        <input id="p-rage" type="number" min="40" max="85" step="1" placeholder="60">
+      </div>
+      <div class="pf pf--sm">
+        <label for="p-eage">End age</label>
+        <input id="p-eage" type="number" min="60" max="110" step="1" placeholder="90">
+      </div>
+      <div class="pf pf--sm">
+        <label for="p-sims">Simulations</label>
+        <input id="p-sims" type="number" min="100" max="10000" step="100" placeholder="1000">
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-t">Portfolio value by age</div>
+    <div id="mc-chart"></div>
+    <div class="legend">
+      <span><span class="lg-sw" style="background:#2563EB;opacity:.15"></span>p10–p90 range</span>
+      <span><span class="lg-sw" style="background:#2563EB;opacity:.32"></span>p25–p75 range</span>
+      <span><span class="lg-ln" style="background:#2563EB"></span>Median (p50)</span>
+      <span><span class="lg-dash"></span>p10 / p90</span>
+    </div>
+  </div>
+
+  <p class="note">
+    Each simulation draws independent annual returns from a normal distribution
+    with the specified mean and volatility. Returns apply before withdrawals.
+    Withdrawals inflate each year at the stated inflation rate. Contributions
+    apply during accumulation (before retire age) only. Social Security,
+    taxes, and asset-class correlation are not modelled. Results are
+    illustrative — not a forecast or financial advice.
+  </p>
+
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  // ---- Formatters ----
+  const usd0 = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 });
+
+  function fmtShort(n) {
+    if (n == null || !isFinite(n)) return '—';
+    if (Math.abs(n) >= 1e6) return '$' + (n / 1e6).toFixed(2) + 'M';
+    if (Math.abs(n) >= 1e3) return '$' + Math.round(n / 1e3) + 'K';
+    return '$' + Math.round(n);
+  }
+
+  function parseMoney(s) {
+    const n = parseFloat(String(s || '').replace(/[$,\s]/g, ''));
+    return isFinite(n) ? n : null;
+  }
+
+  // ---- Inputs ----
+  const pBalance  = document.getElementById('p-balance');
+  const pWithdraw = document.getElementById('p-withdraw');
+  const pContrib  = document.getElementById('p-contrib');
+  const pReturn   = document.getElementById('p-return');
+  const pVol      = document.getElementById('p-vol');
+  const pInf      = document.getElementById('p-inf');
+  const pCage     = document.getElementById('p-cage');
+  const pRage     = document.getElementById('p-rage');
+  const pEage     = document.getElementById('p-eage');
+  const pSims     = document.getElementById('p-sims');
+
+  // Money inputs: strip on focus, format on blur
+  [pBalance, pWithdraw, pContrib].forEach(inp => {
+    inp.addEventListener('focus', () => {
+      const n = parseMoney(inp.value);
+      inp.value = n != null ? String(n) : '';
+    });
+    inp.addEventListener('blur', () => {
+      const n = parseMoney(inp.value);
+      inp.value = n != null ? usd0.format(n) : '';
+      schedule();
+    });
+  });
+
+  [pReturn, pVol, pInf, pCage, pRage, pEage, pSims].forEach(inp => {
+    inp.addEventListener('change', schedule);
+  });
+
+  // Defaults
+  pReturn.value = 7;
+  pVol.value    = 12;
+  pInf.value    = 3.5;
+  pCage.value   = 45;
+  pRage.value   = 60;
+  pEage.value   = 90;
+  pSims.value   = 1000;
+
+  // ---- Monte Carlo engine ----
+  function randn() {
+    let u, v;
+    do { u = Math.random(); } while (u === 0);
+    do { v = Math.random(); } while (v === 0);
+    return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
+  }
+
+  function pctile(sorted, p) {
+    const i = (p / 100) * (sorted.length - 1);
+    const lo = Math.floor(i), hi = Math.ceil(i);
+    return lo === hi ? sorted[lo] : sorted[lo] + (sorted[hi] - sorted[lo]) * (i - lo);
+  }
+
+  function simulate({ balance, contrib, withdraw, ret, vol, inf, cAge, rAge, eAge, nSims }) {
+    const totalYrs = eAge - cAge;
+    const retireYr = Math.max(0, rAge - cAge);
+
+    // Collect portfolio value at each year across all simulations
+    const byYear = Array.from({ length: totalYrs + 1 }, () => []);
+
+    for (let s = 0; s < nSims; s++) {
+      let port = balance;
+      let wdraw = withdraw;
+      byYear[0].push(port);
+
+      for (let yr = 1; yr <= totalYrs; yr++) {
+        const r = ret + vol * randn();
+        if (yr <= retireYr) {
+          port = Math.max(0, port * (1 + r) + contrib);
+        } else {
+          port = Math.max(0, port * (1 + r) - wdraw);
+          wdraw *= (1 + inf);
+        }
+        byYear[yr].push(port);
+      }
+    }
+
+    // Percentiles at each year
+    const pctData = byYear.map((vals, yr) => {
+      const sorted = [...vals].sort((a, b) => a - b);
+      return {
+        age: cAge + yr,
+        p10: pctile(sorted, 10),
+        p25: pctile(sorted, 25),
+        p50: pctile(sorted, 50),
+        p75: pctile(sorted, 75),
+        p90: pctile(sorted, 90),
+      };
+    });
+
+    const finalSorted = [...byYear[totalYrs]].sort((a, b) => a - b);
+    const successRate = byYear[totalYrs].filter(v => v > 0).length / nSims;
+    const medFinal   = pctile(finalSorted, 50);
+    const p10Final   = pctile(finalSorted, 10);
+
+    // Age at which p10 first hits zero (after retirement)
+    let p10SurvivalAge = eAge;
+    for (let yr = retireYr; yr <= totalYrs; yr++) {
+      if (pctData[yr].p10 <= 0) { p10SurvivalAge = cAge + yr; break; }
+    }
+
+    return { pctData, successRate, medFinal, p10Final, p10SurvivalAge };
+  }
+
+  // ---- Update tiles ----
+  function updateTiles(res, eAge) {
+    const pct = Math.round(res.successRate * 100);
+
+    const vSucc = document.getElementById('v-success');
+    const tSucc = document.getElementById('tile-success');
+    vSucc.textContent = pct + '%';
+    document.getElementById('h-success').textContent = 'Survives to age ' + eAge;
+    tSucc.className = 'tile ' +
+      (pct >= 90 ? 'tile--green' : pct >= 70 ? 'tile--amber' : 'tile--red');
+
+    document.getElementById('v-median').textContent = fmtShort(res.medFinal);
+    document.getElementById('v-p10bal').textContent = fmtShort(res.p10Final);
+
+    const vP10age = document.getElementById('v-p10age');
+    const tP10age = document.getElementById('tile-p10age');
+    const hP10age = document.getElementById('h-p10age');
+    if (res.p10SurvivalAge >= eAge) {
+      vP10age.textContent = 'Age ' + eAge + '+';
+      tP10age.className   = 'tile tile--green';
+      hP10age.textContent = 'Bottom 10% survives to end age';
+    } else {
+      vP10age.textContent = 'Age ' + res.p10SurvivalAge;
+      tP10age.className   = 'tile tile--amber';
+      hP10age.textContent = 'Bottom 10% runs out of money';
+    }
+  }
+
+  // ---- D3 fan chart ----
+  function drawChart(pctData, rAge) {
+    const host = document.getElementById('mc-chart');
+    d3.select(host).selectAll('*').remove();
+
+    const margin = { top: 14, right: 28, bottom: 36, left: 72 };
+    const totalW = host.clientWidth || 700;
+    const totalH = 320;
+    const W = totalW - margin.left - margin.right;
+    const H = totalH - margin.top - margin.bottom;
+
+    const svg = d3.select(host).append('svg')
+      .attr('width', totalW)
+      .attr('height', totalH);
+
+    const g = svg.append('g')
+      .attr('transform', `translate(${margin.left},${margin.top})`);
+
+    const x = d3.scaleLinear()
+      .domain([pctData[0].age, pctData[pctData.length - 1].age])
+      .range([0, W]);
+
+    const yMax = d3.max(pctData, d => d.p90) || 1;
+    const y = d3.scaleLinear()
+      .domain([0, yMax])
+      .nice()
+      .range([H, 0]);
+
+    const yFmt = v => {
+      if (v === 0) return '$0';
+      return yMax >= 2e6
+        ? '$' + (v / 1e6).toFixed(v >= 1e6 ? 1 : 2) + 'M'
+        : '$' + Math.round(v / 1e3) + 'K';
+    };
+
+    // Horizontal grid
+    g.append('g').attr('class', 'grid')
+      .call(d3.axisLeft(y).tickSize(-W).tickFormat(''));
+
+    // Axes
+    const xTickCount = Math.min(9, Math.floor(W / 70));
+    g.append('g').attr('class', 'axis')
+      .attr('transform', `translate(0,${H})`)
+      .call(d3.axisBottom(x).tickFormat(d => 'Age ' + d).ticks(xTickCount));
+
+    g.append('g').attr('class', 'axis')
+      .call(d3.axisLeft(y).tickFormat(yFmt));
+
+    // Accumulation zone (subtle tint before retire age)
+    const rx = x(rAge);
+    if (rx > 0 && rx < W) {
+      g.append('rect')
+        .attr('x', 0).attr('y', 0)
+        .attr('width', rx).attr('height', H)
+        .attr('fill', '#64748B').attr('opacity', .04);
+
+      g.append('line')
+        .attr('x1', rx).attr('x2', rx)
+        .attr('y1', 0).attr('y2', H)
+        .attr('stroke', '#94A3B8')
+        .attr('stroke-dasharray', '4,3')
+        .attr('stroke-width', 1.5);
+
+      g.append('text')
+        .attr('x', rx + 5).attr('y', 16)
+        .attr('fill', '#94A3B8').attr('font-size', '11px')
+        .text('Retire ' + rAge);
+    }
+
+    // Fan bands (p10–p90, p25–p75)
+    const area = (y0k, y1k) => d3.area()
+      .x(d => x(d.age)).y0(d => y(d[y0k])).y1(d => y(d[y1k]));
+
+    g.append('path').datum(pctData)
+      .attr('d', area('p10', 'p90'))
+      .attr('fill', '#2563EB').attr('opacity', .13);
+
+    g.append('path').datum(pctData)
+      .attr('d', area('p25', 'p75'))
+      .attr('fill', '#2563EB').attr('opacity', .24);
+
+    // p10 and p90 dashed borders
+    const dashed = d3.line().x(d => x(d.age)).y(d => y(d.p10));
+    g.append('path').datum(pctData)
+      .attr('d', dashed)
+      .attr('fill', 'none')
+      .attr('stroke', '#2563EB').attr('stroke-width', 1)
+      .attr('stroke-dasharray', '3,3').attr('opacity', .5);
+
+    const dashed90 = d3.line().x(d => x(d.age)).y(d => y(d.p90));
+    g.append('path').datum(pctData)
+      .attr('d', dashed90)
+      .attr('fill', 'none')
+      .attr('stroke', '#2563EB').attr('stroke-width', 1)
+      .attr('stroke-dasharray', '3,3').attr('opacity', .5);
+
+    // Median line (p50)
+    g.append('path').datum(pctData)
+      .attr('d', d3.line().x(d => x(d.age)).y(d => y(d.p50)))
+      .attr('fill', 'none')
+      .attr('stroke', '#2563EB').attr('stroke-width', 2.5);
+  }
+
+  // ---- Read params & run ----
+  function readParams() {
+    return {
+      balance:  parseMoney(pBalance.value)  ?? 1500000,
+      contrib:  parseMoney(pContrib.value)  ?? 0,
+      withdraw: parseMoney(pWithdraw.value) ?? 120000,
+      ret:  (parseFloat(pReturn.value) || 7)   / 100,
+      vol:  (parseFloat(pVol.value)    || 12)  / 100,
+      inf:  (parseFloat(pInf.value)    || 3.5) / 100,
+      cAge: parseInt(pCage.value, 10)  || 45,
+      rAge: parseInt(pRage.value, 10)  || 60,
+      eAge: parseInt(pEage.value, 10)  || 90,
+      nSims: Math.min(10000, Math.max(100, parseInt(pSims.value, 10) || 1000)),
+    };
+  }
+
+  function run() {
+    const p = readParams();
+    if (p.eAge <= p.cAge || p.rAge < p.cAge || p.balance <= 0) return;
+
+    const status = document.getElementById('run-status');
+    status.textContent = 'Running…';
+
+    setTimeout(() => {
+      const res = simulate(p);
+      updateTiles(res, p.eAge);
+      drawChart(res.pctData, p.rAge);
+      status.textContent = p.nSims.toLocaleString() + ' simulations';
+    }, 0);
+  }
+
+  // ---- Debounce ----
+  let _timer = null;
+  function schedule() {
+    if (_timer) clearTimeout(_timer);
+    _timer = setTimeout(run, 180);
+  }
+
+  // ---- Resize ----
+  window.addEventListener('resize', schedule);
+
+  // ---- Public API for mc adapter ----
+  window._mcTool = {
+    setParams(p) {
+      if (p.balance  != null) pBalance.value  = usd0.format(p.balance);
+      if (p.withdraw != null) pWithdraw.value = usd0.format(p.withdraw);
+      if (p.ret      != null) pReturn.value   = +(p.ret * 100).toFixed(2);
+      if (p.cAge     != null) pCage.value     = p.cAge;
+      if (p.rAge     != null) pRage.value     = p.rAge;
+      run();
+    },
+  };
+
+  // Initial run
+  run();
+})();
+</script>
+</body>
+</html>

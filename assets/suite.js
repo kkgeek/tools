@@ -33,6 +33,7 @@
     { href: 'portfolio_tracker.html',                 label: 'Tracker',   match: ['portfolio_tracker'] },
     { href: 'social_security.html',                   label: 'SS',         match: ['social_security'] },
     { href: 'net_worth.html',                         label: 'Net Worth',  match: ['net_worth'] },
+    { href: 'monte_carlo.html',                       label: 'Monte Carlo', match: ['monte_carlo'] },
   ];
 
   // ---------- Theme ----------

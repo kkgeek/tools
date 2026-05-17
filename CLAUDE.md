@@ -120,6 +120,10 @@ Phase 6 additions (P3 — compact mode + P3 completions):
 - `assets/suite.css?v=10` (index.html only — adds compact entry panel styles)
 - `assets/dashboard.js?v=12` (index.html only — adds Quick entry compact panel)
 
+Phase 7 additions (Monte Carlo):
+- `assets/suite.js?v=9` (all pages — adds Monte Carlo to MODULES registry)
+- `assets/adapters/mc.js?v=1` (monte_carlo.html only)
+
 ## Constraints to preserve
 
 - **Zero build step.** No Vite/Webpack until scope demands it.
