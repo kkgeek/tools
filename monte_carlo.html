@@ -76,6 +76,13 @@ body{font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;background:var(
 /* Note */
 .note{font-size:12px;color:var(--muted);line-height:1.7;margin-top:4px}
 
+/* Chart tooltip */
+#mc-tooltip{position:absolute;pointer-events:none;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:9px 13px;font-size:12px;line-height:1.7;box-shadow:0 4px 16px rgba(0,0,0,.12);z-index:50;white-space:nowrap;display:none}
+#mc-tooltip .tt-age{font-weight:700;margin-bottom:4px;color:var(--text)}
+#mc-tooltip .tt-row{display:flex;justify-content:space-between;gap:16px;color:var(--muted)}
+#mc-tooltip .tt-row span:last-child{font-weight:600;color:var(--text)}
+#mc-crosshair{pointer-events:none}
+
 @media(max-width:600px){.main{padding:14px 16px}.hdr{padding:14px 16px}}
 </style>
 <link rel="stylesheet" href="assets/suite.css?v=4">
@@ -173,9 +180,10 @@ body{font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;background:var(
     </div>
   </div>
 
-  <div class="card">
+  <div class="card" style="position:relative">
     <div class="card-t">Portfolio value by age</div>
     <div id="mc-chart"></div>
+    <div id="mc-tooltip"></div>
     <div class="legend">
       <span><span class="lg-sw" style="background:#2563EB;opacity:.15"></span>p10–p90 range</span>
       <span><span class="lg-sw" style="background:#2563EB;opacity:.32"></span>p25–p75 range</span>
@@ -446,6 +454,70 @@ body{font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;background:var(
       .attr('d', d3.line().x(d => x(d.age)).y(d => y(d.p50)))
       .attr('fill', 'none')
       .attr('stroke', '#2563EB').attr('stroke-width', 2.5);
+
+    // Tooltip crosshair + floating div
+    const tooltip = document.getElementById('mc-tooltip');
+
+    const crosshair = g.append('line')
+      .attr('id', 'mc-crosshair')
+      .attr('y1', 0).attr('y2', H)
+      .attr('stroke', '#94A3B8').attr('stroke-width', 1)
+      .attr('stroke-dasharray', '4,3')
+      .style('display', 'none');
+
+    const fmt = v => {
+      if (!v || !isFinite(v)) return '$0';
+      if (v >= 1e6) return '$' + (v / 1e6).toFixed(2) + 'M';
+      if (v >= 1e3) return '$' + Math.round(v / 1e3) + 'K';
+      return '$' + Math.round(v);
+    };
+
+    const BANDS = [
+      { key: 'p90', label: 'p90 (best 10%)' },
+      { key: 'p75', label: 'p75' },
+      { key: 'p50', label: 'p50 median' },
+      { key: 'p25', label: 'p25' },
+      { key: 'p10', label: 'p10 (worst 10%)' },
+    ];
+
+    const card = host.parentElement; // .card has position:relative — offset parent for tooltip
+
+    svg.append('rect')
+      .attr('width', totalW).attr('height', totalH)
+      .attr('fill', 'none')
+      .style('cursor', 'crosshair')
+      .on('mousemove', function (event) {
+        const [mx] = d3.pointer(event, g.node());
+        if (mx < 0 || mx > W) { crosshair.style('display', 'none'); tooltip.style.display = 'none'; return; }
+        const age = Math.round(x.invert(mx));
+        const d = pctData.find(r => r.age === age);
+        if (!d) return;
+
+        crosshair.attr('x1', x(age)).attr('x2', x(age)).style('display', null);
+
+        tooltip.style.display = 'block';
+        tooltip.innerHTML =
+          `<div class="tt-age">Age ${age}</div>` +
+          BANDS.map(b => `<div class="tt-row"><span>${b.label}</span><span>${fmt(d[b.key])}</span></div>`).join('');
+
+        // Position tooltip relative to .card (the offset parent)
+        const cardRect = card.getBoundingClientRect();
+        const hostRect = host.getBoundingClientRect();
+        const tipW = tooltip.offsetWidth;
+        const tipH = tooltip.offsetHeight;
+        const cursorAbsX = hostRect.left + margin.left + x(age);
+        const cursorAbsY = hostRect.top  + margin.top;
+        let left = cursorAbsX - cardRect.left + 14;
+        if (left + tipW > cardRect.width - 8) left = cursorAbsX - cardRect.left - tipW - 10;
+        let top = cursorAbsY - cardRect.top;
+        if (top + tipH > cardRect.height - 4) top = cardRect.height - tipH - 4;
+        tooltip.style.left = left + 'px';
+        tooltip.style.top  = top  + 'px';
+      })
+      .on('mouseleave', function () {
+        crosshair.style('display', 'none');
+        tooltip.style.display = 'none';
+      });
   }
 
   // ---- Read params & run ----
