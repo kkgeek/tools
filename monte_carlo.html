@@ -77,7 +77,7 @@ body{font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;background:var(
 .note{font-size:12px;color:var(--muted);line-height:1.7;margin-top:4px}
 
 /* Chart tooltip */
-#mc-tooltip{position:absolute;pointer-events:none;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:9px 13px;font-size:12px;line-height:1.7;box-shadow:0 4px 16px rgba(0,0,0,.12);z-index:50;white-space:nowrap;display:none}
+#mc-tooltip{position:fixed;pointer-events:none;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:9px 13px;font-size:12px;line-height:1.7;box-shadow:0 4px 16px rgba(0,0,0,.12);z-index:1000;white-space:nowrap;display:none}
 #mc-tooltip .tt-age{font-weight:700;margin-bottom:4px;color:var(--text)}
 #mc-tooltip .tt-row{display:flex;justify-content:space-between;gap:16px;color:var(--muted)}
 #mc-tooltip .tt-row span:last-child{font-weight:600;color:var(--text)}
@@ -180,10 +180,9 @@ body{font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;background:var(
     </div>
   </div>
 
-  <div class="card" style="position:relative">
+  <div class="card">
     <div class="card-t">Portfolio value by age</div>
     <div id="mc-chart"></div>
-    <div id="mc-tooltip"></div>
     <div class="legend">
       <span><span class="lg-sw" style="background:#2563EB;opacity:.15"></span>p10–p90 range</span>
       <span><span class="lg-sw" style="background:#2563EB;opacity:.32"></span>p25–p75 range</span>
@@ -480,11 +479,9 @@ body{font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;background:var(
       { key: 'p10', label: 'p10 (worst 10%)' },
     ];
 
-    const card = host.parentElement; // .card has position:relative — offset parent for tooltip
-
     svg.append('rect')
       .attr('width', totalW).attr('height', totalH)
-      .attr('fill', 'none')
+      .attr('fill', 'transparent')
       .style('cursor', 'crosshair')
       .on('mousemove', function (event) {
         const [mx] = d3.pointer(event, g.node());
@@ -495,22 +492,19 @@ body{font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;background:var(
 
         crosshair.attr('x1', x(age)).attr('x2', x(age)).style('display', null);
 
-        tooltip.style.display = 'block';
         tooltip.innerHTML =
           `<div class="tt-age">Age ${age}</div>` +
           BANDS.map(b => `<div class="tt-row"><span>${b.label}</span><span>${fmt(d[b.key])}</span></div>`).join('');
+        tooltip.style.display = 'block';
 
-        // Position tooltip relative to .card (the offset parent)
-        const cardRect = card.getBoundingClientRect();
-        const hostRect = host.getBoundingClientRect();
+        // Position fixed relative to viewport using mouse coordinates
         const tipW = tooltip.offsetWidth;
         const tipH = tooltip.offsetHeight;
-        const cursorAbsX = hostRect.left + margin.left + x(age);
-        const cursorAbsY = hostRect.top  + margin.top;
-        let left = cursorAbsX - cardRect.left + 14;
-        if (left + tipW > cardRect.width - 8) left = cursorAbsX - cardRect.left - tipW - 10;
-        let top = cursorAbsY - cardRect.top;
-        if (top + tipH > cardRect.height - 4) top = cardRect.height - tipH - 4;
+        let left = event.clientX + 16;
+        if (left + tipW > window.innerWidth - 8) left = event.clientX - tipW - 12;
+        let top = event.clientY - Math.round(tipH / 2);
+        if (top < 4) top = 4;
+        if (top + tipH > window.innerHeight - 4) top = window.innerHeight - tipH - 4;
         tooltip.style.left = left + 'px';
         tooltip.style.top  = top  + 'px';
       })
@@ -577,5 +571,6 @@ body{font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;background:var(
   run();
 })();
 </script>
+<div id="mc-tooltip"></div>
 </body>
 </html>
