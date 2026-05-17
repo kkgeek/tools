@@ -637,6 +637,105 @@ body.suite-tool-shell {
   outline-offset: -2px;
 }
 
+/* ---------- Compact entry panel (dashboard only) ---------- */
+.suite-compact-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 14px;
+  border: 1px solid var(--md-sys-color-outline);
+  border-radius: var(--md-sys-shape-corner-full);
+  background: transparent;
+  color: var(--md-sys-color-on-surface-variant);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background .15s, border-color .15s, color .15s;
+}
+.suite-compact-toggle:hover {
+  background: color-mix(in oklab, var(--md-sys-color-on-surface) 8%, transparent);
+  border-color: var(--md-sys-color-on-surface);
+  color: var(--md-sys-color-on-surface);
+}
+.suite-compact-toggle:focus-visible {
+  outline: 2px solid var(--md-sys-color-primary);
+  outline-offset: 2px;
+}
+
+.suite-compact-panel {
+  background: var(--md-sys-color-surface-container-low);
+  border: 1px solid var(--md-sys-color-outline-variant);
+  border-radius: var(--md-sys-shape-corner-lg);
+  padding: 20px 24px;
+  margin-bottom: 40px;
+}
+
+.suite-compact-section {
+  margin-bottom: 12px;
+}
+.suite-compact-section:last-child { margin-bottom: 0; }
+
+.suite-compact-section-title {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--md-sys-color-on-surface-variant);
+  margin-bottom: 8px;
+}
+
+.suite-compact-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 20px;
+  align-items: center;
+  margin-bottom: 6px;
+}
+.suite-compact-row:last-child { margin-bottom: 0; }
+
+.suite-compact-field {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.suite-compact-label {
+  font-size: 12px;
+  color: var(--md-sys-color-on-surface-variant);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.suite-compact-input {
+  height: 30px;
+  padding: 0 8px;
+  border: 1px solid var(--md-sys-color-outline-variant);
+  border-radius: var(--md-sys-shape-corner-xs);
+  background: var(--md-sys-color-surface-container-lowest);
+  color: var(--md-sys-color-on-surface);
+  font: inherit;
+  font-size: 13px;
+  outline: none;
+  box-sizing: border-box;
+  transition: border-color .15s;
+}
+.suite-compact-input:focus {
+  border-color: var(--md-sys-color-primary);
+  box-shadow: 0 0 0 2px color-mix(in oklab, var(--md-sys-color-primary) 20%, transparent);
+}
+.suite-compact-input--sm   { width: 64px; }
+.suite-compact-input--md   { width: 120px; }
+.suite-compact-input--lg   { width: 150px; }
+.suite-compact-input--name { width: 110px; }
+select.suite-compact-input { width: auto; padding-right: 24px; }
+
+.suite-compact-divider {
+  border: none;
+  border-top: 1px solid var(--md-sys-color-outline-variant);
+  margin: 12px 0;
+}
+
 /* ---------- Footer ---------- */
 .suite-footer {
   max-width: var(--suite-max-width);

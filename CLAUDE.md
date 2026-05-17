@@ -116,6 +116,10 @@ Phase 5 additions:
 - `assets/suite.js?v=6` (all pages — adds SS to MODULES registry)
 - `assets/adapters/ss.js?v=1` (social_security.html only)
 
+Phase 6 additions (P3 — compact mode + P3 completions):
+- `assets/suite.css?v=10` (index.html only — adds compact entry panel styles)
+- `assets/dashboard.js?v=12` (index.html only — adds Quick entry compact panel)
+
 ## Constraints to preserve
 
 - **Zero build step.** No Vite/Webpack until scope demands it.
@@ -168,6 +172,7 @@ Phase 5 additions:
 - ~~Golden φ adapter.~~ ✓
 - ~~Named scenarios switchable from dashboard.~~ ✓
 - ~~CSV export per section.~~ ✓
+- ~~Dashboard compact mode — inline key fields for fast data-entry.~~ ✓
 - Vite migration — deferred indefinitely.
 
 ## Phase 4 plan

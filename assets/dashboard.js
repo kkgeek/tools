@@ -560,16 +560,23 @@
     });
   }
 
+  // ---------- Compact entry panel ----------
+  const COMPACT_KEY = 'wealthSuite.compactOpen';
+
   renderScenarios();
   renderActions();
+  const syncCompact = renderCompact();
 
   // Initial render + subscribe to any future change
   const _initialState = store.export();
   render(_initialState);
   updateScenarioChips(_initialState);
+  if (syncCompact) syncCompact(_initialState);
+
   store.subscribe('', (state) => {
     render(state);
     updateScenarioChips(state);
+    if (syncCompact) syncCompact(state);
   });
 
   // Re-render relative time every minute so "3 min ago" stays accurate
@@ -577,5 +584,278 @@
     const s = store.export();
     render(s);
     updateScenarioChips(s);
+    if (syncCompact) syncCompact(s);
   }, 60_000);
+
+  function renderCompact() {
+    const headEl = document.getElementById('suite-compact-head');
+    const panelEl = document.getElementById('suite-compact-panel');
+    if (!headEl || !panelEl) return null;
+
+    const setOpen = (val) => {
+      try { localStorage.setItem(COMPACT_KEY, val ? '1' : '0'); } catch (_) {}
+      panelEl.hidden = !val;
+      toggleBtn.textContent = val ? '▲ Collapse' : '▼ Expand';
+    };
+    const toggleBtn = document.createElement('button');
+    toggleBtn.type = 'button';
+    toggleBtn.className = 'suite-compact-toggle';
+    toggleBtn.addEventListener('click', () => setOpen(panelEl.hidden));
+    headEl.appendChild(toggleBtn);
+    setOpen(localStorage.getItem(COMPACT_KEY) !== '0');
+
+    return buildCompactPanel(panelEl);
+  }
+
+  function buildCompactPanel(panel) {
+    const OPTS = { editedBy: 'dashboard' };
+    let activeInput = null;
+
+    // ---- Micro DOM helpers ----
+    function mkInput(type, id, attrs) {
+      const el = document.createElement('input');
+      el.type = type;
+      if (id) el.id = id;
+      if (attrs) Object.assign(el, attrs);
+      el.className = 'suite-compact-input';
+      el.addEventListener('focus', () => { activeInput = el; });
+      el.addEventListener('blur',  () => { if (activeInput === el) activeInput = null; });
+      return el;
+    }
+
+    function mkSelect(id, pairs) {
+      const el = document.createElement('select');
+      el.id = id;
+      el.className = 'suite-compact-input';
+      pairs.forEach(([v, t]) => {
+        const o = document.createElement('option');
+        o.value = v; o.textContent = t;
+        el.appendChild(o);
+      });
+      return el;
+    }
+
+    function fld(lbl, inp, sizeClass) {
+      const wrap = document.createElement('span');
+      wrap.className = 'suite-compact-field';
+      const label = document.createElement('label');
+      label.className = 'suite-compact-label';
+      label.textContent = lbl;
+      if (inp.id) label.htmlFor = inp.id;
+      if (sizeClass) inp.classList.add(sizeClass);
+      wrap.append(label, inp);
+      return wrap;
+    }
+
+    function row(...items) {
+      const r = document.createElement('div');
+      r.className = 'suite-compact-row';
+      items.forEach(el => r.appendChild(el));
+      return r;
+    }
+
+    function sec(title) {
+      const s = document.createElement('div');
+      s.className = 'suite-compact-section';
+      const t = document.createElement('div');
+      t.className = 'suite-compact-section-title';
+      t.textContent = title;
+      s.appendChild(t);
+      return s;
+    }
+
+    function hr() {
+      const el = document.createElement('hr');
+      el.className = 'suite-compact-divider';
+      return el;
+    }
+
+    // ---- Wiring helpers ----
+    function parseMoney(s) {
+      const n = parseFloat(String(s || '').replace(/[$,\s]/g, ''));
+      return Number.isFinite(n) ? n : null;
+    }
+    function fmtC(n) {
+      if (n == null || !Number.isFinite(Number(n))) return '';
+      return usd0.format(Number(n));
+    }
+
+    function wireMoney(input, path) {
+      input.value = fmtC(store.get(path));
+      input.addEventListener('focus', () => {
+        const n = parseMoney(input.value);
+        input.value = n != null ? String(n) : '';
+      });
+      input.addEventListener('blur', () => {
+        const n = parseMoney(input.value);
+        store.set(path, n, OPTS);
+        input.value = fmtC(n);
+      });
+      return (val) => { if (activeInput !== input) input.value = fmtC(val); };
+    }
+
+    function wireInt(input, path) {
+      const v = store.get(path);
+      input.value = v != null ? String(v) : '';
+      input.addEventListener('blur', () => {
+        const n = parseInt(input.value, 10);
+        store.set(path, Number.isFinite(n) ? n : null, OPTS);
+      });
+      return (val) => { if (activeInput !== input) input.value = val != null ? String(val) : ''; };
+    }
+
+    // ---- Build structure ----
+
+    // Household
+    const hhSec   = sec('Household');
+    const filingEl = mkSelect('sc-filing', [['mfj', 'Married (MFJ)'], ['single', 'Single']]);
+    const n1El = mkInput('text',   'sc-n1', { placeholder: 'Name' });
+    const a1El = mkInput('number', 'sc-a1', { placeholder: '—', min: 18, max: 100 });
+    const n2El = mkInput('text',   'sc-n2', { placeholder: 'Name' });
+    const a2El = mkInput('number', 'sc-a2', { placeholder: '—', min: 18, max: 100 });
+    const sp2Row = row(fld('Spouse 2', n2El, 'suite-compact-input--name'), fld('Age', a2El, 'suite-compact-input--sm'));
+
+    hhSec.appendChild(row(
+      fld('Filing', filingEl),
+      fld('Spouse 1', n1El, 'suite-compact-input--name'),
+      fld('Age', a1El, 'suite-compact-input--sm'),
+    ));
+    hhSec.appendChild(sp2Row);
+
+    // Income
+    const incSec = sec('Income');
+    const salS1 = mkInput('text', 'sc-sal-s1', { placeholder: '$0' });
+    const salS2 = mkInput('text', 'sc-sal-s2', { placeholder: '$0' });
+    const bonS1 = mkInput('text', 'sc-bon-s1', { placeholder: '$0' });
+    const bonS2 = mkInput('text', 'sc-bon-s2', { placeholder: '$0' });
+    const rsuS1 = mkInput('text', 'sc-rsu-s1', { placeholder: '$0' });
+    const rsuS2 = mkInput('text', 'sc-rsu-s2', { placeholder: '$0' });
+    const stcgEl = mkInput('text', 'sc-stcg',  { placeholder: '$0' });
+    const ltcgEl = mkInput('text', 'sc-ltcg',  { placeholder: '$0' });
+
+    const salS2F = fld('S2', salS2, 'suite-compact-input--md');
+    const bonS2F = fld('S2', bonS2, 'suite-compact-input--md');
+    const rsuS2F = fld('S2', rsuS2, 'suite-compact-input--md');
+    const s2Inc  = [salS2F, bonS2F, rsuS2F];
+
+    incSec.appendChild(row(fld('Salary', salS1, 'suite-compact-input--md'), salS2F));
+    incSec.appendChild(row(fld('Bonus',  bonS1, 'suite-compact-input--md'), bonS2F));
+    incSec.appendChild(row(fld('RSU',    rsuS1, 'suite-compact-input--md'), rsuS2F));
+    incSec.appendChild(row(fld('STCG', stcgEl, 'suite-compact-input--md'), fld('LTCG', ltcgEl, 'suite-compact-input--md')));
+
+    // Retirement
+    const retSec    = sec('Retirement');
+    const retBalEl  = mkInput('text',   'sc-ret-bal',  { placeholder: '$0' });
+    const retAgeEl  = mkInput('number', 'sc-ret-age',  { placeholder: '65', min: 40, max: 80 });
+    const retGrowEl = mkInput('number', 'sc-ret-grow', { placeholder: '7',  min: 0, max: 20, step: 0.1 });
+    const retExpEl  = mkInput('text',   'sc-ret-exp',  { placeholder: '$0' });
+
+    retSec.appendChild(row(
+      fld('Balance', retBalEl, 'suite-compact-input--md'),
+      fld('Target age', retAgeEl, 'suite-compact-input--sm'),
+      fld('Growth %', retGrowEl, 'suite-compact-input--sm'),
+      fld('Expenses/yr', retExpEl, 'suite-compact-input--md'),
+    ));
+
+    // Portfolio
+    const portSec   = sec('Portfolio');
+    const portValEl = mkInput('text', 'sc-port-val', { placeholder: '$0' });
+    portSec.appendChild(row(fld('Total value', portValEl, 'suite-compact-input--lg')));
+
+    panel.append(hhSec, hr(), incSec, hr(), retSec, hr(), portSec);
+
+    // ---- MFJ visibility (defined after s2Inc is ready) ----
+    function updateMfj(mfj) {
+      sp2Row.hidden = !mfj;
+      s2Inc.forEach(el => { el.hidden = !mfj; });
+    }
+
+    // ---- Wire filing ----
+    filingEl.value = store.get('household.filingStatus') || 'mfj';
+    filingEl.addEventListener('change', () => {
+      store.set('household.filingStatus', filingEl.value, OPTS);
+      updateMfj(filingEl.value === 'mfj');
+    });
+
+    // ---- Wire spouse name/age ----
+    function getSpouse(idx, f) {
+      const sp = store.get('household.spouses') || [];
+      return sp[idx] ? sp[idx][f] : null;
+    }
+    function setSpouse(idx, f, val) {
+      const sp = (store.get('household.spouses') || [{ name: '', age: null }, { name: '', age: null }]).slice();
+      sp[idx] = Object.assign({}, sp[idx] || {}, { [f]: val });
+      store.set('household.spouses', sp, OPTS);
+    }
+
+    n1El.value = getSpouse(0, 'name') || '';
+    a1El.value = getSpouse(0, 'age') != null ? String(getSpouse(0, 'age')) : '';
+    n2El.value = getSpouse(1, 'name') || '';
+    a2El.value = getSpouse(1, 'age') != null ? String(getSpouse(1, 'age')) : '';
+
+    n1El.addEventListener('blur', () => setSpouse(0, 'name', n1El.value.trim()));
+    a1El.addEventListener('blur', () => { const n = parseInt(a1El.value, 10); setSpouse(0, 'age', Number.isFinite(n) ? n : null); });
+    n2El.addEventListener('blur', () => setSpouse(1, 'name', n2El.value.trim()));
+    a2El.addEventListener('blur', () => { const n = parseInt(a2El.value, 10); setSpouse(1, 'age', Number.isFinite(n) ? n : null); });
+
+    // ---- Wire income ----
+    const syncSalS1 = wireMoney(salS1, 'income.salary.s1');
+    const syncSalS2 = wireMoney(salS2, 'income.salary.s2');
+    const syncBonS1 = wireMoney(bonS1, 'income.bonus.s1');
+    const syncBonS2 = wireMoney(bonS2, 'income.bonus.s2');
+    const syncRsuS1 = wireMoney(rsuS1, 'income.rsuVests.s1');
+    const syncRsuS2 = wireMoney(rsuS2, 'income.rsuVests.s2');
+    const syncStcg  = wireMoney(stcgEl, 'income.capitalGains.shortTerm');
+    const syncLtcg  = wireMoney(ltcgEl, 'income.capitalGains.longTerm');
+
+    // ---- Wire retirement ----
+    const syncRetBal = wireMoney(retBalEl, 'retirement.balances.total');
+    const syncRetAge = wireInt(retAgeEl,   'retirement.plan.targetRetireAge');
+    const syncRetExp = wireMoney(retExpEl, 'retirement.plan.annualExpenses');
+
+    // Growth % stored as decimal (0.07), displayed as percent (7)
+    const g0 = store.get('retirement.plan.growthAssumption');
+    retGrowEl.value = g0 != null ? String(+(g0 * 100).toFixed(2)) : '';
+    retGrowEl.addEventListener('blur', () => {
+      const n = parseFloat(retGrowEl.value);
+      store.set('retirement.plan.growthAssumption', Number.isFinite(n) ? n / 100 : null, OPTS);
+    });
+    const syncRetGrow = (val) => {
+      if (activeInput !== retGrowEl) retGrowEl.value = val != null ? String(+(val * 100).toFixed(2)) : '';
+    };
+
+    // ---- Wire portfolio ----
+    const syncPortVal = wireMoney(portValEl, 'portfolio.totalValue');
+
+    // ---- Initial MFJ visibility ----
+    updateMfj(filingEl.value === 'mfj');
+
+    // ---- Return sync fn for external store updates ----
+    return function syncFromStore(state) {
+      const sp  = state.household?.spouses || [{}, {}];
+      const mfj = (state.household?.filingStatus || 'mfj') === 'mfj';
+      const inc  = state.income || {};
+      const ret  = state.retirement || {};
+      const port = state.portfolio || {};
+
+      if (activeInput !== filingEl) { filingEl.value = state.household?.filingStatus || 'mfj'; updateMfj(mfj); }
+      if (activeInput !== n1El) n1El.value = (sp[0] && sp[0].name) || '';
+      if (activeInput !== a1El) a1El.value = sp[0]?.age != null ? String(sp[0].age) : '';
+      if (activeInput !== n2El) n2El.value = (sp[1] && sp[1].name) || '';
+      if (activeInput !== a2El) a2El.value = sp[1]?.age != null ? String(sp[1].age) : '';
+
+      syncSalS1(inc.salary?.s1);     syncSalS2(inc.salary?.s2);
+      syncBonS1(inc.bonus?.s1);      syncBonS2(inc.bonus?.s2);
+      syncRsuS1(inc.rsuVests?.s1);   syncRsuS2(inc.rsuVests?.s2);
+      syncStcg(inc.capitalGains?.shortTerm);
+      syncLtcg(inc.capitalGains?.longTerm);
+
+      syncRetBal(ret.balances?.total);
+      syncRetAge(ret.plan?.targetRetireAge);
+      syncRetGrow(ret.plan?.growthAssumption);
+      syncRetExp(ret.plan?.annualExpenses);
+
+      syncPortVal(port.totalValue);
+    };
+  }
 })();
