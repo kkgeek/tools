@@ -167,7 +167,7 @@ body{font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;background:var(
       </div>
       <div class="pf pf--sm">
         <label for="p-rage">Retire age</label>
-        <input id="p-rage" type="number" min="40" max="85" step="1" placeholder="60">
+        <input id="p-rage" type="number" min="40" max="85" step="1" placeholder="65">
       </div>
       <div class="pf pf--sm">
         <label for="p-eage">End age</label>
@@ -255,7 +255,7 @@ body{font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;background:var(
   pVol.value    = 12;
   pInf.value    = 3.5;
   pCage.value   = 45;
-  pRage.value   = 60;
+  pRage.value   = 65;
   pEage.value   = 90;
   pSims.value   = 1000;
 
@@ -524,7 +524,7 @@ body{font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;background:var(
       vol:  (parseFloat(pVol.value)    || 12)  / 100,
       inf:  (parseFloat(pInf.value)    || 3.5) / 100,
       cAge: parseInt(pCage.value, 10)  || 45,
-      rAge: parseInt(pRage.value, 10)  || 60,
+      rAge: parseInt(pRage.value, 10)  || 65,
       eAge: parseInt(pEage.value, 10)  || 90,
       nSims: Math.min(10000, Math.max(100, parseInt(pSims.value, 10) || 1000)),
     };
