@@ -19,22 +19,64 @@
   const VALID = ['system', 'light', 'dark'];
   const mql = window.matchMedia('(prefers-color-scheme: dark)');
 
-  // Tool registry — keep in sync with index.html cards.
-  // `match` is a substring on location.pathname used to highlight the
-  // active link in the injected topbar.
-  const MODULES = [
-    { href: 'index.html',                          label: 'Dashboard',   match: ['index.html', '/'] },
-    { href: 'TaxEstimatorV5.html',                 label: 'Tax',         match: ['TaxEstimatorV5'] },
-    { href: 'TaxAssetCalcv4.html',                 label: 'Assets',      match: ['TaxAssetCalc'] },
-    { href: 'retirement_master_plan_2.html',       label: 'Retirement',  match: ['retirement_master_plan'] },
-    { href: 'portfolio_review.html',               label: 'Portfolio',   match: ['portfolio_review'] },
-    { href: 'golden_ratio_portfolio_dashboard.html', label: 'Golden φ',  match: ['golden_ratio'] },
-    { href: 'roth_conversion.html',                  label: 'Roth',      match: ['roth_conversion'] },
-    { href: 'portfolio_tracker.html',                 label: 'Tracker',   match: ['portfolio_tracker'] },
-    { href: 'social_security.html',                   label: 'SS',         match: ['social_security'] },
-    { href: 'net_worth.html',                         label: 'Net Worth',  match: ['net_worth'] },
-    { href: 'monte_carlo.html',                       label: 'Monte Carlo', match: ['monte_carlo'] },
+  // Cluster registry — Phase 8 IA: tracking vs. tools split.
+  // Each cluster is a primary nav tab; tools render as secondary pills
+  // when their cluster is active. `match` is substring(s) on
+  // location.pathname used to detect the active tool.
+  //
+  //  Home       → just the dashboard, no sub-nav
+  //  Tracking   → live data you maintain
+  //  Retirement → planning + projections
+  //  Tax        → annual tax estimation
+  //  Tools      → situational calculators
+  const CLUSTERS = [
+    {
+      id: 'home',
+      label: 'Home',
+      tools: [
+        { href: 'index.html', label: 'Dashboard', match: ['index.html', '/'] },
+      ],
+    },
+    {
+      id: 'tracking',
+      label: 'Tracking',
+      tools: [
+        { href: 'portfolio_tracker.html', label: 'Tracker',     match: ['portfolio_tracker'] },
+        { href: 'portfolio_review.html',  label: 'Review',      match: ['portfolio_review'] },
+        { href: 'net_worth.html',         label: 'Net Worth',   match: ['net_worth'] },
+        // expenses.html — added in Phase 9
+      ],
+    },
+    {
+      id: 'retirement',
+      label: 'Retirement',
+      tools: [
+        { href: 'retirement_master_plan_2.html', label: 'Master Plan',  match: ['retirement_master_plan'] },
+        { href: 'monte_carlo.html',              label: 'Monte Carlo',  match: ['monte_carlo'] },
+      ],
+    },
+    {
+      id: 'tax',
+      label: 'Tax',
+      tools: [
+        { href: 'TaxEstimatorV5.html', label: 'Tax Estimator', match: ['TaxEstimatorV5'] },
+      ],
+    },
+    {
+      id: 'tools',
+      label: 'Tools',
+      tools: [
+        { href: 'social_security.html',                  label: 'Social Security', match: ['social_security'] },
+        { href: 'roth_conversion.html',                  label: 'Roth Conversion', match: ['roth_conversion'] },
+        { href: 'golden_ratio_portfolio_dashboard.html', label: 'Golden φ',        match: ['golden_ratio'] },
+        { href: 'TaxAssetCalcv4.html',                   label: 'Asset & Cap-Gains', match: ['TaxAssetCalc'] },
+      ],
+    },
   ];
+
+  // Flat module list (back-compat for any tool that reads
+  // WealthSuite.modules — e.g. dashboard card grid).
+  const MODULES = CLUSTERS.flatMap(c => c.tools);
 
   // ---------- Theme ----------
   function readPreference() {
@@ -86,6 +128,14 @@
     return null;
   }
 
+  // Find which cluster a tool belongs to (by tool href).
+  function clusterForHref(href) {
+    for (const c of CLUSTERS) {
+      if (c.tools.some((t) => t.href === href)) return c;
+    }
+    return CLUSTERS[0]; // fallback: Home
+  }
+
   // Icon set (Material Symbols-inspired SVGs, 24x24)
   const ICONS = {
     themeSystem:
@@ -105,16 +155,18 @@
   function buildTopbar(options) {
     const opts = options || {};
     const activeHref = opts.activeHref || currentModuleHref();
+    const activeCluster = activeHref ? clusterForHref(activeHref) : CLUSTERS[0];
     const pref = readPreference();
 
     const header = document.createElement('header');
     header.className = 'suite-topbar';
     header.setAttribute('data-suite-injected', opts.injected ? 'true' : 'false');
+    header.setAttribute('data-active-cluster', activeCluster.id);
 
+    // ---- Primary row: brand + cluster tabs + theme toggle ----
     const inner = document.createElement('div');
     inner.className = 'suite-topbar__inner';
 
-    // Brand
     const brand = document.createElement('a');
     brand.className = 'suite-brand';
     brand.href = 'index.html';
@@ -123,16 +175,19 @@
       '<h1 class="suite-brand__name">Wealth Suite</h1>';
     inner.appendChild(brand);
 
-    // Nav links
     const nav = document.createElement('nav');
     nav.className = 'suite-topnav';
-    nav.setAttribute('aria-label', 'Module navigation');
-    MODULES.forEach((m) => {
+    nav.setAttribute('aria-label', 'Primary navigation');
+    CLUSTERS.forEach((c) => {
+      // Each cluster tab links to its first tool (Home → dashboard,
+      // Tracking → tracker, etc.). The sub-nav lets you pick a
+      // different tool within the cluster.
       const a = document.createElement('a');
       a.className = 'suite-topnav__link';
-      a.href = m.href;
-      a.textContent = m.label;
-      if (m.href === activeHref) {
+      a.href = c.tools[0].href;
+      a.textContent = c.label;
+      a.setAttribute('data-cluster', c.id);
+      if (c.id === activeCluster.id) {
         a.classList.add('is-active');
         a.setAttribute('aria-current', 'page');
       }
@@ -140,7 +195,6 @@
     });
     inner.appendChild(nav);
 
-    // Theme toggle
     const btn = document.createElement('button');
     btn.type = 'button';
     btn.className = 'suite-iconbutton';
@@ -154,33 +208,63 @@
     inner.appendChild(btn);
 
     header.appendChild(inner);
+
+    // ---- Sub-nav row: tool pills inside the active cluster ----
+    // Only rendered when the active cluster has more than one tool.
+    // Home and Tax are single-tool clusters → no sub-nav.
+    if (activeCluster.tools.length > 1) {
+      const subInner = document.createElement('div');
+      subInner.className = 'suite-subnav__inner';
+
+      const subnav = document.createElement('nav');
+      subnav.className = 'suite-subnav';
+      subnav.setAttribute('aria-label', activeCluster.label + ' tools');
+      activeCluster.tools.forEach((t) => {
+        const a = document.createElement('a');
+        a.className = 'suite-subnav__link';
+        a.href = t.href;
+        a.textContent = t.label;
+        if (t.href === activeHref) {
+          a.classList.add('is-active');
+          a.setAttribute('aria-current', 'page');
+        }
+        subnav.appendChild(a);
+      });
+      subInner.appendChild(subnav);
+
+      const subRow = document.createElement('div');
+      subRow.className = 'suite-subnav-row';
+      subRow.appendChild(subInner);
+      header.appendChild(subRow);
+      header.setAttribute('data-has-subnav', 'true');
+    } else {
+      header.setAttribute('data-has-subnav', 'false');
+    }
+
     return header;
   }
 
   function injectTopbarIfMissing() {
-    // If page already has a suite-topbar (e.g. the dashboard rendered
-    // it server-side in markup), only wire up the theme button.
+    // Phase 8: JS is the single source of truth for the topbar.
+    // If a static topbar exists (dashboard renders one for no-flash
+    // initial paint), replace it in place with the built version so
+    // cluster/sub-nav stay in sync. Otherwise inject at body start.
     const existing = document.querySelector('.suite-topbar');
+    const fresh = buildTopbar({ injected: !existing });
+
     if (existing) {
-      const btn = existing.querySelector('[data-theme-cycle]');
-      if (btn && !btn.dataset.suiteBound) {
-        btn.addEventListener('click', () => {
-          cycleTheme();
-          btn.innerHTML = themeIcon(readPreference());
-        });
-        btn.innerHTML = themeIcon(readPreference());
-        btn.dataset.suiteBound = '1';
-      }
-      return;
+      existing.parentNode.replaceChild(fresh, existing);
+    } else {
+      document.body.insertBefore(fresh, document.body.firstChild);
+      document.body.classList.add('suite-tool-shell');
     }
 
-    // Otherwise inject at body start. Topbar is position:fixed (see
-    // suite.css) so it survives flex/centered body layouts. The
-    // matching .suite-tool-shell class adds the 64px top padding so
-    // the tool's own content isn't tucked under the bar.
-    const topbar = buildTopbar({ injected: true });
-    document.body.insertBefore(topbar, document.body.firstChild);
-    document.body.classList.add('suite-tool-shell');
+    // Tag the body with the active cluster + whether the sub-nav is
+    // visible, so CSS can adjust the top padding (~64px without sub-nav,
+    // ~108px with). Avoids layout jumps.
+    const hasSubnav = fresh.getAttribute('data-has-subnav') === 'true';
+    document.body.setAttribute('data-active-cluster', fresh.getAttribute('data-active-cluster') || 'home');
+    document.body.setAttribute('data-has-subnav', hasSubnav ? 'true' : 'false');
   }
 
   if (document.readyState === 'loading') {
@@ -284,6 +368,7 @@
     },
     cycle: cycleTheme,
     modules: MODULES.slice(),
+    clusters: CLUSTERS.map(c => ({ id: c.id, label: c.label, tools: c.tools.slice() })),
     renderHouseholdBanner,
   });
 })();

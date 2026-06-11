@@ -71,6 +71,7 @@
 
   /* Suite-specific */
   --suite-topbar-height: 64px;
+  --suite-subnav-height: 44px;
   --suite-max-width: 1400px;
   --suite-content-pad: clamp(16px, 4vw, 32px);
 }
@@ -148,22 +149,32 @@ html { scroll-padding-top: var(--suite-topbar-height); }
   color: var(--md-sys-color-on-surface);
   border-bottom: 1px solid var(--md-sys-color-outline-variant);
   box-shadow: var(--md-sys-elevation-1);
-  height: var(--suite-topbar-height);
   font-family: 'Roboto Flex', 'Roboto', -apple-system, sans-serif;
+}
+.suite-topbar[data-has-subnav="false"] {
+  height: var(--suite-topbar-height);
+}
+.suite-topbar[data-has-subnav="true"] {
+  height: calc(var(--suite-topbar-height) + var(--suite-subnav-height));
 }
 
 /* Compensate for the fixed topbar:
  *  - .suite-body: applied to the dashboard, takes the padding directly.
  *  - .suite-tool-shell: added by suite.js to each tool's <body> so the
  *    tool's first paint isn't tucked under the bar. Works even when
- *    the tool's body uses display:flex with centered alignment. */
+ *    the tool's body uses display:flex with centered alignment.
+ *  - When the active cluster has a sub-nav row, body gets extra padding
+ *    via data-has-subnav (set by suite.js when topbar is built). */
 body.suite-body,
 body.suite-tool-shell {
   padding-top: var(--suite-topbar-height);
 }
+body[data-has-subnav="true"] {
+  padding-top: calc(var(--suite-topbar-height) + var(--suite-subnav-height));
+}
 
 .suite-topbar__inner {
-  height: 100%;
+  height: var(--suite-topbar-height);
   max-width: var(--suite-max-width);
   margin: 0 auto;
   padding: 0 var(--suite-content-pad);
@@ -252,6 +263,64 @@ body.suite-tool-shell {
   color: var(--md-sys-color-on-surface);
 }
 .suite-iconbutton svg { width: 22px; height: 22px; }
+
+/* ---------- Sub-nav (tool pills inside active cluster) ----------
+ * Phase 8: two-tier nav. Rendered below the primary cluster tabs when
+ * the active cluster has more than one tool. Single-tool clusters
+ * (Home, Tax in v1) omit this row to avoid empty space.
+ */
+.suite-subnav-row {
+  height: var(--suite-subnav-height);
+  background: var(--md-sys-color-surface-container-low);
+  border-top: 1px solid var(--md-sys-color-outline-variant);
+}
+
+.suite-subnav__inner {
+  height: 100%;
+  max-width: var(--suite-max-width);
+  margin: 0 auto;
+  padding: 0 var(--suite-content-pad);
+  display: flex;
+  align-items: center;
+}
+
+.suite-subnav {
+  display: flex;
+  gap: 2px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  flex: 1 1 auto;
+}
+.suite-subnav::-webkit-scrollbar { display: none; }
+
+.suite-subnav__link {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  padding: 10px 14px;
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: .01em;
+  text-decoration: none;
+  color: var(--md-sys-color-on-surface-variant);
+  white-space: nowrap;
+  transition: color .15s var(--md-sys-motion-standard);
+}
+.suite-subnav__link:hover { color: var(--md-sys-color-on-surface); }
+.suite-subnav__link.is-active {
+  color: var(--md-sys-color-primary);
+  font-weight: 600;
+}
+.suite-subnav__link.is-active::after {
+  content: '';
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  bottom: 0;
+  height: 2px;
+  background: var(--md-sys-color-primary);
+  border-radius: 2px 2px 0 0;
+}
 
 /* ---------- Dashboard (index.html only) ---------- */
 .suite-main {
@@ -758,6 +827,7 @@ select.suite-compact-input { width: auto; padding-right: 24px; }
 /* ---------- Mobile tweaks ---------- */
 @media (max-width: 600px) {
   .suite-topnav__link { padding: 8px 10px; font-size: 13px; }
+  .suite-subnav__link { padding: 10px 10px; font-size: 12.5px; }
   .suite-brand__name { display: none; }
 }
 
