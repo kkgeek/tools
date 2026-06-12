@@ -6,25 +6,45 @@
 <title>Monte Carlo Projections — Wealth Suite</title>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+/* Phase 8: vars consume suite MD3 tokens when suite.css is loaded;
+   the second var() argument keeps the tool working standalone. */
 :root{
-  --bg:#F0F2F5;--surface:#FFFFFF;--surface2:#F7F9FB;--border:#E2E6EA;
-  --text:#0F172A;--muted:#64748B;
-  --navy:#1E3A5F;--blue:#2563EB;--green:#059669;--amber:#D97706;--red:#DC2626;
-  --green-bg:#ECFDF5;--green-t:#065F46;
-  --amber-bg:#FFFBEB;--amber-t:#92400E;
-  --red-bg:#FEF2F2;--red-t:#991B1B;
+  --bg:var(--md-sys-color-background,#F0F2F5);
+  --surface:var(--md-sys-color-surface-container-lowest,#FFFFFF);
+  --surface2:var(--md-sys-color-surface-container-low,#F7F9FB);
+  --border:var(--md-sys-color-outline-variant,#E2E6EA);
+  --text:var(--md-sys-color-on-surface,#0F172A);
+  --muted:var(--md-sys-color-on-surface-variant,#64748B);
+  --navy:var(--md-sys-color-primary,#1E3A5F);
+  --blue:var(--status-info,#2563EB);
+  --green:var(--status-positive,#059669);
+  --amber:var(--status-warning,#D97706);
+  --red:var(--status-critical,#DC2626);
+  --green-bg:var(--status-positive-container,#ECFDF5);--green-t:var(--status-positive-on,#065F46);
+  --amber-bg:var(--status-warning-container,#FFFBEB);--amber-t:var(--status-warning-on,#92400E);
+  --red-bg:var(--status-critical-container,#FEF2F2);--red-t:var(--status-critical-on,#991B1B);
 }
+/* Standalone dark fallbacks — when suite.css is loaded the tokens
+   flip automatically and these resolve to the same values. */
 [data-theme="dark"]{
-  --bg:#121318;--surface:#1E1F25;--surface2:#26272D;--border:#34353B;
-  --text:#E3E2E9;--muted:#C5C6D0;
-  --navy:#AFC6FF;--blue:#7BA8FF;--green:#34D399;--amber:#FBBF24;--red:#F87171;
-  --green-bg:rgba(52,211,153,.15);--green-t:#6EE7B7;
-  --amber-bg:rgba(251,191,36,.15);--amber-t:#FCD34D;
-  --red-bg:rgba(248,113,113,.15);--red-t:#FCA5A5;
+  --bg:var(--md-sys-color-background,#121318);
+  --surface:var(--md-sys-color-surface-container,#1E1F25);
+  --surface2:var(--md-sys-color-surface-container-high,#26272D);
+  --border:var(--md-sys-color-outline-variant,#34353B);
+  --text:var(--md-sys-color-on-surface,#E3E2E9);
+  --muted:var(--md-sys-color-on-surface-variant,#C5C6D0);
+  --navy:var(--md-sys-color-primary,#AFC6FF);
+  --blue:var(--status-info,#7BA8FF);
+  --green:var(--status-positive,#34D399);
+  --amber:var(--status-warning,#FBBF24);
+  --red:var(--status-critical,#F87171);
+  --green-bg:var(--status-positive-container,rgba(52,211,153,.15));--green-t:var(--status-positive-on,#6EE7B7);
+  --amber-bg:var(--status-warning-container,rgba(251,191,36,.15));--amber-t:var(--status-warning-on,#FCD34D);
+  --red-bg:var(--status-critical-container,rgba(248,113,113,.15));--red-t:var(--status-critical-on,#FCA5A5);
 }
 html[data-theme="dark"] body{color-scheme:dark}
 [data-theme="dark"] .hdr{background:#0F1421}
-body{font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;background:var(--bg);color:var(--text);font-size:14px;line-height:1.6;min-height:100vh}
+body{font-family:'Inter',-apple-system,'Helvetica Neue',Arial,sans-serif;background:var(--bg);color:var(--text);font-size:14px;line-height:1.6;min-height:100vh}
 
 .hdr{background:var(--navy);color:#fff;padding:18px 28px;display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px}
 .hdr-l h1{font-size:17px;font-weight:600}
@@ -85,7 +105,7 @@ body{font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;background:var(
 
 @media(max-width:600px){.main{padding:14px 16px}.hdr{padding:14px 16px}}
 </style>
-<link rel="stylesheet" href="assets/suite.css?v=5">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"><link rel="stylesheet" href="assets/suite.css?v=6">
 <script src="https://d3js.org/d3.v7.min.js"></script>
 <script src="assets/suite-state.js?v=5" defer></script>
 <script src="assets/suite.js?v=10" defer></script>

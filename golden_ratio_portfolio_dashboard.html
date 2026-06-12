@@ -5,33 +5,54 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Golden φ Portfolio — Wealth Suite</title>
 <style>
-/* Fallback for variables originally provided by Anthropic artifact host */
+/* Phase 8: vars consume suite MD3 tokens when suite.css is loaded;
+   the second var() argument keeps the tool working standalone.
+   (Values were already copied from the suite palette in Phase 3.) */
 :root {
-  --color-text-primary:#1A1B20; --color-text-secondary:#45464F; --color-text-tertiary:#757680;
-  --color-text-success:#2E7D32; --color-text-danger:#BA1A1A; --color-text-warning:#B26B00;
-  --color-background-primary:#FAFAFE; --color-background-secondary:#EEEDF2;
-  --color-background-success:#D4EDDA; --color-background-danger:#FFDAD6; --color-background-warning:#FFE5B4;
-  --color-border-secondary:#C5C6D0; --color-border-tertiary:#E2E1E7;
+  --color-text-primary:var(--md-sys-color-on-surface,#1A1B20);
+  --color-text-secondary:var(--md-sys-color-on-surface-variant,#45464F);
+  --color-text-tertiary:var(--md-sys-color-outline,#757680);
+  --color-text-success:var(--md-sys-color-success,#2E7D32);
+  --color-text-danger:var(--md-sys-color-error,#BA1A1A);
+  --color-text-warning:var(--status-warning-on,#B26B00);
+  --color-background-primary:var(--md-sys-color-background,#FAFAFE);
+  --color-background-secondary:var(--md-sys-color-surface-container,#EEEDF2);
+  --color-background-success:var(--md-sys-color-success-container,#D4EDDA);
+  --color-background-danger:var(--md-sys-color-error-container,#FFDAD6);
+  --color-background-warning:var(--status-warning-container,#FFE5B4);
+  --color-border-secondary:var(--md-sys-color-outline-variant,#C5C6D0);
+  --color-border-tertiary:var(--md-sys-color-surface-container-highest,#E2E1E7);
   --color-border-success:#91D89A; --color-border-danger:#FF9A92; --color-border-warning:#FFD180;
-  --border-radius-md:12px; --border-radius-lg:16px;
+  --border-radius-md:var(--md-sys-shape-corner-md,12px);
+  --border-radius-lg:var(--md-sys-shape-corner-lg,16px);
 }
+/* Standalone dark fallbacks — when suite.css is loaded the tokens
+   flip automatically and these resolve to the same values. */
 [data-theme="dark"] {
-  --color-text-primary:#E3E2E9; --color-text-secondary:#C5C6D0; --color-text-tertiary:#8F909A;
-  --color-text-success:#91D89A; --color-text-danger:#FFB4AB; --color-text-warning:#FFCC80;
-  --color-background-primary:#121318; --color-background-secondary:#1E1F25;
-  --color-background-success:#1F4A24; --color-background-danger:#93000A; --color-background-warning:#66431C;
-  --color-border-secondary:#45464F; --color-border-tertiary:#34353B;
+  --color-text-primary:var(--md-sys-color-on-surface,#E3E2E9);
+  --color-text-secondary:var(--md-sys-color-on-surface-variant,#C5C6D0);
+  --color-text-tertiary:var(--md-sys-color-outline,#8F909A);
+  --color-text-success:var(--md-sys-color-success,#91D89A);
+  --color-text-danger:var(--md-sys-color-error,#FFB4AB);
+  --color-text-warning:var(--status-warning-on,#FFCC80);
+  --color-background-primary:var(--md-sys-color-background,#121318);
+  --color-background-secondary:var(--md-sys-color-surface-container,#1E1F25);
+  --color-background-success:var(--md-sys-color-success-container,#1F4A24);
+  --color-background-danger:var(--md-sys-color-error-container,#93000A);
+  --color-background-warning:var(--status-warning-container,#66431C);
+  --color-border-secondary:var(--md-sys-color-outline-variant,#45464F);
+  --color-border-tertiary:var(--md-sys-color-surface-container-highest,#34353B);
   --color-border-success:#2E7D32; --color-border-danger:#BA1A1A; --color-border-warning:#B26B00;
 }
 *,*::before,*::after{box-sizing:border-box}
-body{margin:0;font-family:'Roboto Flex','Roboto',-apple-system,'Helvetica Neue',Arial,sans-serif;
+body{margin:0;font-family:'Inter',-apple-system,'Helvetica Neue',Arial,sans-serif;
      background:var(--color-background-primary);color:var(--color-text-primary);line-height:1.55}
 .golden-content{max-width:1100px;margin:0 auto;padding:24px clamp(16px,4vw,32px) 48px}
 .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
 </style>
 
 <!-- Wealth Suite shared shell -->
-<link rel="stylesheet" href="assets/suite.css?v=5">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"><link rel="stylesheet" href="assets/suite.css?v=6">
 <script>(function(){try{var p=localStorage.getItem('wealthSuite.themePreference');if(!['system','light','dark'].includes(p))p='system';var r=p==='system'?(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'):p;document.documentElement.setAttribute('data-theme',r);document.documentElement.setAttribute('data-theme-pref',p);}catch(e){}})();</script>
 <script src="assets/suite-state.js?v=5" defer></script>
 <script src="assets/suite.js?v=10" defer></script>

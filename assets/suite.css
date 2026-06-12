@@ -48,6 +48,22 @@
   --md-sys-color-success-container:         #D4EDDA;
   --md-sys-color-on-success-container:      #0B2912;
 
+  /* Semantic status colours — consumed by all tools so "warning"
+   * means the same colour everywhere (suite-revamp.md §6a) */
+  --status-positive:           #059669;
+  --status-positive-container: #ECFDF5;
+  --status-positive-on:        #065F46;
+  --status-warning:            #D97706;
+  --status-warning-container:  #FFFBEB;
+  --status-warning-on:         #92400E;
+  --status-critical:           #DC2626;
+  --status-critical-container: #FEF2F2;
+  --status-critical-on:        #991B1B;
+  --status-info:               #2563EB;
+  --status-info-container:     #EFF6FF;
+  --status-info-on:            #1E40AF;
+  --status-neutral:            #64748B;
+
   /* Elevation (MD3 5-step) */
   --md-sys-elevation-0: none;
   --md-sys-elevation-1: 0 1px 2px 0 rgb(0 0 0 / .12), 0 1px 3px 1px rgb(0 0 0 / .08);
@@ -115,6 +131,20 @@
   --md-sys-color-success:                   #91D89A;
   --md-sys-color-success-container:         #1F4A24;
   --md-sys-color-on-success-container:      #D4EDDA;
+
+  --status-positive:           #34D399;
+  --status-positive-container: rgba(52,211,153,.12);
+  --status-positive-on:        #6EE7B7;
+  --status-warning:            #FBBF24;
+  --status-warning-container:  rgba(251,191,36,.12);
+  --status-warning-on:         #FCD34D;
+  --status-critical:           #F87171;
+  --status-critical-container: rgba(248,113,113,.12);
+  --status-critical-on:        #FCA5A5;
+  --status-info:               #4B8BF5;
+  --status-info-container:     rgba(75,139,245,.12);
+  --status-info-on:            #93C5FD;
+  --status-neutral:            #8892A4;
 }
 
 /* ---------- Base ---------- */
@@ -123,7 +153,7 @@ html[data-theme="dark"] { color-scheme: dark; }
 
 body.suite-body {
   margin: 0;
-  font-family: 'Roboto Flex', 'Roboto', -apple-system, 'Helvetica Neue', Arial, sans-serif;
+  font-family: 'Inter', -apple-system, 'Helvetica Neue', Arial, sans-serif;
   background: var(--md-sys-color-background);
   color: var(--md-sys-color-on-background);
   font-feature-settings: "cv11", "ss01";
@@ -149,7 +179,7 @@ html { scroll-padding-top: var(--suite-topbar-height); }
   color: var(--md-sys-color-on-surface);
   border-bottom: 1px solid var(--md-sys-color-outline-variant);
   box-shadow: var(--md-sys-elevation-1);
-  font-family: 'Roboto Flex', 'Roboto', -apple-system, sans-serif;
+  font-family: 'Inter', -apple-system, sans-serif;
 }
 .suite-topbar[data-has-subnav="false"] {
   height: var(--suite-topbar-height);
