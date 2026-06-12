@@ -225,6 +225,70 @@
     });
   }
 
+  // ---------- "Adopt actual spend" (Phase 9) ----------
+  // Trailing-12-month average monthly spend from the Expense Tracker,
+  // offered as the annualExpenses assumption instead of a hand-typed guess.
+  function computeActualAnnualSpend() {
+    const txns = store.get('expenses.transactions');
+    if (!Array.isArray(txns) || txns.length === 0) return null;
+
+    const now = new Date();
+    const cutoff = new Date(now.getFullYear(), now.getMonth() - 12, 1);
+    const byMonth = {};
+    for (const t of txns) {
+      if (typeof t.date !== 'string' || t.date.length < 7) continue;
+      const d = new Date(t.date + 'T00:00:00');
+      if (isNaN(d) || d < cutoff) continue;
+      const ym = t.date.slice(0, 7);
+      byMonth[ym] = (byMonth[ym] || 0) - (Number(t.amount) || 0);
+    }
+    const months = Object.values(byMonth).filter((v) => v > 0);
+    if (months.length === 0) return null;
+    const avgMonthly = months.reduce((a, b) => a + b, 0) / months.length;
+    return { annual: Math.round(avgMonthly * 12), monthsOfData: months.length };
+  }
+
+  function renderAdoptSpendButton() {
+    const existing = document.getElementById('ws-adopt-spend');
+    const actual = computeActualAnnualSpend();
+    if (!actual) { if (existing) existing.remove(); return; }
+
+    const current = store.get('retirement.plan.annualExpenses');
+    const adopted = current != null && Math.abs(Number(current) - actual.annual) < 1;
+
+    let el = existing;
+    if (!el) {
+      const anchor = document.querySelector('.hdr-l p');
+      if (!anchor) return;
+      el = document.createElement('button');
+      el.id = 'ws-adopt-spend';
+      el.type = 'button';
+      el.style.cssText = [
+        'display:inline-flex', 'align-items:center', 'gap:6px',
+        'margin-top:8px', 'padding:4px 12px', 'font:500 12px Inter,sans-serif',
+        'border-radius:999px', 'cursor:pointer',
+        'border:1px solid var(--md-sys-color-outline-variant,#34353B)',
+        'background:var(--md-sys-color-surface-container-high,#26272D)',
+        'color:var(--md-sys-color-on-surface,#E2E2E9)',
+      ].join(';');
+      el.addEventListener('click', () => {
+        const a = computeActualAnnualSpend();
+        if (!a) return;
+        store.set('retirement.plan.annualExpenses', a.annual, { editedBy: EDITED_BY });
+        seedProjections();
+        renderAdoptSpendButton();
+      });
+      anchor.insertAdjacentElement('afterend', el);
+    }
+
+    el.disabled = adopted;
+    el.style.opacity = adopted ? '0.6' : '1';
+    el.style.cursor = adopted ? 'default' : 'pointer';
+    el.textContent = adopted
+      ? '✓ Using actual spend ' + fmtMoney(actual.annual) + '/yr from Expense Tracker'
+      : 'Adopt actual spend: ' + fmtMoney(actual.annual) + '/yr (' + actual.monthsOfData + '-mo avg from Expense Tracker)';
+  }
+
   // ---------- household banner ----------
   function renderHouseholdBanner() {
     var WS = window.WealthSuite;
@@ -240,7 +304,9 @@
     seedProjections();
     wireSlider();
     renderHouseholdBanner();
+    renderAdoptSpendButton();
     store.subscribe('', renderHouseholdBanner);
+    store.subscribe('expenses', renderAdoptSpendButton);
   }
 
   if (document.readyState === 'loading') {

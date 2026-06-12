@@ -1,0 +1,788 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Expense Tracker — Wealth Suite</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+    <style>body { font-family: 'Inter', sans-serif; }</style>
+
+    <!-- Wealth Suite shared shell -->
+    <link rel="stylesheet" href="assets/suite.css?v=6">
+    <script>(function(){try{var p=localStorage.getItem('wealthSuite.themePreference');if(!['system','light','dark'].includes(p))p='system';var r=p==='system'?(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'):p;document.documentElement.setAttribute('data-theme',r);document.documentElement.setAttribute('data-theme-pref',p);}catch(e){}})();</script>
+    <script src="assets/suite-state.js?v=6" defer></script>
+    <script src="assets/suite.js?v=11" defer></script>
+    <script src="assets/adapters/expenses.js?v=1" defer></script>
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <div id="root"></div>
+
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+
+    <script type="text/babel">
+    const { useState, useEffect, useMemo, useRef, useCallback } = React;
+
+    // ── Formatters ────────────────────────────────────────────────────────────
+    const usd0 = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 });
+    const usd2 = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const fmt0 = (n) => (n == null || !Number.isFinite(Number(n))) ? '—' : usd0.format(Number(n));
+    const fmt2 = (n) => (n == null || !Number.isFinite(Number(n))) ? '—' : usd2.format(Number(n));
+
+    function todayISO() {
+      const d = new Date();
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    }
+    function thisMonth() { return todayISO().slice(0, 7); }
+    function monthLabel(ym) {
+      const [y, m] = ym.split('-').map(Number);
+      return new Date(y, m - 1, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+    }
+    function shiftMonth(ym, delta) {
+      const [y, m] = ym.split('-').map(Number);
+      const d = new Date(y, m - 1 + delta, 1);
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+    }
+
+    // ── Default schema (mirrors suite-state.js defaultExpenses) ──────────────
+    function defaultExpenses() {
+      return {
+        transactions: [],
+        categories: [
+          { id: 'groceries',     label: 'Groceries',     color: '#059669', budgetMonthly: null },
+          { id: 'dining',        label: 'Dining',        color: '#D97706', budgetMonthly: null },
+          { id: 'housing',       label: 'Housing',       color: '#2563EB', budgetMonthly: null },
+          { id: 'utilities',     label: 'Utilities',     color: '#0891B2', budgetMonthly: null },
+          { id: 'transport',     label: 'Transport',     color: '#7C3AED', budgetMonthly: null },
+          { id: 'healthcare',    label: 'Healthcare',    color: '#DC2626', budgetMonthly: null },
+          { id: 'entertainment', label: 'Entertainment', color: '#DB2777', budgetMonthly: null },
+          { id: 'travel',        label: 'Travel',        color: '#65A30D', budgetMonthly: null },
+          { id: 'other',         label: 'Other',         color: '#64748B', budgetMonthly: null },
+        ],
+        importHistory: [],
+        merchantMap: {},
+      };
+    }
+
+    // ── Store shim (suite store when present, localStorage standalone) ───────
+    const LS_KEY = 'expensesTool.state';
+    function suiteStore() { return window.WealthSuite && window.WealthSuite.store; }
+    function loadExpenses() {
+      const s = suiteStore();
+      if (s) {
+        const e = s.get('expenses');
+        if (e && Array.isArray(e.transactions)) return e;
+      }
+      try {
+        const raw = localStorage.getItem(LS_KEY);
+        if (raw) return JSON.parse(raw);
+      } catch (_) {}
+      return defaultExpenses();
+    }
+    function persistExpenses(exp) {
+      const s = suiteStore();
+      if (s) { s.set('expenses', exp, { editedBy: 'expenses' }); return; }
+      try { localStorage.setItem(LS_KEY, JSON.stringify(exp)); } catch (_) {}
+    }
+
+    // ── Auto-categorisation ───────────────────────────────────────────────────
+    const KEYWORD_RULES = [
+      [/whole foods|safeway|kroger|trader joe|costco|qfc|aldi|fred meyer|wegmans|publix|heb |grocery|market basket|sprouts/i, 'groceries'],
+      [/restaurant|doordash|uber\s*eats|grubhub|chipotle|starbucks|coffee|cafe|mcdonald|wendy|burger|pizza|sushi|thai|taco|panera|subway|dunkin|bakery|deli|bbq|grill|kitchen|noodle|pho|ramen/i, 'dining'],
+      [/mortgage|rent\b|hoa\b|home depot|lowe'?s|ikea|property tax|homeowner/i, 'housing'],
+      [/electric|water bill|sewer|utility|comcast|xfinity|verizon|t-?mobile|at&t|centurylink|internet|pse\b|city light|natural gas|waste mgmt|recology/i, 'utilities'],
+      [/chevron|shell|exxon|arco|76\b|texaco|costco gas|uber(?!\s*eats)|lyft|parking|toll|car wash|jiffy lube|les schwab|autozone|o'reilly|discount tire|wsdot|metro|transit/i, 'transport'],
+      [/pharmacy|cvs|walgreens|rite aid|clinic|dental|vision|medical|doctor|hospital|kaiser|labcorp|quest diag|urgent care|optum/i, 'healthcare'],
+      [/netflix|spotify|hulu|disney|hbo|paramount|peacock|cinema|amc\b|regal|theater|steam|playstation|xbox|nintendo|ticketmaster|stubhub|concert/i, 'entertainment'],
+      [/airline|alaska air|delta air|united air|southwest|american air|jetblue|hotel|marriott|hilton|hyatt|airbnb|vrbo|expedia|booking\.com|rental car|hertz|avis|enterprise rent/i, 'travel'],
+    ];
+
+    function normMerchant(desc) {
+      return String(desc || '')
+        .toUpperCase()
+        .replace(/[#*0-9]/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .slice(0, 28);
+    }
+
+    function autoCategory(desc, merchantMap) {
+      const norm = normMerchant(desc);
+      if (norm && merchantMap && merchantMap[norm]) return merchantMap[norm];
+      for (const [re, cat] of KEYWORD_RULES) if (re.test(desc || '')) return cat;
+      return 'other';
+    }
+
+    // ── CSV parsing ───────────────────────────────────────────────────────────
+    function parseRow(line) {
+      const cells = []; let cur = '', q = false;
+      for (const ch of line) {
+        if (ch === '"') q = !q;
+        else if (ch === ',' && !q) { cells.push(cur.trim()); cur = ''; }
+        else cur += ch;
+      }
+      cells.push(cur.trim());
+      return cells.map(c => c.replace(/^["']|["']$/g, '').trim());
+    }
+
+    function parseMoney(s) {
+      if (s == null || s === '') return null;
+      const neg = /^\(.*\)$/.test(String(s).trim());
+      const n = Number(String(s).replace(/[$,()'"\s]/g, ''));
+      if (!Number.isFinite(n)) return null;
+      return neg ? -n : n;
+    }
+
+    function parseDateAny(s) {
+      if (!s) return null;
+      const t = String(s).trim();
+      let m = t.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+      if (m) return `${m[1]}-${m[2].padStart(2, '0')}-${m[3].padStart(2, '0')}`;
+      m = t.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})/);
+      if (m) {
+        const y = m[3].length === 2 ? '20' + m[3] : m[3];
+        return `${y}-${m[1].padStart(2, '0')}-${m[2].padStart(2, '0')}`;
+      }
+      return null;
+    }
+
+    const CATEGORY_IDS = defaultExpenses().categories.map(c => c.id);
+    function mapBankCategory(raw) {
+      if (!raw) return null;
+      const t = String(raw).toLowerCase();
+      if (CATEGORY_IDS.includes(t)) return t;
+      if (/grocer|food & drug|supermarket/.test(t)) return 'groceries';
+      if (/dining|restaurant|food/.test(t)) return 'dining';
+      if (/home|rent|mortgage/.test(t)) return 'housing';
+      if (/utilit|bills|phone|internet|cable/.test(t)) return 'utilities';
+      if (/gas|fuel|auto|travel.?transport|transport/.test(t)) return 'transport';
+      if (/health|medical|pharma/.test(t)) return 'healthcare';
+      if (/entertain|recreation/.test(t)) return 'entertainment';
+      if (/travel|airfare|lodging|hotel/.test(t)) return 'travel';
+      return null;
+    }
+
+    function parseTransactionsCSV(text, merchantMap) {
+      const lines = text.split('\n').map(l => l.replace(/\r$/, '')).filter(l => l.trim());
+      if (lines.length < 2) throw new Error('No data rows found');
+      const headers = parseRow(lines[0]);
+      const hLow = headers.map(h => h.toLowerCase());
+      const col = (...names) => {
+        for (const n of names) {
+          let i = hLow.findIndex(h => h === n.toLowerCase());
+          if (i >= 0) return i;
+          i = hLow.findIndex(h => h.includes(n.toLowerCase()));
+          if (i >= 0) return i;
+        }
+        return -1;
+      };
+
+      let source = 'generic-csv';
+      if (hLow.some(h => h.includes('transaction date'))) source = 'chase-csv';
+      else if (col('debit') >= 0 && col('credit') >= 0) source = 'citi-csv';
+      else if (col('date') >= 0 && col('description') >= 0 && col('amount') >= 0 && col('category') < 0) source = 'amex-csv';
+
+      const dateCol = col('transaction date', 'date');
+      const descCol = col('description', 'merchant', 'payee');
+      const amtCol = col('amount');
+      const catCol = col('category');
+      const debitCol = col('debit');
+      const creditCol = col('credit');
+      if (dateCol < 0 || descCol < 0) throw new Error('Could not find date/description columns');
+      if (source !== 'citi-csv' && amtCol < 0) throw new Error('Could not find an amount column');
+
+      const txns = [];
+      for (let i = 1; i < lines.length; i++) {
+        const cells = parseRow(lines[i]);
+        const date = parseDateAny(cells[dateCol]);
+        const desc = cells[descCol];
+        if (!date || !desc) continue;
+
+        let amount = null;
+        if (source === 'citi-csv') {
+          const debit = parseMoney(cells[debitCol]);
+          const credit = parseMoney(cells[creditCol]);
+          if (debit != null && debit !== 0) amount = -Math.abs(debit);
+          else if (credit != null && credit !== 0) amount = Math.abs(credit);
+        } else if (source === 'amex-csv') {
+          // Amex: positive = charge
+          const a = parseMoney(cells[amtCol]);
+          if (a != null) amount = -a;
+        } else {
+          // Chase + generic: negative = purchase already
+          amount = parseMoney(cells[amtCol]);
+        }
+        if (amount == null || amount === 0) continue;
+
+        const bankCat = catCol >= 0 ? mapBankCategory(cells[catCol]) : null;
+        txns.push({
+          id: 'tx_' + Math.random().toString(36).slice(2, 10) + Date.now().toString(36),
+          date,
+          amount: Math.round(amount * 100) / 100,
+          category: bankCat || autoCategory(desc, merchantMap),
+          merchant: desc,
+          account: '',
+          note: '',
+          source: 'csv-import',
+        });
+      }
+      if (!txns.length) throw new Error('No transactions parsed — check the file format');
+      return { txns, source };
+    }
+
+    // ── Chart helpers ─────────────────────────────────────────────────────────
+    const TICK = '#94A3B8';
+    const GRID = 'rgba(148,163,184,0.18)';
+
+    function useChart(buildConfig, deps) {
+      const ref = useRef(null);
+      useEffect(() => {
+        if (!ref.current) return;
+        const chart = new Chart(ref.current, buildConfig());
+        return () => chart.destroy();
+      }, deps);
+      return ref;
+    }
+
+    // ── Spend math ────────────────────────────────────────────────────────────
+    const spendOf = (txns) => txns.reduce((s, t) => s - t.amount, 0);
+
+    // ── App ───────────────────────────────────────────────────────────────────
+    function ExpenseTracker() {
+      const [exp, setExp] = useState(loadExpenses);
+      const [month, setMonth] = useState(thisMonth);
+      const VIEWS = ['categories', 'month', 'transactions', 'trend'];
+      const [view, setView] = useState(() => {
+        const h = location.hash.replace('#', '');
+        return VIEWS.includes(h) ? h : 'categories';
+      });
+      useEffect(() => { history.replaceState(null, '', '#' + view); }, [view]);
+      const [toast, setToast] = useState(null);
+      const selfWrite = useRef(false);
+      const persistTimer = useRef(null);
+      const fileRef = useRef(null);
+
+      // Cross-tab / cross-tool sync
+      useEffect(() => {
+        const s = suiteStore();
+        if (!s) return;
+        return s.subscribe('expenses', (val) => {
+          if (selfWrite.current) { selfWrite.current = false; return; }
+          if (val && Array.isArray(val.transactions)) setExp(val);
+        });
+      }, []);
+
+      const mutate = useCallback((fn) => {
+        setExp((cur) => {
+          const next = fn(JSON.parse(JSON.stringify(cur)));
+          clearTimeout(persistTimer.current);
+          persistTimer.current = setTimeout(() => {
+            selfWrite.current = true;
+            persistExpenses(next);
+          }, 250);
+          return next;
+        });
+      }, []);
+
+      const showToast = (msg) => {
+        setToast(msg);
+        setTimeout(() => setToast(null), 4000);
+      };
+
+      // ── Derived data ──
+      const catById = useMemo(() => Object.fromEntries(exp.categories.map(c => [c.id, c])), [exp.categories]);
+      const monthTxns = useMemo(() => exp.transactions.filter(t => t.date.startsWith(month)), [exp.transactions, month]);
+      const prevTxns = useMemo(() => {
+        const pm = shiftMonth(month, -1);
+        return exp.transactions.filter(t => t.date.startsWith(pm));
+      }, [exp.transactions, month]);
+
+      const monthSpend = spendOf(monthTxns);
+      const prevSpend = spendOf(prevTxns);
+      const deltaPct = prevSpend > 0 ? ((monthSpend - prevSpend) / prevSpend) * 100 : null;
+
+      const byCategory = useMemo(() => {
+        const m = {};
+        for (const t of monthTxns) m[t.category] = (m[t.category] || 0) - t.amount;
+        return exp.categories
+          .map(c => ({ ...c, spend: m[c.id] || 0 }))
+          .filter(c => c.spend !== 0 || c.budgetMonthly);
+      }, [monthTxns, exp.categories]);
+
+      const topCat = byCategory.reduce((a, b) => (b.spend > (a ? a.spend : 0) ? b : a), null);
+
+      // ── Mutations ──
+      const addTxn = (t) => mutate(e => { e.transactions.push(t); return e; });
+      const deleteTxn = (id) => mutate(e => { e.transactions = e.transactions.filter(t => t.id !== id); return e; });
+      const setTxnCategory = (id, cat) => mutate(e => {
+        const t = e.transactions.find(t => t.id === id);
+        if (t) {
+          t.category = cat;
+          const norm = normMerchant(t.merchant);
+          if (norm) e.merchantMap[norm] = cat;   // learn for future imports
+        }
+        return e;
+      });
+      const setBudget = (catId, val) => mutate(e => {
+        const c = e.categories.find(c => c.id === catId);
+        if (c) c.budgetMonthly = val === '' ? null : Math.max(0, Number(val) || 0);
+        return e;
+      });
+
+      const importCSV = (file) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          try {
+            const { txns, source } = parseTransactionsCSV(String(reader.result), exp.merchantMap);
+            const seen = new Set(exp.transactions.map(t => `${t.date}|${t.amount}|${normMerchant(t.merchant)}`));
+            const fresh = txns.filter(t => !seen.has(`${t.date}|${t.amount}|${normMerchant(t.merchant)}`));
+            mutate(e => {
+              e.transactions.push(...fresh);
+              e.importHistory.push({
+                id: 'imp_' + Date.now().toString(36),
+                importedAt: Date.now(),
+                source,
+                count: fresh.length,
+                fileName: file.name,
+              });
+              return e;
+            });
+            const skipped = txns.length - fresh.length;
+            showToast(`Imported ${fresh.length} transactions from ${file.name} (${source.replace('-csv', '').toUpperCase()})${skipped ? ` · ${skipped} duplicates skipped` : ''}`);
+          } catch (err) {
+            showToast(`Import failed: ${err.message}`);
+          }
+        };
+        reader.readAsText(file);
+      };
+
+      const tabs = [
+        ['categories', 'Categories'],
+        ['month', 'Month'],
+        ['transactions', 'Transactions'],
+        ['trend', 'Trend'],
+      ];
+
+      return (
+        <div className="max-w-6xl mx-auto px-4 pb-12 pt-6">
+          {/* Header */}
+          <div className="flex flex-wrap items-center justify-between gap-3 mb-5">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">Expense Tracker</h1>
+              <p className="text-sm text-gray-500">Manual entry or bank CSV import · auto-categorised · budgets per category</p>
+            </div>
+            <div className="flex items-center gap-2 bg-white rounded-lg border border-gray-200 px-2 py-1">
+              <button className="px-2 py-1 text-gray-500 hover:text-gray-900" onClick={() => setMonth(shiftMonth(month, -1))} aria-label="Previous month">‹</button>
+              <span className="text-sm font-semibold text-gray-800 w-36 text-center">{monthLabel(month)}</span>
+              <button className="px-2 py-1 text-gray-500 hover:text-gray-900 disabled:opacity-30" onClick={() => setMonth(shiftMonth(month, 1))} disabled={month >= thisMonth()} aria-label="Next month">›</button>
+            </div>
+          </div>
+
+          {/* Summary tiles */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+            <Tile label="This month" value={fmt0(monthSpend)} sub={`${monthTxns.length} transactions`} />
+            <Tile label="vs last month" value={deltaPct == null ? '—' : (deltaPct >= 0 ? '+' : '') + deltaPct.toFixed(1) + '%'}
+                  sub={prevSpend > 0 ? `${fmt0(prevSpend)} in ${monthLabel(shiftMonth(month, -1)).split(' ')[0]}` : 'no prior data'}
+                  tone={deltaPct == null ? null : deltaPct > 0 ? 'bad' : 'good'} />
+            <Tile label="Top category" value={topCat ? topCat.label : '—'} sub={topCat ? fmt0(topCat.spend) : ''} />
+            <Tile label="Daily average" value={monthTxns.length ? fmt0(monthSpend / new Date(Number(month.slice(0, 4)), Number(month.slice(5)), 0).getDate()) : '—'} sub="spend / calendar day" />
+          </div>
+
+          {/* Tabs */}
+          <div className="flex gap-1 mb-4 bg-white rounded-lg border border-gray-200 p-1 w-fit">
+            {tabs.map(([id, label]) => (
+              <button key={id} onClick={() => setView(id)}
+                className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${view === id ? 'bg-blue-600 text-white' : 'text-gray-600 hover:bg-gray-100'}`}>
+                {label}
+              </button>
+            ))}
+          </div>
+
+          {view === 'categories' && <CategoriesView byCategory={byCategory} month={month} setBudget={setBudget} />}
+          {view === 'month' && <MonthView month={month} txns={monthTxns} catById={catById} />}
+          {view === 'transactions' && (
+            <TransactionsView exp={exp} catById={catById} addTxn={addTxn} deleteTxn={deleteTxn}
+              setTxnCategory={setTxnCategory} onImportClick={() => fileRef.current && fileRef.current.click()} />
+          )}
+          {view === 'trend' && <TrendView txns={exp.transactions} month={month} />}
+
+          <input ref={fileRef} type="file" accept=".csv,text/csv" className="hidden"
+            onChange={(e) => { const f = e.target.files[0]; if (f) importCSV(f); e.target.value = ''; }} />
+
+          {toast && (
+            <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-gray-900 text-white text-sm px-4 py-2 rounded-lg shadow-lg z-50">
+              {toast}
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    function Tile({ label, value, sub, tone }) {
+      const valueColor = tone === 'bad' ? 'text-red-600' : tone === 'good' ? 'text-emerald-600' : 'text-gray-900';
+      return (
+        <div className="bg-white rounded-xl border border-gray-200 p-4">
+          <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{label}</div>
+          <div className={`text-xl font-bold mt-1 ${valueColor}`}>{value}</div>
+          {sub ? <div className="text-xs text-gray-400 mt-0.5">{sub}</div> : null}
+        </div>
+      );
+    }
+
+    // ── Categories view: donut + budget bars ─────────────────────────────────
+    function CategoriesView({ byCategory, month, setBudget }) {
+      const spent = byCategory.filter(c => c.spend > 0);
+      const ref = useChart(() => ({
+        type: 'doughnut',
+        data: {
+          labels: spent.map(c => c.label),
+          datasets: [{
+            data: spent.map(c => Math.round(c.spend * 100) / 100),
+            backgroundColor: spent.map(c => c.color),
+            borderWidth: 0,
+          }],
+        },
+        options: {
+          plugins: {
+            legend: { position: 'bottom', labels: { color: TICK, boxWidth: 12, padding: 12 } },
+            tooltip: { callbacks: { label: (ctx) => ` ${ctx.label}: ${usd0.format(ctx.parsed)}` } },
+          },
+          cutout: '62%',
+        },
+      }), [JSON.stringify(spent.map(c => [c.id, c.spend])), month]);
+
+      return (
+        <div className="grid md:grid-cols-2 gap-4">
+          <div className="bg-white rounded-xl border border-gray-200 p-5">
+            <h2 className="font-semibold text-gray-800 mb-3">Spend by category — {monthLabel(month)}</h2>
+            {spent.length
+              ? <div className="max-w-sm mx-auto"><canvas ref={ref} /></div>
+              : <p className="text-sm text-gray-400 py-10 text-center">No spend recorded this month yet.</p>}
+          </div>
+          <div className="bg-white rounded-xl border border-gray-200 p-5">
+            <h2 className="font-semibold text-gray-800 mb-1">Budgets</h2>
+            <p className="text-xs text-gray-400 mb-3">Set a monthly budget per category — bars show actual vs budget.</p>
+            <div className="space-y-3">
+              {byCategory.length === 0 && <p className="text-sm text-gray-400">Add transactions to see categories here.</p>}
+              {byCategory.map(c => {
+                const pct = c.budgetMonthly ? Math.min(100, (c.spend / c.budgetMonthly) * 100) : null;
+                const over = c.budgetMonthly && c.spend > c.budgetMonthly;
+                return (
+                  <div key={c.id}>
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="font-medium text-gray-700 flex items-center gap-2">
+                        <span className="inline-block w-2.5 h-2.5 rounded-full" style={{ background: c.color }}></span>
+                        {c.label}
+                      </span>
+                      <span className="flex items-center gap-2 text-gray-600">
+                        {fmt0(c.spend)}
+                        <span className="text-gray-300">/</span>
+                        <input type="number" min="0" placeholder="budget" value={c.budgetMonthly ?? ''}
+                          onChange={(e) => setBudget(c.id, e.target.value)}
+                          className="w-24 text-right border border-gray-200 rounded px-2 py-0.5 text-sm bg-gray-50" />
+                      </span>
+                    </div>
+                    <div className="h-2 bg-gray-100 rounded-full mt-1 overflow-hidden">
+                      <div className="h-full rounded-full transition-all"
+                        style={{ width: `${pct ?? (c.spend > 0 ? 100 : 0)}%`, background: over ? '#DC2626' : c.color, opacity: c.budgetMonthly ? 1 : 0.35 }} />
+                    </div>
+                    {over && <div className="text-xs text-red-600 mt-0.5">Over budget by {fmt0(c.spend - c.budgetMonthly)}</div>}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // ── Month view: calendar grid ─────────────────────────────────────────────
+    function MonthView({ month, txns, catById }) {
+      const [selected, setSelected] = useState(null);
+      const [y, m] = month.split('-').map(Number);
+      const daysInMonth = new Date(y, m, 0).getDate();
+      const firstDow = new Date(y, m - 1, 1).getDay();
+
+      const byDay = useMemo(() => {
+        const map = {};
+        for (const t of txns) {
+          const d = Number(t.date.slice(8, 10));
+          (map[d] = map[d] || []).push(t);
+        }
+        return map;
+      }, [txns]);
+
+      const maxDay = Math.max(1, ...Object.values(byDay).map(spendOf));
+      const dayTxns = selected ? (byDay[selected] || []) : [];
+
+      return (
+        <div className="bg-white rounded-xl border border-gray-200 p-5">
+          <div className="grid grid-cols-7 gap-1.5 text-center text-xs font-semibold text-gray-400 mb-1.5">
+            {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(d => <div key={d}>{d}</div>)}
+          </div>
+          <div className="grid grid-cols-7 gap-1.5">
+            {Array.from({ length: firstDow }).map((_, i) => <div key={'b' + i} />)}
+            {Array.from({ length: daysInMonth }).map((_, i) => {
+              const day = i + 1;
+              const spend = byDay[day] ? spendOf(byDay[day]) : 0;
+              const heat = spend > 0 ? 0.15 + 0.55 * (spend / maxDay) : 0;
+              return (
+                <button key={day} onClick={() => setSelected(selected === day ? null : day)}
+                  className={`rounded-lg border p-1.5 min-h-16 text-left align-top transition-colors ${selected === day ? 'border-blue-500 ring-1 ring-blue-500' : 'border-gray-200 hover:border-gray-300'}`}
+                  style={spend > 0 ? { background: `rgba(37,99,235,${heat.toFixed(2)})` } : undefined}>
+                  <div className={`text-xs font-medium ${spend / maxDay > 0.55 ? 'text-white' : 'text-gray-500'}`}>{day}</div>
+                  {spend > 0 && <div className={`text-xs font-semibold mt-1 ${spend / maxDay > 0.55 ? 'text-white' : 'text-gray-800'}`}>{usd0.format(spend)}</div>}
+                </button>
+              );
+            })}
+          </div>
+          {selected && (
+            <div className="mt-4 border-t border-gray-100 pt-3">
+              <h3 className="text-sm font-semibold text-gray-700 mb-2">{monthLabel(month)} {selected} — {dayTxns.length} transaction{dayTxns.length === 1 ? '' : 's'} · {fmt2(spendOf(dayTxns))}</h3>
+              <ul className="divide-y divide-gray-100">
+                {dayTxns.map(t => (
+                  <li key={t.id} className="py-1.5 flex items-center justify-between text-sm">
+                    <span className="text-gray-700">{t.merchant}
+                      <span className="ml-2 text-xs px-1.5 py-0.5 rounded-full text-white" style={{ background: (catById[t.category] || {}).color || '#64748B' }}>
+                        {(catById[t.category] || {}).label || t.category}
+                      </span>
+                    </span>
+                    <span className={t.amount < 0 ? 'text-gray-900 font-medium' : 'text-emerald-600 font-medium'}>
+                      {t.amount < 0 ? fmt2(-t.amount) : '+' + fmt2(t.amount)}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    // ── Transactions view: add form + import + table ─────────────────────────
+    function TransactionsView({ exp, catById, addTxn, deleteTxn, setTxnCategory, onImportClick }) {
+      const [form, setForm] = useState({ date: todayISO(), merchant: '', amount: '', category: 'other', account: '', refund: false });
+      const [filter, setFilter] = useState('');
+      const [catFilter, setCatFilter] = useState('all');
+      const [sort, setSort] = useState({ key: 'date', dir: -1 });
+
+      const submit = (e) => {
+        e.preventDefault();
+        const amt = Math.abs(Number(form.amount));
+        if (!form.merchant.trim() || !Number.isFinite(amt) || amt === 0) return;
+        addTxn({
+          id: 'tx_' + Math.random().toString(36).slice(2, 10) + Date.now().toString(36),
+          date: form.date,
+          amount: Math.round((form.refund ? amt : -amt) * 100) / 100,
+          category: form.category,
+          merchant: form.merchant.trim(),
+          account: form.account.trim(),
+          note: '',
+          source: 'manual',
+        });
+        setForm(f => ({ ...f, merchant: '', amount: '' }));
+      };
+
+      const rows = useMemo(() => {
+        let r = exp.transactions;
+        if (filter.trim()) {
+          const q = filter.toLowerCase();
+          r = r.filter(t => t.merchant.toLowerCase().includes(q) || (t.account || '').toLowerCase().includes(q));
+        }
+        if (catFilter !== 'all') r = r.filter(t => t.category === catFilter);
+        const dir = sort.dir;
+        r = [...r].sort((a, b) => {
+          if (sort.key === 'amount') return (a.amount - b.amount) * dir;
+          if (sort.key === 'merchant') return a.merchant.localeCompare(b.merchant) * dir;
+          if (sort.key === 'category') return a.category.localeCompare(b.category) * dir;
+          return a.date.localeCompare(b.date) * dir || a.id.localeCompare(b.id);
+        });
+        return r;
+      }, [exp.transactions, filter, catFilter, sort]);
+
+      const th = (key, label) => (
+        <th className="px-3 py-2 text-left cursor-pointer select-none hover:text-gray-900"
+            onClick={() => setSort(s => ({ key, dir: s.key === key ? -s.dir : -1 }))}>
+          {label}{sort.key === key ? (sort.dir < 0 ? ' ↓' : ' ↑') : ''}
+        </th>
+      );
+
+      const lastImport = exp.importHistory[exp.importHistory.length - 1];
+
+      return (
+        <div className="space-y-4">
+          {/* Add + import */}
+          <form onSubmit={submit} className="bg-white rounded-xl border border-gray-200 p-4 flex flex-wrap items-end gap-2">
+            <label className="text-xs text-gray-500">Date
+              <input type="date" required value={form.date} max={todayISO()} onChange={e => setForm(f => ({ ...f, date: e.target.value }))}
+                className="block border border-gray-200 rounded px-2 py-1.5 text-sm bg-gray-50 mt-0.5" />
+            </label>
+            <label className="text-xs text-gray-500 flex-1 min-w-40">Merchant
+              <input type="text" required placeholder="e.g. Whole Foods" value={form.merchant}
+                onChange={e => setForm(f => ({ ...f, merchant: e.target.value, category: autoCategory(e.target.value, exp.merchantMap) }))}
+                className="block w-full border border-gray-200 rounded px-2 py-1.5 text-sm bg-gray-50 mt-0.5" />
+            </label>
+            <label className="text-xs text-gray-500">Amount
+              <input type="number" required step="0.01" min="0.01" placeholder="0.00" value={form.amount}
+                onChange={e => setForm(f => ({ ...f, amount: e.target.value }))}
+                className="block w-28 border border-gray-200 rounded px-2 py-1.5 text-sm bg-gray-50 mt-0.5" />
+            </label>
+            <label className="text-xs text-gray-500">Category
+              <select value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))}
+                className="block border border-gray-200 rounded px-2 py-1.5 text-sm bg-gray-50 mt-0.5">
+                {exp.categories.map(c => <option key={c.id} value={c.id}>{c.label}</option>)}
+              </select>
+            </label>
+            <label className="text-xs text-gray-500">Account
+              <input type="text" placeholder="optional" value={form.account}
+                onChange={e => setForm(f => ({ ...f, account: e.target.value }))}
+                className="block w-32 border border-gray-200 rounded px-2 py-1.5 text-sm bg-gray-50 mt-0.5" />
+            </label>
+            <label className="flex items-center gap-1.5 text-xs text-gray-500 pb-2">
+              <input type="checkbox" checked={form.refund} onChange={e => setForm(f => ({ ...f, refund: e.target.checked }))} />
+              Refund
+            </label>
+            <button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2 rounded-lg">+ Add</button>
+            <button type="button" onClick={onImportClick}
+              className="border border-gray-300 hover:bg-gray-50 text-gray-700 text-sm font-medium px-4 py-2 rounded-lg">
+              Import CSV
+            </button>
+          </form>
+          {lastImport && (
+            <p className="text-xs text-gray-400 -mt-2 px-1">
+              Last import: {lastImport.fileName} · {lastImport.count} transactions · {new Date(lastImport.importedAt).toLocaleDateString()}
+              <span className="ml-2 text-gray-300">|</span>
+              <span className="ml-2">Supported: Chase, Amex, Citi, generic (date / description / amount / category)</span>
+            </p>
+          )}
+
+          {/* Filters */}
+          <div className="flex flex-wrap items-center gap-2">
+            <input type="search" placeholder="Filter by merchant / account…" value={filter} onChange={e => setFilter(e.target.value)}
+              className="border border-gray-200 rounded-lg px-3 py-1.5 text-sm bg-white w-64" />
+            <select value={catFilter} onChange={e => setCatFilter(e.target.value)}
+              className="border border-gray-200 rounded-lg px-2 py-1.5 text-sm bg-white">
+              <option value="all">All categories</option>
+              {exp.categories.map(c => <option key={c.id} value={c.id}>{c.label}</option>)}
+            </select>
+            <span className="text-xs text-gray-400 ml-auto">{rows.length} of {exp.transactions.length} transactions</span>
+          </div>
+
+          {/* Table */}
+          <div className="bg-white rounded-xl border border-gray-200 overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="text-xs uppercase tracking-wide text-gray-500 border-b border-gray-200">
+                <tr>{th('date', 'Date')}{th('merchant', 'Merchant')}{th('category', 'Category')}{th('amount', 'Amount')}
+                  <th className="px-3 py-2 text-left">Account</th><th className="px-3 py-2"></th></tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {rows.length === 0 && (
+                  <tr><td colSpan="6" className="px-3 py-8 text-center text-gray-400">
+                    No transactions yet — add one above or import a bank CSV.
+                  </td></tr>
+                )}
+                {rows.slice(0, 500).map(t => (
+                  <tr key={t.id} className="hover:bg-gray-50">
+                    <td className="px-3 py-2 whitespace-nowrap text-gray-600">{t.date}</td>
+                    <td className="px-3 py-2 text-gray-800">{t.merchant}
+                      {t.source === 'csv-import' && <span className="ml-1.5 text-[10px] text-gray-300 uppercase">csv</span>}
+                    </td>
+                    <td className="px-3 py-2">
+                      <select value={t.category} onChange={e => setTxnCategory(t.id, e.target.value)}
+                        className="border border-transparent hover:border-gray-200 rounded px-1.5 py-0.5 text-sm bg-transparent"
+                        style={{ color: (catById[t.category] || {}).color }}>
+                        {exp.categories.map(c => <option key={c.id} value={c.id}>{c.label}</option>)}
+                      </select>
+                    </td>
+                    <td className={`px-3 py-2 whitespace-nowrap font-medium ${t.amount < 0 ? 'text-gray-900' : 'text-emerald-600'}`}>
+                      {t.amount < 0 ? fmt2(-t.amount) : '+' + fmt2(t.amount)}
+                    </td>
+                    <td className="px-3 py-2 text-gray-500">{t.account || '—'}</td>
+                    <td className="px-3 py-2 text-right">
+                      <button onClick={() => deleteTxn(t.id)} className="text-gray-300 hover:text-red-600" title="Delete" aria-label="Delete transaction">✕</button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {rows.length > 500 && <p className="text-xs text-gray-400 px-3 py-2">Showing first 500 — narrow the filter to see more.</p>}
+          </div>
+        </div>
+      );
+    }
+
+    // ── Trend view: 12-month line ─────────────────────────────────────────────
+    function TrendView({ txns, month }) {
+      const months = useMemo(() => {
+        const out = [];
+        for (let i = 11; i >= 0; i--) out.push(shiftMonth(month, -i));
+        return out;
+      }, [month]);
+
+      const totals = useMemo(() => months.map(m => {
+        const t = txns.filter(t => t.date.startsWith(m));
+        return Math.round(spendOf(t) * 100) / 100;
+      }), [months, txns]);
+
+      const nonZero = totals.filter(t => t > 0);
+      const avg = nonZero.length ? nonZero.reduce((a, b) => a + b, 0) / nonZero.length : 0;
+
+      const ref = useChart(() => ({
+        type: 'line',
+        data: {
+          labels: months.map(m => monthLabel(m).replace(' 20', ' ’')),
+          datasets: [
+            {
+              label: 'Monthly spend',
+              data: totals,
+              borderColor: '#2563EB',
+              backgroundColor: 'rgba(37,99,235,0.12)',
+              fill: true,
+              tension: 0.3,
+              pointRadius: 3,
+            },
+            {
+              label: `Average (${usd0.format(avg)})`,
+              data: months.map(() => Math.round(avg)),
+              borderColor: '#94A3B8',
+              borderDash: [6, 4],
+              pointRadius: 0,
+              fill: false,
+            },
+          ],
+        },
+        options: {
+          plugins: {
+            legend: { labels: { color: TICK } },
+            tooltip: { callbacks: { label: (ctx) => ` ${ctx.dataset.label.split(' (')[0]}: ${usd0.format(ctx.parsed.y)}` } },
+          },
+          scales: {
+            x: { ticks: { color: TICK, maxRotation: 45 }, grid: { color: GRID } },
+            y: { ticks: { color: TICK, callback: (v) => usd0.format(v) }, grid: { color: GRID }, beginAtZero: true },
+          },
+        },
+      }), [JSON.stringify(totals)]);
+
+      return (
+        <div className="bg-white rounded-xl border border-gray-200 p-5">
+          <h2 className="font-semibold text-gray-800 mb-3">12-month spend trend</h2>
+          {nonZero.length
+            ? <canvas ref={ref} height="90" />
+            : <p className="text-sm text-gray-400 py-10 text-center">No spend data in the last 12 months.</p>}
+          {nonZero.length >= 3 && (
+            <p className="text-xs text-gray-400 mt-3">
+              Trailing average {usd0.format(avg)}/month ≈ <strong className="text-gray-600">{usd0.format(avg * 12)}/yr</strong> —
+              the Retirement Master Plan can adopt this as your annual-expenses assumption.
+            </p>
+          )}
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<ExpenseTracker />);
+    </script>
+</body>
+</html>

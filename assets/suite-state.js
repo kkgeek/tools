@@ -30,7 +30,7 @@
   'use strict';
 
   const STORAGE_KEY = 'wealthSuite.state';
-  const CURRENT_VERSION = 2;
+  const CURRENT_VERSION = 3;
 
   function emptySpouse() { return { s1: null, s2: null }; }
 
@@ -94,6 +94,26 @@
         items: [],
         total: null,
       },
+      expenses: defaultExpenses(),
+    };
+  }
+
+  function defaultExpenses() {
+    return {
+      transactions: [],
+      categories: [
+        { id: 'groceries',     label: 'Groceries',     color: '#059669', budgetMonthly: null },
+        { id: 'dining',        label: 'Dining',        color: '#D97706', budgetMonthly: null },
+        { id: 'housing',       label: 'Housing',       color: '#2563EB', budgetMonthly: null },
+        { id: 'utilities',     label: 'Utilities',     color: '#0891B2', budgetMonthly: null },
+        { id: 'transport',     label: 'Transport',     color: '#7C3AED', budgetMonthly: null },
+        { id: 'healthcare',    label: 'Healthcare',    color: '#DC2626', budgetMonthly: null },
+        { id: 'entertainment', label: 'Entertainment', color: '#DB2777', budgetMonthly: null },
+        { id: 'travel',        label: 'Travel',        color: '#65A30D', budgetMonthly: null },
+        { id: 'other',         label: 'Other',         color: '#64748B', budgetMonthly: null },
+      ],
+      importHistory: [],
+      merchantMap: {},
     };
   }
 
@@ -151,6 +171,13 @@
       if (!state.assets) state.assets = { realEstate: null, vehicles: null, other: null };
       state.meta.version = 2;
       v = 2;
+    }
+
+    // v2 → v3: add expenses section
+    if (v === 2) {
+      if (!state.expenses) state.expenses = defaultExpenses();
+      state.meta.version = 3;
+      v = 3;
     }
 
     if (v === CURRENT_VERSION) return state;

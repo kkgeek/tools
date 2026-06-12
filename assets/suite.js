@@ -44,7 +44,7 @@
         { href: 'portfolio_tracker.html', label: 'Tracker',     match: ['portfolio_tracker'] },
         { href: 'portfolio_review.html',  label: 'Review',      match: ['portfolio_review'] },
         { href: 'net_worth.html',         label: 'Net Worth',   match: ['net_worth'] },
-        // expenses.html — added in Phase 9
+        { href: 'expenses.html',          label: 'Expenses',    match: ['expenses'] },
       ],
     },
     {

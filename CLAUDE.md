@@ -8,7 +8,7 @@ CDN where used. Deploys to GitHub Pages on every push to `main` via
 End-user docs: [`docs/GETTING_STARTED.md`](docs/GETTING_STARTED.md) —
 read first if unfamiliar with the suite.
 
-## Tools (8 modules)
+## Tools (11 modules)
 
 | File | Stack | Adapter |
 |---|---|---|
@@ -20,6 +20,9 @@ read first if unfamiliar with the suite.
 | `roth_conversion.html` | React 18 + Tailwind + Babel inline | `assets/adapters/roth.js` (read-only seed via `window.__rothSeed`) |
 | `portfolio_tracker.html` | React 18 + Tailwind + D3 + Babel inline | `assets/adapters/tracker.js` (store bootstrap; component handles its own reads/writes) |
 | `social_security.html` | Vanilla JS + Chart.js | `assets/adapters/ss.js` (seeds current age from household.spouses) |
+| `net_worth.html` | Vanilla JS + Chart.js | — (reads/writes store directly; schema v2 liabilities) |
+| `monte_carlo.html` | Vanilla JS + Chart.js | `assets/adapters/mc.js` (seeds sim params from store) |
+| `expenses.html` | React 18 + Tailwind + Chart.js + Babel inline | `assets/adapters/expenses.js` (store bootstrap; component reads/writes `expenses` directly, localStorage fallback standalone; tab deep-links via `#month/#transactions/#trend`) |
 
 ## Suite shell
 
@@ -123,6 +126,19 @@ Phase 6 additions (P3 — compact mode + P3 completions):
 Phase 7 additions (Monte Carlo):
 - `assets/suite.js?v=9` (all pages — adds Monte Carlo to MODULES registry)
 - `assets/adapters/mc.js?v=1` (monte_carlo.html only)
+
+Phase 8 additions (cluster nav + MD3 unification):
+- `assets/suite.js?v=10` (all pages — CLUSTERS registry, two-tier topnav)
+- `assets/suite.css?v=12` (index.html) / `?v=6` (tool pages) — sub-nav,
+  semantic `--status-*` vars, Inter font
+
+Phase 9 additions (Expense Tracker):
+- `assets/suite-state.js?v=6` (all pages — schema v3: `expenses` block)
+- `assets/suite.js?v=11` (all pages — adds Expenses to Tracking cluster)
+- `assets/dashboard.js?v=13` (index.html only — "Spend this month" tile)
+- `assets/adapters/retirement.js?v=6` (retirement_master_plan_2.html only —
+  "Adopt actual spend" pill from trailing-12-mo Expense Tracker average)
+- `assets/adapters/expenses.js?v=1` (expenses.html only)
 
 ## Constraints to preserve
 

@@ -82,6 +82,7 @@
     portfolio: 'Portfolio Review',
     asset: 'Asset Calculator',
     golden: 'Golden φ',
+    expenses: 'Expense Tracker',
     dashboard: 'Dashboard',
     import: 'JSON import',
     reset: 'Reset',
@@ -230,6 +231,22 @@
       hint: netWorth != null ? 'Assets − Liabilities' : 'Set portfolio & liabilities',
       stale: isStale && netWorth != null,
     }));
+
+    // Monthly spend (current calendar month, expenses are negative amounts)
+    const txns = state.expenses?.transactions;
+    if (Array.isArray(txns) && txns.length) {
+      const now = new Date();
+      const ym = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+      const monthSpend = txns
+        .filter((t) => typeof t.date === 'string' && t.date.startsWith(ym))
+        .reduce((s, t) => s - (Number(t.amount) || 0), 0);
+      grid.appendChild(tile({
+        label: 'Spend this month',
+        value: fmtMoney(Math.round(monthSpend)),
+        hint: 'Tracked in Expenses',
+        stale: false,
+      }));
+    }
 
     mount.appendChild(grid);
 
