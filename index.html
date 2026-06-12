@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap">
-  <link rel="stylesheet" href="assets/suite.css?v=12">
+  <link rel="stylesheet" href="assets/suite.css?v=13">
 
   <!-- Apply theme before paint to avoid flash -->
   <script>
@@ -38,6 +38,10 @@
   <section class="suite-hero">
     <h2>Your <strong>personal finance</strong> command center.</h2>
     <p>A unified Material Design 3 hub for tax estimation, asset planning, retirement modeling, and portfolio review. Every tool runs locally in your browser — your data stays on your device.</p>
+  </section>
+
+  <section class="suite-briefing" id="suite-briefing" aria-label="Daily market briefing">
+    <!-- Filled by assets/ai/briefing.js — collapses when quotes are unavailable. -->
   </section>
 
   <div class="suite-section-head">
@@ -235,5 +239,6 @@
 <script src="assets/suite-state.js?v=6" defer></script>
 <script src="assets/suite.js?v=11" defer></script>
 <script src="assets/dashboard.js?v=13" defer></script>
+<script src="assets/ai/briefing.js?v=1" defer></script>
 </body>
 </html>
