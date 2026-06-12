@@ -7,8 +7,12 @@
  *   - today's biggest mover among holdings
  *   - S&P 500 + QQQ benchmark day moves
  *
- * Pure JS, no AI — the Gemini narrative layer arrives in Phase 11
- * and will read the same computed stats. Quote series come from the
+ * Narrative layer (Phase 11): when preferences.aiProvider === 'gemini'
+ * and a key is present, a 2-sentence Gemini Flash summary of the
+ * computed stats is appended to the card, cached per trading day in
+ * localStorage.wealthSuite.briefingNarrative. 'off' and 'local'
+ * providers skip it (booting a 1.7GB local model for one line is
+ * not worth it). Quote series come from the
  * Yahoo Finance v8 chart endpoint (public market data only; no
  * personal info leaves the browser). Per-ticker series are cached
  * in sessionStorage for 15 min; the last fully-computed stats are
@@ -187,6 +191,63 @@
     return stats;
   }
 
+  // ---------- narrative layer (Gemini only) ----------
+  const NARRATIVE_KEY = 'wealthSuite.briefingNarrative';
+
+  function tradingDayOf(stats) {
+    const t = stats.benchmarks && stats.benchmarks[0] && stats.benchmarks[0].marketTime;
+    return new Date(t || stats.computedAt).toDateString();
+  }
+
+  function showNarrative(text) {
+    const card = mount.querySelector('.suite-briefing__card');
+    if (!card || card.querySelector('.suite-briefing__narrative')) return;
+    const p = document.createElement('p');
+    p.className = 'suite-briefing__narrative';
+    p.textContent = text;
+    card.appendChild(p);
+  }
+
+  async function maybeNarrative(stats) {
+    if (!store || store.get('preferences.aiProvider') !== 'gemini') return;
+    let key = '';
+    try { key = localStorage.getItem('wealthSuite.aiKey') || ''; } catch (_) {}
+    if (!key) return;
+
+    const day = tradingDayOf(stats);
+    try {
+      const cached = JSON.parse(localStorage.getItem(NARRATIVE_KEY));
+      if (cached && cached.day === day && cached.text) { showNarrative(cached.text); return; }
+    } catch (_) {}
+
+    const prompt = [
+      'Write a 2-sentence plain-text market briefing for a personal-finance dashboard. No preamble, no markdown.',
+      'Cover the portfolio day move vs the S&P 500 and, if notable, the top mover or a period return. Round numbers conversationally.',
+      `Stats: ${JSON.stringify({
+        portfolio: stats.portfolio, mover: stats.mover, benchmarks: stats.benchmarks,
+      })}`,
+    ].join('\n');
+
+    try {
+      const res = await fetch(
+        'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent',
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
+          signal: AbortSignal.timeout(20000),
+          body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
+        }
+      );
+      if (!res.ok) return;
+      const json = await res.json();
+      const parts = (((json.candidates || [])[0] || {}).content || {}).parts || [];
+      const text = parts.map((p) => p.text || '').join('').trim();
+      if (!text) return;
+      try { localStorage.setItem(NARRATIVE_KEY, JSON.stringify({ day, text })); } catch (_) {}
+      showNarrative(text);
+    } catch (_) { /* narrative is best-effort */ }
+  }
+
   // ---------- render ----------
   function chip(label, value, tone) {
     return `<span class="suite-briefing__chip"><span class="suite-briefing__chip-label">${label}</span><strong class="${tone || ''}">${value}</strong></span>`;
@@ -255,7 +316,7 @@
     renderSkeleton();
     let stats = null;
     try { stats = await computeStats(); } catch (_) {}
-    if (stats) { render(stats, false); return; }
+    if (stats) { render(stats, false); maybeNarrative(stats); return; }
 
     // Network failed entirely — fall back to today's cached stats if any.
     try {

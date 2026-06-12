@@ -148,6 +148,21 @@ Phase 10 additions (daily briefing, computed layer):
   outage)
 - `assets/suite.css?v=13` (index.html only — `.suite-briefing__*` styles)
 
+Phase 11 additions (GenAI chat):
+- `assets/suite-state.js?v=7` (all pages — schema v4: `preferences.aiProvider`
+  'off'|'gemini'|'local'; Gemini key deliberately NOT in store — export()
+  would leak it — lives at `localStorage['wealthSuite.aiKey']`)
+- `assets/ai/chat.js?v=1` (index.html only — chat panel in `#suite-chat`;
+  GeminiProvider = gemini-2.5-flash with native function calling over a
+  9-tool read-only store registry; WebLLMProvider = Llama-3.2-3B via
+  esm.run/@mlc-ai/web-llm lazy import, grounds by stuffing all tool slices
+  into the system prompt instead of tool calls; history in sessionStorage)
+- `assets/ai/briefing.js?v=3` (index.html only — Gemini 2-sentence
+  narrative when provider is 'gemini', cached per trading day in
+  `localStorage.wealthSuite.briefingNarrative`)
+- `assets/suite.css?v=14` (index.html only — `.suite-chat__*` styles +
+  `.suite-briefing__narrative`)
+
 ## Constraints to preserve
 
 - **Zero build step.** No Vite/Webpack until scope demands it.

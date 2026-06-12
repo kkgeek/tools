@@ -30,7 +30,7 @@
   'use strict';
 
   const STORAGE_KEY = 'wealthSuite.state';
-  const CURRENT_VERSION = 3;
+  const CURRENT_VERSION = 4;
 
   function emptySpouse() { return { s1: null, s2: null }; }
 
@@ -84,6 +84,10 @@
       },
       preferences: {
         taxYear: null,
+        // 'off' | 'gemini' | 'local'. The Gemini API key is deliberately
+        // NOT stored here — export() would leak it into backup JSON.
+        // It lives at localStorage['wealthSuite.aiKey'].
+        aiProvider: 'off',
       },
       assets: {
         realEstate: null,
@@ -178,6 +182,14 @@
       if (!state.expenses) state.expenses = defaultExpenses();
       state.meta.version = 3;
       v = 3;
+    }
+
+    // v3 → v4: add AI provider preference (GenAI chat, Phase 11)
+    if (v === 3) {
+      if (!state.preferences) state.preferences = {};
+      if (!state.preferences.aiProvider) state.preferences.aiProvider = 'off';
+      state.meta.version = 4;
+      v = 4;
     }
 
     if (v === CURRENT_VERSION) return state;
