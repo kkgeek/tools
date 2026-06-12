@@ -141,10 +141,11 @@ Phase 9 additions (Expense Tracker):
 - `assets/adapters/expenses.js?v=1` (expenses.html only)
 
 Phase 10 additions (daily briefing, computed layer):
-- `assets/ai/briefing.js?v=1` (index.html only — renders into
+- `assets/ai/briefing.js?v=2` (index.html only — renders into
   `#suite-briefing`; Yahoo benchmark + holdings quotes, sessionStorage
   series cache 15 min, same-day stale fallback in
-  `localStorage.wealthSuite.briefingStats`, collapses on total outage)
+  `localStorage.wealthSuite.briefingStats`, outage note card on total
+  outage)
 - `assets/suite.css?v=13` (index.html only — `.suite-briefing__*` styles)
 
 ## Constraints to preserve

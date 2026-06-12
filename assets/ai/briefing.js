@@ -192,8 +192,11 @@
     return `<span class="suite-briefing__chip"><span class="suite-briefing__chip-label">${label}</span><strong class="${tone || ''}">${value}</strong></span>`;
   }
 
+  function dateLabel() {
+    return new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+  }
+
   function render(stats, stale) {
-    const dateLabel = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
     const p = stats.portfolio;
     const benchChips = stats.benchmarks
       .filter((b) => b.dayPct != null)
@@ -230,7 +233,7 @@
     mount.innerHTML = `
       <div class="suite-briefing__card">
         <div class="suite-briefing__head">
-          <span class="suite-briefing__date">${dateLabel}</span>
+          <span class="suite-briefing__date">${dateLabel()}</span>
           ${p && p.missing ? `<span class="suite-briefing__stale">${p.missing} holding${p.missing === 1 ? '' : 's'} without quotes</span>` : ''}
           ${staleNote}
         </div>
@@ -265,7 +268,17 @@
         }
       }
     } catch (_) {}
-    mount.innerHTML = '';   // nothing useful to show — collapse the section
+
+    // Total outage, no usable cache — keep the card visible with a note
+    // instead of silently collapsing.
+    mount.innerHTML = `
+      <div class="suite-briefing__card">
+        <div class="suite-briefing__head">
+          <span class="suite-briefing__date">${dateLabel()}</span>
+          <span class="suite-briefing__stale">live quotes unavailable</span>
+        </div>
+        <p class="suite-briefing__hint">Market data couldn&#8217;t be fetched right now &#8212; the briefing will load automatically once quotes are reachable again.</p>
+      </div>`;
   }
 
   if (document.readyState === 'loading') {
