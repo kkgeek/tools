@@ -37,11 +37,53 @@
   const MAX_TURNS = 12;          // messages sent to the model
   const MAX_TOOL_ROUNDS = 4;
 
-  const SUGGESTED = [
-    'Am I on track to retire?',
-    'Where is my biggest spend leak this month?',
-    'How is my portfolio allocated?',
-  ];
+  // Tool → suite page, for "Open: …" deep links under answers.
+  const TOOL_LINKS = {
+    getRetirementPlan:    { href: 'retirement_master_plan_2.html', label: 'Retirement Master Plan' },
+    getPortfolioHoldings: { href: 'portfolio_tracker.html',        label: 'Portfolio Tracker' },
+    getSpending:          { href: 'expenses.html',                 label: 'Expense Tracker' },
+    getNetWorth:          { href: 'net_worth.html',                label: 'Net Worth Tracker' },
+    getTaxEstimate:       { href: 'TaxEstimatorV5.html',           label: 'Tax Estimator' },
+    getRothSchedule:      { href: 'roth_conversion.html',          label: 'Roth Conversion Planner' },
+    getMonteCarloResults: { href: 'monte_carlo.html',              label: 'Monte Carlo Projections' },
+  };
+
+  // Suggested prompts conditioned on what's actually in the store;
+  // rotates daily so the panel doesn't go stale.
+  function suggestedPrompts() {
+    const pool = [];
+    const plan = store.get('retirement.plan') || {};
+    const holdings = store.get('portfolio.holdings') || [];
+    const txns = (store.get('expenses') || {}).transactions || [];
+    const liabilities = (store.get('liabilities') || {}).items || [];
+
+    if (plan.targetRetireAge) pool.push(`Am I on track to retire at ${plan.targetRetireAge}?`);
+    else pool.push('Am I on track to retire?');
+
+    if (holdings.length) {
+      pool.push('How is my portfolio allocated?');
+      pool.push('What is my biggest holding and how concentrated am I?');
+    } else {
+      pool.push('How do I start tracking my portfolio here?');
+    }
+
+    if (txns.length) {
+      pool.push('Where is my biggest spend leak this month?');
+      pool.push('How does my spending compare to my budgets?');
+    }
+
+    if (liabilities.length) pool.push('How do my liabilities affect my net worth?');
+    if (plan.annualExpenses) pool.push('Could I retire earlier if I cut spending 10%?');
+    pool.push('Should I do a Roth conversion this year?');
+
+    // Deterministic daily rotation through the pool.
+    const day = Math.floor(Date.now() / 86400000);
+    const out = [];
+    for (let i = 0; i < Math.min(3, pool.length); i++) {
+      out.push(pool[(day + i * 2) % pool.length]);
+    }
+    return [...new Set(out)];
+  }
 
   // ---------- small utils ----------
   function escapeHtml(s) {
@@ -382,11 +424,13 @@
           <h4 class="suite-chat__title">Ask anything about your finances</h4>
           <div class="suite-chat__head-actions">
             <span class="suite-chat__badge">${escapeHtml(providerBadge())}</span>
+            <button type="button" class="suite-chat__icon-btn" data-act="export" title="Export conversation" aria-label="Export conversation as JSON">⤓</button>
+            <button type="button" class="suite-chat__icon-btn" data-act="import" title="Import conversation" aria-label="Import conversation from JSON">⤒</button>
             <button type="button" class="suite-chat__icon-btn" data-act="clear" title="Clear conversation" aria-label="Clear conversation">⌫</button>
             <button type="button" class="suite-chat__icon-btn" data-act="settings" title="Chat settings" aria-label="Chat settings">⚙</button>
           </div>
         </div>
-        <div class="suite-chat__messages" role="log" aria-live="polite"></div>
+        <div class="suite-chat__messages" role="log" aria-live="polite" aria-label="Conversation"></div>
         <div class="suite-chat__suggested"></div>
         <form class="suite-chat__form">
           <input type="text" class="suite-chat__input" placeholder="e.g. Am I on track to retire at 62?" autocomplete="off" aria-label="Ask a question">
@@ -397,12 +441,14 @@
 
     card.querySelector('[data-act="settings"]').addEventListener('click', openSettings);
     card.querySelector('[data-act="clear"]').addEventListener('click', () => {
-      history = []; saveHistory(history); renderMessages();
+      history = []; saveHistory(history); renderPanel();
     });
+    card.querySelector('[data-act="export"]').addEventListener('click', exportConversation);
+    card.querySelector('[data-act="import"]').addEventListener('click', importConversation);
 
     const sugg = card.querySelector('.suite-chat__suggested');
     if (!history.length) {
-      for (const s of SUGGESTED) {
+      for (const s of suggestedPrompts()) {
         const b = el(`<button type="button" class="suite-chat__prompt">${escapeHtml(s)}</button>`);
         b.addEventListener('click', () => send(s));
         sugg.appendChild(b);
@@ -440,6 +486,13 @@
           });
         });
         meta.appendChild(copy);
+        const seen = new Set();
+        for (const name of m.tools || []) {
+          const link = TOOL_LINKS[name];
+          if (!link || seen.has(link.href)) continue;
+          seen.add(link.href);
+          meta.appendChild(el(`<a class="suite-chat__open" href="${link.href}">Open: ${escapeHtml(link.label)}</a>`));
+        }
         msg.appendChild(meta);
         box.appendChild(msg);
       }
@@ -447,6 +500,52 @@
     const sugg = mount.querySelector('.suite-chat__suggested');
     if (sugg && history.length) sugg.innerHTML = '';
     box.scrollTop = box.scrollHeight;
+  }
+
+  function exportConversation() {
+    if (!history.length) return;
+    const payload = {
+      type: 'wealthSuite.chatConversation',
+      exportedAt: new Date().toISOString(),
+      messages: history,
+    };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `wealth-suite-chat-${new Date().toISOString().slice(0, 10)}.json`;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+  }
+
+  function importConversation() {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'application/json,.json';
+    input.addEventListener('change', () => {
+      const file = input.files && input.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        try {
+          const json = JSON.parse(reader.result);
+          const msgs = Array.isArray(json) ? json : json.messages;
+          if (!Array.isArray(msgs)) throw new Error('bad shape');
+          const clean = msgs
+            .filter((m) => m && (m.role === 'user' || m.role === 'ai') && typeof m.text === 'string')
+            .map((m) => ({ role: m.role, text: m.text, tools: Array.isArray(m.tools) ? m.tools.map(String) : [] }));
+          if (!clean.length) throw new Error('no messages');
+          history = clean;
+          saveHistory(history);
+          renderPanel();
+        } catch (_) {
+          history.push({ role: 'ai', text: '⚠ That file is not a Wealth Suite chat export.', tools: [] });
+          saveHistory(history);
+          renderMessages();
+        }
+      };
+      reader.readAsText(file);
+    });
+    input.click();
   }
 
   async function send(question) {
@@ -478,9 +577,9 @@
     const cur = getProvider();
     const key = getKey();
     const overlay = el(`
-      <div class="suite-chat__overlay" role="dialog" aria-modal="true" aria-label="AI chat settings">
+      <div class="suite-chat__overlay" role="dialog" aria-modal="true" aria-labelledby="ws-chat-settings-title">
         <div class="suite-chat__modal">
-          <h4 class="suite-chat__title">AI chat settings</h4>
+          <h4 class="suite-chat__title" id="ws-chat-settings-title">AI chat settings</h4>
 
           <label class="suite-chat__opt">
             <input type="radio" name="ws-ai-provider" value="off" ${cur === 'off' ? 'checked' : ''}>
@@ -518,8 +617,25 @@
         d.hidden = d.dataset.for !== e.target.value;
       }
     });
-    overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
-    overlay.querySelector('[data-act="cancel"]').addEventListener('click', () => overlay.remove());
+    const opener = document.activeElement;
+    function close() {
+      overlay.remove();
+      document.removeEventListener('keydown', onKeydown);
+      if (opener && typeof opener.focus === 'function') opener.focus();
+    }
+    function onKeydown(e) {
+      if (e.key === 'Escape') { e.preventDefault(); close(); return; }
+      if (e.key !== 'Tab') return;
+      // keep focus inside the dialog
+      const focusables = overlay.querySelectorAll('input, button');
+      const first = focusables[0], last = focusables[focusables.length - 1];
+      if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+      else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+    }
+    document.addEventListener('keydown', onKeydown);
+
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
+    overlay.querySelector('[data-act="cancel"]').addEventListener('click', close);
     overlay.querySelector('[data-act="save"]').addEventListener('click', () => {
       const sel = overlay.querySelector('input[name="ws-ai-provider"]:checked').value;
       const typed = overlay.querySelector('.suite-chat__key').value.trim();
@@ -529,11 +645,13 @@
         return;
       }
       store.set('preferences.aiProvider', sel, { editedBy: 'chat' });
-      overlay.remove();
+      close();
       render();
     });
 
     document.body.appendChild(overlay);
+    const checked = overlay.querySelector('input[name="ws-ai-provider"]:checked');
+    if (checked) checked.focus();
   }
 
   // ---------- bootstrap ----------

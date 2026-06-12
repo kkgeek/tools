@@ -163,6 +163,14 @@ Phase 11 additions (GenAI chat):
 - `assets/suite.css?v=14` (index.html only — `.suite-chat__*` styles +
   `.suite-briefing__narrative`)
 
+Phase 12 additions (chat polish):
+- `assets/ai/chat.js?v=2` (index.html only — conversation export/import
+  as JSON, "Open: <tool>" deep-link chips derived from tools used in an
+  answer, store-conditioned suggested-prompt daily rotation, settings
+  modal focus trap + Esc close + focus restore, `role="log"` live region)
+- `assets/suite.css?v=15` (index.html only — `.suite-chat__open` link
+  chip + focus-visible outlines on chat buttons/links/inputs)
+
 ## Constraints to preserve
 
 - **Zero build step.** No Vite/Webpack until scope demands it.
