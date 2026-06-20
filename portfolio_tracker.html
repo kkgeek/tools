@@ -191,11 +191,15 @@
         if (!store) return;
         clearTimeout(syncTimer.current);
         syncTimer.current = setTimeout(() => {
-          const totalValue = holdings.reduce((s, h) => s + (h.currentPrice || 0) * (h.shares || 0), 0);
+          // Value each holding at its live price when we have one, else fall
+          // back to cost basis (per-share) so manually-added holdings without a
+          // live quote still produce a portfolio value for the other tools.
+          const valueOf = (h) => (h.currentPrice || h.costBasis || 0) * (h.shares || 0);
+          const totalValue = holdings.reduce((s, h) => s + valueOf(h), 0);
           const allocs = {};
           ASSET_CLASSES.forEach(cls => {
             const v = holdings.filter(h => h.assetClass === cls)
-              .reduce((s, h) => s + (h.currentPrice || 0) * (h.shares || 0), 0);
+              .reduce((s, h) => s + valueOf(h), 0);
             if (v > 0 && totalValue > 0) allocs[cls] = +(v / totalValue).toFixed(4);
           });
           store.set('portfolio.holdings', holdings, { editedBy: 'tracker' });

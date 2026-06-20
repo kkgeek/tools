@@ -218,17 +218,51 @@
     });
   }
 
+  // ---------- reflect store value into the page header/stat ----------
+  // The page ships with a hardcoded "$1,250,000 · 48 holdings" header. When the
+  // store holds a real portfolio value (from the Tracker, a CSV import, or the
+  // dashboard quick-entry), surface that here so Review shows the live number
+  // instead of the static placeholder.
+  function reflectStoreTotal() {
+    const v = Number(store.get('portfolio.totalValue'));
+    if (!(v > 0)) return;
+    const holdings = store.get('portfolio.holdings');
+    const count = Array.isArray(holdings) ? holdings.length : null;
+
+    const hdr = document.querySelector('.hdr p');
+    if (hdr) {
+      let t = hdr.textContent.replace(/\$[\d,]+(?:\.\d+)?/, usd0.format(v));
+      if (count != null) t = t.replace(/\d[\d,]*\s+holdings/, count + ' holding' + (count === 1 ? '' : 's'));
+      hdr.textContent = t;
+    }
+    for (const el of document.querySelectorAll('.sc')) {
+      const l = el.querySelector('.sc-l');
+      if (l && l.textContent.trim() === 'Total portfolio') {
+        const sv = el.querySelector('.sc-v');
+        if (sv) sv.textContent = fmtM(v);
+        break;
+      }
+    }
+  }
+
   // ---------- bootstrap ----------
   function init() {
-    const total = parseTotalFromHeader();
-    setIfChanged('portfolio.totalValue', total);
+    // The hardcoded header is a one-time SEED only — never overwrite a real
+    // value already in the store (Tracker / import / quick-entry). Otherwise
+    // visiting Review would clobber it back to the static $1.25M placeholder.
+    const existingTotal = store.get('portfolio.totalValue');
+    if (existingTotal == null || existingTotal === 0) {
+      setIfChanged('portfolio.totalValue', parseTotalFromHeader());
+    }
+    const existingAllocs = store.get('portfolio.allocations');
+    if (!existingAllocs || Object.keys(existingAllocs).length === 0) {
+      setObjectIfChanged('portfolio.allocations', parseCurrentAllocations());
+    }
 
-    const allocs = parseCurrentAllocations();
-    setObjectIfChanged('portfolio.allocations', allocs);
-
+    reflectStoreTotal();
     seedFromStore();
     renderHouseholdBanner();
-    store.subscribe('', renderHouseholdBanner);
+    store.subscribe('', function () { reflectStoreTotal(); renderHouseholdBanner(); });
   }
 
   if (document.readyState === 'loading') {
