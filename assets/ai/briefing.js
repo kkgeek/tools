@@ -47,6 +47,34 @@
     return String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   }
 
+  // Yahoo's public endpoint sends no Access-Control-Allow-Origin header, so
+  // direct fetches are blocked from a browser. Try direct first (cheap, fails
+  // fast), then relay through public CORS proxies. Only public ticker symbols
+  // leave the browser — never balances or holdings. Returns parsed JSON or null.
+  function yahooUrls(path) {
+    const direct1 = `https://query1.finance.yahoo.com/${path}`;
+    const direct2 = `https://query2.finance.yahoo.com/${path}`;
+    const enc = encodeURIComponent(direct1);
+    return [
+      direct2,
+      direct1,
+      `https://api.allorigins.win/raw?url=${enc}`,
+      `https://api.codetabs.com/v1/proxy/?quest=${enc}`,
+    ];
+  }
+
+  async function fetchYahoo(path) {
+    for (const url of yahooUrls(path)) {
+      try {
+        const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
+        if (!res.ok) continue;
+        const json = await res.json();
+        if (json && json.chart) return json;
+      } catch (_) { /* try next candidate */ }
+    }
+    return null;
+  }
+
   // ---------- Yahoo series fetch ----------
   async function fetchSeries(ticker) {
     const key = `yfb_${ticker.toUpperCase()}`;
@@ -58,36 +86,29 @@
       }
     } catch (_) {}
 
-    for (const host of ['query2', 'query1']) {
-      try {
-        const url = `https://${host}.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(ticker.toUpperCase())}?interval=1d&range=1y`;
-        const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
-        if (!res.ok) continue;
-        const json = await res.json();
-        const result = json.chart && json.chart.result && json.chart.result[0];
-        const meta = result && result.meta;
-        if (!meta || !meta.regularMarketPrice) continue;
+    const path = `v8/finance/chart/${encodeURIComponent(ticker.toUpperCase())}?interval=1d&range=1y`;
+    const json = await fetchYahoo(path);
+    const result = json && json.chart && json.chart.result && json.chart.result[0];
+    const meta = result && result.meta;
+    if (!meta || !meta.regularMarketPrice) return null;
 
-        const ts = (result.timestamp || []);
-        const closes = ((result.indicators && result.indicators.quote && result.indicators.quote[0]) || {}).close || [];
-        const series = [];
-        for (let i = 0; i < ts.length; i++) {
-          if (closes[i] != null) series.push({ t: ts[i] * 1000, c: closes[i] });
-        }
-        const prev = meta.previousClose || meta.chartPreviousClose
-          || (series.length > 1 ? series[series.length - 2].c : meta.regularMarketPrice);
-        const data = {
-          price: meta.regularMarketPrice,
-          prevClose: prev,
-          marketTime: (meta.regularMarketTime || 0) * 1000,
-          name: meta.shortName || meta.longName || ticker.toUpperCase(),
-          series,
-        };
-        try { sessionStorage.setItem(key, JSON.stringify({ data, ts: Date.now() })); } catch (_) {}
-        return data;
-      } catch (_) { /* try next host */ }
+    const ts = (result.timestamp || []);
+    const closes = ((result.indicators && result.indicators.quote && result.indicators.quote[0]) || {}).close || [];
+    const series = [];
+    for (let i = 0; i < ts.length; i++) {
+      if (closes[i] != null) series.push({ t: ts[i] * 1000, c: closes[i] });
     }
-    return null;
+    const prev = meta.previousClose || meta.chartPreviousClose
+      || (series.length > 1 ? series[series.length - 2].c : meta.regularMarketPrice);
+    const data = {
+      price: meta.regularMarketPrice,
+      prevClose: prev,
+      marketTime: (meta.regularMarketTime || 0) * 1000,
+      name: meta.shortName || meta.longName || ticker.toUpperCase(),
+      series,
+    };
+    try { sessionStorage.setItem(key, JSON.stringify({ data, ts: Date.now() })); } catch (_) {}
+    return data;
   }
 
   // Last close at-or-before a timestamp; null if series doesn't reach back.
