@@ -330,16 +330,10 @@
       }
     } catch (_) {}
 
-    // Total outage, no usable cache — keep the card visible with a note
-    // instead of silently collapsing.
-    mount.innerHTML = `
-      <div class="suite-briefing__card">
-        <div class="suite-briefing__head">
-          <span class="suite-briefing__date">${dateLabel()}</span>
-          <span class="suite-briefing__stale">live quotes unavailable</span>
-        </div>
-        <p class="suite-briefing__hint">Market data couldn&#8217;t be fetched right now &#8212; the briefing will load automatically once quotes are reachable again.</p>
-      </div>`;
+    // Total outage, no usable cache — collapse the section silently rather
+    // than showing an outage note. It reappears automatically once quotes load.
+    mount.innerHTML = '';
+    mount.hidden = true;
   }
 
   if (document.readyState === 'loading') {
