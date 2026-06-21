@@ -31,6 +31,11 @@
     const PROJ_YEARS    = [1, 3, 5, 10, 15];
     const DEFAULT_RATES = { equity: 7, bond: 3.5, cash: 0.5, other: 5 };
     const PRICE_TTL_MS  = 15 * 60 * 1000;  // 15-min sessionStorage cache
+    // Cloudflare Worker that proxies Yahoo with CORS (see worker/README.md).
+    // Set to your deployed URL (no trailing slash) for reliable quotes; leave
+    // '' to fall back to the public CORS-proxy chain. e.g.
+    // 'https://wealth-suite-quotes.<subdomain>.workers.dev'
+    const QUOTE_WORKER  = '';
 
     // ── Formatters ────────────────────────────────────────────────────────────
     const usd0 = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 });
@@ -57,6 +62,7 @@
       const direct1 = `https://query1.finance.yahoo.com/${path}`;
       const enc = encodeURIComponent(direct1);
       const candidates = [
+        ...(QUOTE_WORKER ? [`${QUOTE_WORKER}/${path}`] : []),
         `https://query2.finance.yahoo.com/${path}`,
         direct1,
         `https://api.allorigins.win/raw?url=${enc}`,

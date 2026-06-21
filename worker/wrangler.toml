@@ -1,0 +1,9 @@
+# Cloudflare Worker config for the Yahoo Finance quote proxy.
+# Deploy from this directory:  npx wrangler deploy
+# (See worker/README.md for the full walkthrough.)
+
+name = "wealth-suite-quotes"
+main = "yahoo-proxy.js"
+compatibility_date = "2026-06-21"
+
+# Free plan is sufficient. No KV/D1/secrets needed — this Worker is stateless.
