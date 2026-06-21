@@ -33,7 +33,7 @@
   // Cloudflare Worker that proxies Yahoo with CORS (see worker/README.md).
   // Set to your deployed URL (no trailing slash) for reliable quotes; leave ''
   // to fall back to the public CORS-proxy chain.
-  const QUOTE_WORKER = '';
+  const QUOTE_WORKER = 'https://wealth-suite-quotes.kn2v.workers.dev';
   const STATS_KEY = 'wealthSuite.briefingStats';
   const BENCHMARKS = [
     { sym: '^GSPC', label: 'S&P 500' },
