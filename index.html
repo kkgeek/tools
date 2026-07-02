@@ -302,7 +302,7 @@
         <span class="sb-x">Tax Plan (Estimator)</span>
         <span class="ws-badge ws-badge--q2 sb-x">Q2</span>
       </a>
-      <a class="ws-navitem" href="retirement_master_plan_2.html" title="Estate Plan">
+      <a class="ws-navitem" href="retirement_master_plan_2.html#est" title="Estate Plan">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
         <span class="sb-x">Estate Plan</span>
       </a>
@@ -746,7 +746,9 @@
       'golden_ratio_portfolio_dashboard.html': 'Golden φ Portfolio',
       'monte_carlo.html': 'Monte Carlo',
       'data_hub.html': 'Data Hub',
-      'settings.html': 'Settings'
+      'settings.html': 'Settings',
+      // Sub-hash routes: the tool page + a tab deep-link inside it
+      'retirement_master_plan_2.html#est': 'Estate Plan'
     };
     var frame = document.getElementById('ws-frame');
     var dashView = document.getElementById('ws-dash-view');
@@ -762,10 +764,28 @@
       var clean = href.split('#')[0].split('?')[0].split('/');
       return clean[clean.length - 1];
     }
-    function setActive(file) {
+    // Normalized route from an href: "file.html" or "file.html#subtab"
+    // (sub-hash routes let one tool page host multiple sidebar entries,
+    // e.g. Estate Plan → retirement_master_plan_2.html#est).
+    function routeFromHref(href) {
+      if (!href) return '';
+      var file = fileFromHref(href);
+      var hashIdx = href.indexOf('#');
+      var sub = hashIdx >= 0 ? href.slice(hashIdx) : '';
+      return sub && ROUTES[file + sub] ? file + sub : file;
+    }
+    // Raw shell-hash content → known route ('' = dashboard).
+    // Tolerates %23-encoded sub-hashes in shared/pasted URLs.
+    function resolveRoute(raw) {
+      try { raw = decodeURIComponent(raw); } catch (e) {}
+      if (ROUTES[raw]) return raw;
+      var f = fileFromHref(raw);
+      return ROUTES[f] ? f : '';
+    }
+    function setActive(route) {
       navItems.forEach(function (a) {
-        var on = file ? (fileFromHref(a.getAttribute('href')) === file)
-                      : (fileFromHref(a.getAttribute('href')) === 'index.html');
+        var r = routeFromHref(a.getAttribute('href'));
+        var on = route ? (r === route) : (r === 'index.html');
         a.classList.toggle('is-active', on);
         if (on) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current');
       });
@@ -782,32 +802,28 @@
       document.title = 'Wealth Suite — Dashboard';
       setActive(null);
     }
-    function showTool(file) {
-      var title = ROUTES[file];
+    function showTool(routeKey) {
+      var title = ROUTES[routeKey];
       if (!title) { showDashboard(); return; }
       if (dashView) dashView.hidden = true;
       if (content) content.classList.add('is-tool');
-      if (frame) { if (frame.getAttribute('src') !== file) frame.setAttribute('src', file); frame.hidden = false; frame.setAttribute('title', title); }
+      if (frame) { if (frame.getAttribute('src') !== routeKey) frame.setAttribute('src', routeKey); frame.hidden = false; frame.setAttribute('title', title); }
       if (backEl) backEl.hidden = false;
       if (dateSep) dateSep.hidden = true;
       var d = document.getElementById('ws-date'); if (d) d.hidden = true;
-      if (newtabEl) { newtabEl.hidden = false; newtabEl.setAttribute('href', file); }
+      if (newtabEl) { newtabEl.hidden = false; newtabEl.setAttribute('href', routeKey); }
       if (titleEl) titleEl.textContent = title;
       document.title = 'Wealth Suite — ' + title;
-      setActive(file);
-    }
-    function currentFile() {
-      var h = fileFromHref((location.hash || '').replace(/^#/, ''));
-      return ROUTES[h] ? h : '';
+      setActive(routeKey);
     }
     function route() {
-      var f = currentFile();
-      if (f) showTool(f); else showDashboard();
+      var r = resolveRoute((location.hash || '').replace(/^#/, ''));
+      if (r) showTool(r); else showDashboard();
       if (content) content.scrollTop = 0;
       closeMobNav();
     }
-    function navigate(file) {
-      var target = (file && ROUTES[file]) ? ('#' + file) : '#';
+    function navigate(routeKey) {
+      var target = (routeKey && ROUTES[routeKey]) ? ('#' + routeKey) : '#';
       if (location.hash === target) route(); else location.hash = target;
     }
     window.addEventListener('hashchange', route);
@@ -815,9 +831,9 @@
       if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
       var a = e.target.closest && e.target.closest('a[href]');
       if (!a || a.target === '_blank') return;
-      var file = fileFromHref(a.getAttribute('href'));
-      if (file === 'index.html') { e.preventDefault(); navigate(''); }
-      else if (ROUTES[file]) { e.preventDefault(); navigate(file); }
+      var r = routeFromHref(a.getAttribute('href'));
+      if (r === 'index.html') { e.preventDefault(); navigate(''); }
+      else if (ROUTES[r]) { e.preventDefault(); navigate(r); }
     });
     if (backEl) backEl.addEventListener('click', function () { navigate(''); });
     route();

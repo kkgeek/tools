@@ -184,7 +184,8 @@ body{font-family:'Inter',-apple-system,'Helvetica Neue',Arial,sans-serif;backgro
   <button class="nb" onclick="showTab('proj',this)">Projection</button>
   <button class="nb" onclick="showTab('roth',this)">Roth + SS</button>
   <button class="nb" onclick="showTab('tax',this)">Tax strategy</button>
-  <button class="nb" onclick="showTab('est',this)">Estate plan</button>
+  <!-- Estate plan moved to its own sidebar entry — pane #est stays,
+       reached via the #est hash (see activateTabFromHash) -->
   <button class="nb" onclick="showTab('rmd',this)">RMD calculator</button>
   <button class="nb" onclick="showTab('tl',this)">Timeline</button>
 </div>
@@ -744,11 +745,32 @@ function showTab(id, btn) {
   for (var i = 0; i < panes.length; i++) panes[i].classList.remove('on');
   for (var i = 0; i < btns.length; i++) btns[i].classList.remove('on');
   document.getElementById(id).classList.add('on');
-  btn.classList.add('on');
+  if (btn) btn.classList.add('on');
   if (id === 'proj' && !projBuilt) { buildProjChart('base'); projBuilt = true; }
   if (id === 'roth' && !ssBuilt) { buildSSChart(); ssBuilt = true; }
   if (id === 'rmd' && !rmdBuilt) { updateRMD(); rmdBuilt = true; }
 }
+
+// Hash deep-links (#ov/#proj/#est/…) — same pattern as expenses.html.
+// The Estate pane (#est) has no tab button (it lives under the suite
+// sidebar's own "Estate Plan" entry), so showTab tolerates btn=null.
+function activateTabFromHash(isChange) {
+  var id = (location.hash || '').replace('#', '');
+  var pane = id && document.getElementById(id);
+  if (!pane || !pane.classList.contains('pane')) {
+    // Hash cleared/unknown mid-session (e.g. shell nav Estate → Retirement
+    // Plan only removes the fragment) → back to the default Overview tab.
+    if (isChange) { id = 'ov'; pane = document.getElementById('ov'); if (!pane) return; }
+    else return;
+  }
+  var btns = document.querySelectorAll('.nb'), match = null;
+  for (var i = 0; i < btns.length; i++) {
+    if ((btns[i].getAttribute('onclick') || '').indexOf("'" + id + "'") >= 0) { match = btns[i]; break; }
+  }
+  showTab(id, match);
+}
+window.addEventListener('hashchange', function () { activateTabFromHash(true); });
+activateTabFromHash(false);
 
 // ===== Portfolio projection (married — both spouses SS) =====
 function calcPortfolio(gr, ir) {

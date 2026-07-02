@@ -471,6 +471,27 @@ Phase 13k (Tailwind tool reskin):
 - Charts inside tools (Chart.js/D3 JS-set colors) keep their own
   palettes — only class-styled UI was reskinned.
 
+Phase 13l (fixes: Asset Calc Babel pin + Estate Plan sidebar route):
+- **TaxAssetCalcv4.html was blank** (React never mounted): it loaded
+  UNPINNED `@babel/standalone` from unpkg — missed by the earlier
+  suite-wide pin (aa7ee7c) — and unpkg now serves Babel 8, which
+  rejects raw `>` in JSX text (`assets held > 1 year`, inline script
+  629:153). Fixed: pinned to 7.29.7 like every other React page AND
+  escaped the `>` to `&gt;`. Gotcha reinforced: any new React tool must
+  pin @babel/standalone@7.29.7.
+- **Estate Plan is now its own sidebar destination**: the Estate tab
+  button was removed from retirement_master_plan_2.html's tab bar
+  (pane `#est` kept), the tool gained expenses-style hash deep-links
+  (`activateTabFromHash`: `#ov/#proj/#est/…`; `showTab` tolerates a
+  null button; an emptied/unknown hash mid-session resets to Overview —
+  that's what shell-nav Estate → Retirement produces, since only the
+  fragment changes and the iframe doesn't reload).
+- **Shell router supports sub-hash routes**: ROUTES may key
+  `file.html#subtab` (Estate Plan = `retirement_master_plan_2.html#est`);
+  `routeFromHref/resolveRoute` normalize (incl. %23-encoded pasted
+  URLs), setActive does exact route matching so Retirement Plan and
+  Estate Plan highlight independently.
+
 ## Constraints to preserve
 
 - **Zero build step.** No Vite/Webpack until scope demands it.
@@ -501,6 +522,9 @@ Phase 13k (Tailwind tool reskin):
   screenshots, use headless Chrome
   (`google-chrome --headless --screenshot=...`).
 - Asset Calc supports tax years 2024, 2025, 2026 — adapter clamps to latest supported year if store has a newer value.
+- **Pin `@babel/standalone@7.29.7`** on every React page. Unpinned CDN
+  URLs now serve Babel 8, which hard-errors on raw `>`/`<` in JSX text
+  → blank page (React never mounts). Also escape `>` as `&gt;` in JSX.
 
 ## Workflow
 

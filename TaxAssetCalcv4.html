@@ -45,7 +45,8 @@
 
     <!-- React and ReactDOM CDN -->
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-    <script crossorigin src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <!-- Pinned: Babel 8 rejects raw `>` in JSX text — see CLAUDE.md gotcha -->
+    <script crossorigin src="https://unpkg.com/@babel/standalone@7.29.7/babel.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 
 
@@ -677,7 +678,7 @@
                         </div>
 
                         <div>
-                            <label htmlFor="longTermGains" className="block text-sm font-medium text-gray-700 mb-1">Long-Term Capital Gains (assets held > 1 year):</label>
+                            <label htmlFor="longTermGains" className="block text-sm font-medium text-gray-700 mb-1">Long-Term Capital Gains (assets held &gt; 1 year):</label>
                             <input
                                 type="text"
                                 id="longTermGains"
