@@ -334,6 +334,39 @@ Phase 13f (mobile drawer fix + step 4 start — KPI wiring):
   tool to READ the hub (holdings/accounts/household/scenario/prefs)
   instead of its own inputs.
 
+Phase 13g (step 4 slice 2 — hub↔tool data contract):
+- **`holding.costBasis` is PER-SHARE** — that's the store convention set
+  by the Portfolio Tracker (its CSV import divides Vanguard "…Total"
+  columns by shares; Fidelity/Schwab/generic cost headers are already
+  per-share, and its table edits/valuations all assume per-share). The
+  Data Hub originally committed lot TOTALS into the same field, which
+  would have over-valued hub-imported holdings by ~shares× in the
+  tracker. Fixed in data_hub.html:
+  - `parseCSV()` mirrors the tracker rule (header contains /total/i →
+    divide by shares) and commits per-share `costBasis`.
+  - Preview still displays the lot total (mockup style); paste
+    placeholder + hint now show per-share examples.
+  - New hub-committed holdings get an `id` (`TICKER-ts-rand`) — the
+    tracker keys row edit/delete/quote-merge on `h.id`, so id-less rows
+    would mis-target edits.
+  - `holdingValue()` helper (= (currentPrice||costBasis)×shares) now
+    used by acctValue/recompute/net-of-liabilities; same fix applied to
+    the dashboard KPI fallback in index.html.
+  - Hub liability form gained a `type` select matching net_worth's
+    options (mortgage/auto/student/credit/other) — rows previously
+    rendered "undefined" type in Net Worth.
+- Verified end-to-end (headless): hub paste of generic per-share CSV +
+  Vanguard-style "Cost Basis Total" CSV → store holds cb=165.34 / cb=50
+  with ids; Portfolio Tracker mounts them, renders both rows correctly,
+  re-syncs totalValue=24840.8. Hub-entered Home $680K + Mortgage $312K
+  → Net Worth shows assets $680K / liab $312K / net worth $368K (matches
+  hub's "Net of liabilities").
+- Tracker/Net Worth are hub-fed now (tracker reads `portfolio.holdings`
+  on mount; net_worth reads the `assets.*` mirror + `liabilities.items`
+  and subscribes). Tracker still has its own CSV import + doesn't
+  live-subscribe to store changes while open — acceptable in the shell
+  (iframe remounts per navigation).
+
 ## Constraints to preserve
 
 - **Zero build step.** No Vite/Webpack until scope demands it.
