@@ -492,6 +492,28 @@ Phase 13l (fixes: Asset Calc Babel pin + Estate Plan sidebar route):
   URLs), setActive does exact route matching so Retirement Plan and
   Estate Plan highlight independently.
 
+Phase 13m (Estate Plan extracted to a standalone page):
+- The 13l sub-hash approach still showed the Retirement banner + tab
+  bar around the estate content — not what the user wanted. The estate
+  pane is now **its own page, `estate_plan.html`** (12th tool): the
+  `#est` pane markup was moved out of retirement_master_plan_2.html
+  verbatim, wrapped with a copy of that tool's `<style>` block, its own
+  green `.hdr` banner (fed exemption / WA exclusion / est. WA tax
+  stats), and the standard suite chrome (suite.css/theme.css +
+  suite-state + suite.js; no adapter — static content).
+- retirement_master_plan_2.html no longer contains the pane (tabs:
+  Overview/3-yr buffer/Projection/Roth+SS/Tax strategy/RMD/Timeline).
+  Its hash-tab deep-link support (13l) remains for the other tabs.
+- Router: `estate_plan.html` is a normal ROUTES entry (the sub-hash
+  route mechanism stays but has no entries). Sidebar Estate Plan →
+  estate_plan.html.
+- `assets/suite.js?v=14` (ALL pages): Estate Plan added to the
+  Retirement cluster so the standalone topnav sub-nav shows
+  Master Plan / Estate Plan / Monte Carlo.
+- The page content is copy-heavy static analysis (OBBBA, WA SB 6347,
+  millionaire tax, trust strategy, beneficiary audit) — candidates for
+  store-driven figures later (estate size from net worth, etc.).
+
 ## Constraints to preserve
 
 - **Zero build step.** No Vite/Webpack until scope demands it.
