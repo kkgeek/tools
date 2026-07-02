@@ -965,8 +965,9 @@
         if (!store) return;
         var s = store.export();
         var holdings = (s.portfolio && s.portfolio.holdings) || [];
+        // holding.costBasis is PER-SHARE (Portfolio Tracker convention)
         var portfolioVal = Number(s.portfolio && s.portfolio.totalValue) ||
-          holdings.reduce(function (t, h) { return t + (Number(h.currentPrice) > 0 ? Number(h.currentPrice) * Number(h.shares) : (Number(h.costBasis) || 0)); }, 0);
+          holdings.reduce(function (t, h) { var per = Number(h.currentPrice) > 0 ? Number(h.currentPrice) : (Number(h.costBasis) || 0); return t + per * (Number(h.shares) || 0); }, 0);
         var otherAssets = ((s.otherAssets) || []).reduce(function (t, a) { return t + (Number(a.value) || 0); }, 0);
         var retire = Number(s.retirement && s.retirement.balances && s.retirement.balances.total) || 0;
         var liabItems = (s.liabilities && s.liabilities.items) || [];

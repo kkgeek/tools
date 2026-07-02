@@ -196,9 +196,9 @@
         <input type="file" id="dh-file" accept=".csv,text/csv" hidden>
         <button class="dh-paste" id="dh-paste-toggle" type="button">Paste rows instead</button>
         <textarea class="dh-textarea" id="dh-paste-area" hidden placeholder="Ticker,Shares,Cost Basis,Account
-VTI,120,198400,Fidelity Brokerage
-AAPL,50,41900,Schwab 401(k)"></textarea>
-        <div class="dh-hint" style="line-height:1.5;">Accepted columns: Ticker, Shares, Cost Basis, Account, Date. Fidelity / Schwab / Vanguard headers auto-map; extra columns are ignored.</div>
+VTI,120,165.34,Fidelity Brokerage
+AAPL,50,142.80,Schwab 401(k)"></textarea>
+        <div class="dh-hint" style="line-height:1.5;">Accepted columns: Ticker, Shares, Cost Basis (per share; "…Total" headers auto-divide), Account, Date. Fidelity / Schwab / Vanguard headers auto-map; extra columns are ignored.</div>
       </div>
       <div class="dh-preview" id="dh-preview">
         <div class="dh-empty">Drop or paste a CSV to preview holdings before committing.</div>
@@ -266,6 +266,7 @@ AAPL,50,41900,Schwab 401(k)"></textarea>
       <div class="dh-list" id="dh-liab-rows"></div>
       <form class="dh-form" id="dh-liab-form" hidden autocomplete="off">
         <input name="name" placeholder="e.g. Mortgage" style="min-width:140px;" required>
+        <select name="type"><option value="mortgage">Mortgage</option><option value="auto">Auto loan</option><option value="student">Student loan</option><option value="credit">Credit card</option><option value="other">Other</option></select>
         <input name="rate" placeholder="Rate %" style="width:74px;">
         <input name="balance" placeholder="Balance $" inputmode="numeric" style="width:110px;" required>
         <button class="dh-btn-primary" type="submit" style="padding:7px 14px;">Add</button>
@@ -332,9 +333,15 @@ AAPL,50,41900,Schwab 401(k)"></textarea>
     function otherAssets() { return store.get('otherAssets') || []; }
     function liabilities() { return (store.get('liabilities.items')) || []; }
 
+    // Store convention (owned by the Portfolio Tracker): holding.costBasis
+    // is PER-SHARE. Value = (live price || per-share cost) × shares.
+    function holdingValue(h) {
+      var per = num(h.currentPrice) > 0 ? num(h.currentPrice) : num(h.costBasis);
+      return per * num(h.shares);
+    }
     function acctValue(name) {
       return holdings().filter(function (h) { return h.account === name; })
-        .reduce(function (s, h) { return s + num(h.costBasis); }, 0);
+        .reduce(function (s, h) { return s + holdingValue(h); }, 0);
     }
     function acctCount(name) { return holdings().filter(function (h) { return h.account === name; }).length; }
 
@@ -343,10 +350,7 @@ AAPL,50,41900,Schwab 401(k)"></textarea>
     // the scalar `assets` block the current net_worth tool still reads.
     function recompute() {
       var hs = holdings();
-      var total = hs.reduce(function (s, h) {
-        var v = (num(h.currentPrice) > 0) ? num(h.currentPrice) * num(h.shares) : num(h.costBasis);
-        return s + v;
-      }, 0);
+      var total = hs.reduce(function (s, h) { return s + holdingValue(h); }, 0);
       store.set('portfolio.totalValue', total || null, EDIT);
       var oa = otherAssets();
       var byCat = { realEstate: 0, vehicles: 0, other: 0 };
@@ -443,7 +447,7 @@ AAPL,50,41900,Schwab 401(k)"></textarea>
       }).join('') : '<div class="dh-empty">No liabilities yet.</div>';
 
       var assetTotal = otherAssets().reduce(function (s, a) { return s + num(a.value); }, 0)
-        + holdings().reduce(function (s, h) { return s + (num(h.currentPrice) > 0 ? num(h.currentPrice) * num(h.shares) : num(h.costBasis)); }, 0);
+        + holdings().reduce(function (s, h) { return s + holdingValue(h); }, 0);
       var liabTotal = rows.reduce(function (s, l) { return s + num(l.balance); }, 0);
       $('dh-net-val').textContent = fmtFull(assetTotal - liabTotal);
     }
@@ -515,6 +519,10 @@ AAPL,50,41900,Schwab 401(k)"></textarea>
       var ac = findCol(headers, ['account']);
       // Fallback for 3-col generic (ticker,shares,cost_basis) with odd headers
       if (tk < 0 && headers.length >= 3) { tk = 0; sh = 1; cb = 2; }
+      // Store convention (Portfolio Tracker): costBasis is PER-SHARE.
+      // Vanguard-style "... total" headers carry lot totals → divide by
+      // shares; "average"/generic cost headers are already per-share.
+      var costIsTotal = cb >= 0 && headers[cb] != null && /total/i.test(headers[cb]);
       var existing = holdings();
       var acctNames = accounts().map(function (a) { return a.name; });
       return lines.slice(1).map(function (line) {
@@ -525,7 +533,10 @@ AAPL,50,41900,Schwab 401(k)"></textarea>
         var already = existing.some(function (h) { return h.ticker === ticker && (!account || h.account === account); });
         var status = already ? 'update' : 'new';
         if (account && acctNames.length && acctNames.indexOf(account) < 0) status = 'warn';
-        return { ticker: ticker, shares: num(c[sh]), costBasis: num(c[cb]), account: account, status: status };
+        var shares = num(c[sh]);
+        var rawCost = num(c[cb]);
+        var costPerShare = (costIsTotal && rawCost && shares) ? rawCost / shares : rawCost;
+        return { ticker: ticker, shares: shares, costBasis: costPerShare, account: account, status: status };
       }).filter(Boolean);
     }
     function renderPreview() {
@@ -540,9 +551,10 @@ AAPL,50,41900,Schwab 401(k)"></textarea>
         '<span class="dh-ok"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"></polyline></svg>Columns mapped automatically</span></div>' +
         '<div class="dh-prow dh-prow--head"><span class="dh-ph">Ticker</span><span class="dh-ph dh-cell--r">Shares</span><span class="dh-ph dh-cell--r">Cost Basis</span><span class="dh-ph" style="padding-left:12px;">Account</span><span class="dh-ph dh-cell--r">Status</span></div>' +
         shown.map(function (r) {
+          var costTotal = (r.costBasis && r.shares) ? r.costBasis * r.shares : r.costBasis;
           return '<div class="dh-prow"><span class="dh-cell--tk">' + esc(r.ticker) + '</span>' +
             '<span class="dh-cell dh-cell--r dh-mono">' + (r.shares ? r.shares.toLocaleString('en-US') : '—') + '</span>' +
-            '<span class="dh-cell dh-cell--r dh-mono">' + (r.costBasis ? fmtFull(r.costBasis) : '—') + '</span>' +
+            '<span class="dh-cell dh-cell--r dh-mono">' + (costTotal ? fmtFull(costTotal) : '—') + '</span>' +
             '<span class="dh-cell" style="padding-left:12px;">' + (esc(r.account) || '—') + '</span>' +
             '<span class="dh-cell--r ' + stClass[r.status] + '">' + stLabel[r.status] + '</span></div>';
         }).join('') +
@@ -556,7 +568,8 @@ AAPL,50,41900,Schwab 401(k)"></textarea>
       parsed.forEach(function (r) {
         var idx = hs.findIndex(function (h) { return h.ticker === r.ticker && (h.account || '') === (r.account || ''); });
         if (idx >= 0) { hs[idx].shares = r.shares; hs[idx].costBasis = r.costBasis; }
-        else hs.push({ ticker: r.ticker, name: r.ticker, shares: r.shares, costBasis: r.costBasis, account: r.account, assetClass: 'equity', currentPrice: null, priceUpdatedAt: null });
+        // `id` is required by the Portfolio Tracker (row edit/delete key on it)
+        else hs.push({ id: r.ticker + '-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6), ticker: r.ticker, name: r.ticker, shares: r.shares, costBasis: r.costBasis, account: r.account, assetClass: 'equity', currentPrice: null, priceUpdatedAt: null });
       });
       store.set('portfolio.holdings', hs, EDIT);
       // record import + auto-register any unknown accounts referenced
@@ -640,7 +653,7 @@ AAPL,50,41900,Schwab 401(k)"></textarea>
     });
     bindForm('dh-liab-add', 'dh-liab-form', function (fd) {
       var items = liabilities();
-      items.push({ id: uid(), name: fd.get('name').trim(), rate: num(fd.get('rate')) || null, balance: num(fd.get('balance')), remainingTerm: null });
+      items.push({ id: uid(), name: fd.get('name').trim(), type: fd.get('type') || 'other', rate: num(fd.get('rate')) || null, balance: num(fd.get('balance')), remainingTerm: null });
       store.set('liabilities.items', items, EDIT);
       store.set('liabilities.total', items.reduce(function (s, l) { return s + num(l.balance); }, 0), EDIT);
       renderAll(); flash('Liability added.');
