@@ -52,6 +52,7 @@
       label: 'Retirement',
       tools: [
         { href: 'retirement_master_plan_2.html', label: 'Master Plan',  match: ['retirement_master_plan'] },
+        { href: 'estate_plan.html',              label: 'Estate Plan',  match: ['estate_plan'] },
         { href: 'monte_carlo.html',              label: 'Monte Carlo',  match: ['monte_carlo'] },
       ],
     },

@@ -302,7 +302,7 @@
         <span class="sb-x">Tax Plan (Estimator)</span>
         <span class="ws-badge ws-badge--q2 sb-x">Q2</span>
       </a>
-      <a class="ws-navitem" href="retirement_master_plan_2.html#est" title="Estate Plan">
+      <a class="ws-navitem" href="estate_plan.html" title="Estate Plan">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
         <span class="sb-x">Estate Plan</span>
       </a>
@@ -747,8 +747,9 @@
       'monte_carlo.html': 'Monte Carlo',
       'data_hub.html': 'Data Hub',
       'settings.html': 'Settings',
-      // Sub-hash routes: the tool page + a tab deep-link inside it
-      'retirement_master_plan_2.html#est': 'Estate Plan'
+      'estate_plan.html': 'Estate Plan'
+      // (Sub-hash routes like 'file.html#tab' remain supported —
+      // routeFromHref/resolveRoute normalize them.)
     };
     var frame = document.getElementById('ws-frame');
     var dashView = document.getElementById('ws-dash-view');
