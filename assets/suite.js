@@ -112,8 +112,23 @@
     if (readPreference() === 'system') applyTheme();
   });
 
+  // Keep theme in sync when another document (e.g. the app-shell that
+  // embeds this page in an iframe, or another tab) changes the
+  // preference. `storage` fires in every OTHER same-origin document.
+  window.addEventListener('storage', (e) => {
+    if (e.key === STORAGE_KEY) applyTheme();
+  });
+
   // Apply ASAP — before paint where possible
   applyTheme();
+
+  // Are we embedded inside the Wealth Suite app shell (index.html)?
+  // When so, the shell already renders the sidebar + top bar, so this
+  // page must NOT inject its own topnav (would double up) and must drop
+  // the top padding it reserves for that topnav.
+  function isEmbedded() {
+    try { return window.self !== window.top; } catch (e) { return true; }
+  }
 
   // ---------- Topbar injection ----------
   function currentModuleHref() {
@@ -245,6 +260,13 @@
   }
 
   function injectTopbarIfMissing() {
+    // Embedded in the app shell → shell owns the chrome. Skip the
+    // topnav and remove the reserved top padding so the tool sits flush.
+    if (isEmbedded()) {
+      document.documentElement.setAttribute('data-suite-embedded', 'true');
+      try { document.body.style.paddingTop = '0'; } catch (e) {}
+      return;
+    }
     // Phase 8: JS is the single source of truth for the topbar.
     // If a static topbar exists (dashboard renders one for no-flash
     // initial paint), replace it in place with the built version so

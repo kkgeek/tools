@@ -225,8 +225,27 @@ Phase 13b (app-shell rebuild — the new Dashboard home):
   Hub") until step 2 wires them.
 - Site Map / Data Hub / Settings render as visible but non-navigating
   "Soon" items until handoff steps 2–3 build those pages.
-- Follow-up: unify the tool pages into the same sidebar shell (currently
-  they keep suite.js's horizontal topnav).
+
+Phase 13c (single-window navigation — tools open inside the shell):
+- `index.html` gained a hash-based router: clicking any in-suite tool
+  link loads that tool into a full-height `<iframe id="ws-frame">` inside
+  the persistent shell, so the sidebar + top bar **never reload** and the
+  collapse state truly stays put during navigation. Route = `#<file.html>`
+  (deep-linkable, native back/forward via `hashchange`). Top bar swaps to
+  "← Dashboard · <tool title> · New tab ↗" when a tool is open. A
+  delegated `click` handler routes any `a[href$=".html"]` that maps to a
+  known tool (sidebar items, dashboard cross-link chips, the tax-alert
+  CTA); Cmd/Ctrl/middle-click and the "New tab" chip still open the tool
+  standalone.
+- `assets/suite.js?v=12` (ALL tool pages — bumped from v=11): now
+  detects when it is embedded (`window.self !== window.top`) and, if so,
+  **skips its own topnav injection** and zeroes `body.paddingTop` so the
+  tool renders flush inside the shell with no double chrome / no gap.
+  Also added a `storage` listener so a theme change in the shell (or any
+  tab) re-applies live in the embedded tool. index.html still does NOT
+  load suite.js.
+- Follow-up: the tool pages still work standalone (opened directly, they
+  render their own topnav as before) — only the embedded case changes.
 
 ## Constraints to preserve
 
