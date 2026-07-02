@@ -313,6 +313,27 @@ Phase 13e (Settings — handoff step 3):
   `fedBracket`, active-scenario assumptions, and the alert thresholds;
   and surfacing the active scenario name in the top-bar profile chip.
 
+Phase 13f (mobile drawer fix + step 4 start — KPI wiring):
+- **Mobile sidebar drawer** (index.html): below 860px the sidebar was
+  `position:absolute` and covered the top-bar hamburger, so it couldn't
+  be tapped. Now the sidebar is an off-canvas drawer (`transform:
+  translateX(-100%)`); the hamburger toggles `.ws-shell.is-mobnav-open`
+  (mobile) vs `data-ws-collapsed` (desktop, unchanged), a `#ws-backdrop`
+  dismisses it, and navigating or resizing to desktop closes it. Labels
+  stay visible in the drawer even if the collapse flag is set.
+- **Step 4 (first slice) — live KPI tiles**: index.html now computes
+  Total Net Worth (`portfolio.totalValue` + `otherAssets` + retirement
+  balances − liabilities), Investment Portfolio, and Monthly Spending
+  (current-month `expenses.transactions` vs summed category budgets)
+  from the store and fills the `data-ws-metric` tiles, flipping the
+  subline note to "live from your data". An empty store keeps the
+  illustrative sample. Reactively re-renders via `store.subscribe`.
+  Retirement Readiness and the Net-Worth-Growth / Allocation charts are
+  still illustrative — next slice (they need history / a computed layer).
+- Step 4 remaining: charts + readiness from real data; refactor each
+  tool to READ the hub (holdings/accounts/household/scenario/prefs)
+  instead of its own inputs.
+
 ## Constraints to preserve
 
 - **Zero build step.** No Vite/Webpack until scope demands it.
