@@ -634,11 +634,11 @@
             <div class="ws-cardhead">
               <div>
                 <div class="ws-cardtitle">Spending vs Budget</div>
-                <div class="ws-cardsub">This month · Auto-categorized</div>
+                <div class="ws-cardsub" id="ws-spend-sub">This month · Auto-categorized</div>
               </div>
-              <div style="padding:5px 11px; background:var(--pos-weak); border-radius:20px; font-size:11px; font-weight:500; color:var(--pos); flex-shrink:0;">$11,580 left</div>
+              <div id="ws-spend-badge" style="padding:5px 11px; background:var(--pos-weak); border-radius:20px; font-size:11px; font-weight:500; color:var(--pos); flex-shrink:0;">$11,580 left</div>
             </div>
-            <div style="margin-bottom:16px;">
+            <div style="margin-bottom:16px;" id="ws-spend-rows">
               <div class="ws-budget-row">
                 <div class="ws-budget-top"><span class="ws-budget-name">Housing</span><div class="ws-budget-vals"><span class="ws-budget-spent">$2,800</span><span class="ws-budget-cap">/ $2,800</span></div></div>
                 <div class="ws-meter" style="margin-bottom:0;"><i style="width:100%; background:var(--primary);"></i></div>
@@ -660,7 +660,7 @@
                 <div class="ws-meter" style="margin-bottom:0;"><i style="width:100%; background:linear-gradient(90deg,var(--warn) 91%,var(--neg) 91%);"></i></div>
               </div>
             </div>
-            <div style="padding:12px 14px; background:var(--surface-2); border-radius:12px; margin-bottom:14px;">
+            <div style="padding:12px 14px; background:var(--surface-2); border-radius:12px; margin-bottom:14px;" id="ws-spend-total">
               <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:7px;">
                 <span style="font-size:12.5px; font-weight:500; color:var(--text);">Total</span>
                 <div style="display:flex; gap:6px; align-items:center;"><span style="font-size:13px; font-family:'Roboto Mono',monospace; font-weight:500; color:var(--text);">$8,420</span><span style="font-size:11.5px; color:var(--text-3);">/ $20,000</span></div>
@@ -958,6 +958,7 @@
     // and the charts stay illustrative until a later slice.) ----
     function money(n) { n = Number(n) || 0; var a = Math.abs(n); if (a >= 1e6) return '$' + (n / 1e6).toFixed(2) + 'M'; if (a >= 1e3) return '$' + Math.round(n / 1e3) + 'K'; return '$' + Math.round(n); }
     function full(n) { return '$' + Math.round(Number(n) || 0).toLocaleString('en-US'); }
+    function escHtml(x) { return String(x == null ? '' : x).replace(/[&<>"]/g, function (c) { return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]; }); }
     function metricEl(m) { return document.querySelector('[data-ws-metric="' + m + '"]'); }
     function refreshKPIs() {
       try {
@@ -978,12 +979,14 @@
 
         var tx = (s.expenses && s.expenses.transactions) || [];
         var d0 = new Date(); var ym = d0.getFullYear() + '-' + String(d0.getMonth() + 1).padStart(2, '0');
-        var monthSpend = tx.reduce(function (t, r) {
+        // Expense Tracker sign convention: negative = spend, positive =
+        // refund/credit (netted). Legacy `type:'expense'` rows are positive.
+        var monthSpend = Math.max(0, tx.reduce(function (t, r) {
           var dt = r && (r.date || r.at); if (!dt) return t;
           if (String(dt).slice(0, 7) !== ym) return t;
           var amt = Number(r.amount) || 0;
-          return t + (amt < 0 ? -amt : (r.type === 'expense' ? amt : 0));
-        }, 0);
+          return t + (amt < 0 ? -amt : (r.type === 'expense' ? amt : -amt));
+        }, 0));
         var budget = ((s.expenses && s.expenses.categories) || []).reduce(function (t, c) { return t + (Number(c.budgetMonthly) || 0); }, 0);
 
         var hasData = holdings.length > 0 || otherAssets > 0 || liab > 0 || portfolioVal > 0 || monthSpend > 0;
@@ -1017,6 +1020,7 @@
         renderNWChart();
         renderAllocation(holdings, portfolioVal);
         renderRetirement(s, portfolioVal, retire, budget);
+        renderSpending(s, tx, ym, monthSpend, budget);
       } catch (e) {}
     }
 
@@ -1151,6 +1155,69 @@
         return '<div class="ws-alloc-row"><div class="ws-alloc-name"><div class="ws-swatch" style="background:' + x.color + ';"></div>' + x.label + '</div>' +
           '<div class="ws-alloc-vals"><span class="ws-alloc-dollar">' + money(x.v) + '</span><span class="ws-alloc-pct">' + Math.round(x.v / total * 100) + '%</span></div></div>';
       }).join('');
+    }
+
+    // ---- Spending vs Budget: this month's transactions by category vs
+    // each category's budgetMonthly (Expense Tracker sign convention:
+    // negative amount = spend, positive = refund/credit; netted). ----
+    function renderSpending(s, tx, ym, monthSpend, budget) {
+      if (!(monthSpend > 0)) return; // keep sample until this month has spend
+      var cats = (s.expenses && s.expenses.categories) || [];
+      var byCat = {};
+      tx.forEach(function (r) {
+        var dt = r && (r.date || r.at); if (!dt || String(dt).slice(0, 7) !== ym) return;
+        var amt = Number(r.amount) || 0;
+        var k = r.category || 'other';
+        byCat[k] = (byCat[k] || 0) - amt; // negative amounts are spend
+      });
+      var rows = cats.map(function (c) {
+        return { id: c.id, label: c.label || c.id, budget: Number(c.budgetMonthly) || 0, spent: Math.max(0, byCat[c.id] || 0) };
+      });
+      // include spend in categories not present in the registry
+      Object.keys(byCat).forEach(function (k) {
+        if (byCat[k] > 0 && !rows.some(function (r) { return r.id === k; })) rows.push({ id: k, label: k, budget: 0, spent: byCat[k] });
+      });
+      rows = rows.filter(function (r) { return r.spent > 0 || r.budget > 0; })
+                 .sort(function (a, b) { return b.spent - a.spent; }).slice(0, 5);
+      if (!rows.length) return;
+      var maxSpent = rows.reduce(function (m, r) { return Math.max(m, r.spent); }, 1);
+      var host = document.getElementById('ws-spend-rows');
+      if (host) host.innerHTML = rows.map(function (r, i) {
+        var over = r.budget > 0 && r.spent > r.budget;
+        var pct = r.budget > 0 ? Math.min(100, r.spent / r.budget * 100) : (r.spent / maxSpent * 100);
+        var barColor = over ? null : (r.budget > 0 ? (pct >= 95 ? 'var(--primary)' : 'var(--pos)') : 'var(--cat2)');
+        var bar = over
+          ? 'width:100%; background:linear-gradient(90deg,var(--warn) ' + Math.round(r.budget / r.spent * 100) + '%,var(--neg) ' + Math.round(r.budget / r.spent * 100) + '%);'
+          : 'width:' + pct.toFixed(1) + '%; background:' + barColor + ';';
+        var overPct = over ? Math.round((r.spent / r.budget - 1) * 100) : 0;
+        return '<div class="ws-budget-row"' + (i === rows.length - 1 ? ' style="margin-bottom:0;"' : '') + '>' +
+          '<div class="ws-budget-top"><span class="ws-budget-name">' + escHtml(r.label) + '</span>' +
+          '<div class="ws-budget-vals"><span class="ws-budget-spent"' + (over ? ' style="color:var(--neg);"' : '') + '>' + full(r.spent) + '</span>' +
+          (r.budget > 0 ? '<span class="ws-budget-cap">/ ' + full(r.budget) + '</span>' : '<span class="ws-budget-cap" style="color:var(--text-3);">no budget</span>') +
+          (over ? '<span style="font-size:9.5px;color:var(--neg);font-weight:500;">↑' + overPct + '%</span>' : '') +
+          '</div></div><div class="ws-meter" style="margin-bottom:0;"><i style="' + bar + '"></i></div></div>';
+      }).join('');
+      var badge = document.getElementById('ws-spend-badge');
+      if (badge) {
+        if (budget > 0) {
+          var left = budget - monthSpend;
+          badge.textContent = left >= 0 ? (full(left) + ' left') : (full(-left) + ' over');
+          badge.style.background = left >= 0 ? 'var(--pos-weak)' : 'var(--neg-weak)';
+          badge.style.color = left >= 0 ? 'var(--pos)' : 'var(--neg)';
+        } else { badge.textContent = full(monthSpend) + ' spent'; badge.style.background = 'var(--surface-2)'; badge.style.color = 'var(--text-2)'; }
+      }
+      var sub = document.getElementById('ws-spend-sub');
+      if (sub) sub.textContent = new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' }) + ' · Auto-categorized';
+      var totalEl = document.getElementById('ws-spend-total');
+      if (totalEl) {
+        var tp = budget > 0 ? Math.min(100, monthSpend / budget * 100) : 100;
+        totalEl.innerHTML =
+          '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:7px;">' +
+          '<span style="font-size:12.5px; font-weight:500; color:var(--text);">Total</span>' +
+          '<div style="display:flex; gap:6px; align-items:center;"><span style="font-size:13px; font-family:\'Roboto Mono\',monospace; font-weight:500; color:var(--text);">' + full(monthSpend) + '</span>' +
+          (budget > 0 ? '<span style="font-size:11.5px; color:var(--text-3);">/ ' + full(budget) + '</span>' : '') + '</div></div>' +
+          '<div class="ws-meter" style="height:8px; border-radius:4px; margin-bottom:0;"><i style="width:' + tp.toFixed(1) + '%; background:' + (budget > 0 && monthSpend > budget ? 'var(--neg)' : 'var(--primary)') + '; border-radius:4px;"></i></div>';
+      }
     }
 
     // ---- Retirement readiness: inline Monte Carlo (1,000 paths, seeded
