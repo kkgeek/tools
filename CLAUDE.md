@@ -446,6 +446,31 @@ Phase 13j (step 4 slice 5 — live Performance table):
   remaining: scenario/fedBracket/currencyFormat consumption in tools;
   Data Hub polish.
 
+Phase 13k (Tailwind tool reskin):
+- `assets/tw-reskin.css?v=1` (NEW — linked after theme.css on the 5
+  React/Tailwind tools: portfolio_tracker, expenses, TaxEstimatorV5,
+  roth_conversion, TaxAssetCalcv4). Re-points their hardcoded Tailwind
+  color utilities at the shared theme tokens WITHOUT touching any
+  tool's markup: blue/indigo/purple/violet → `--primary` family
+  (solid 600s also force `color: var(--on-primary)`), emerald/green →
+  `--pos`, red → `--neg`, amber/orange → `--warn`; hover/active/
+  disabled/focus-ring variants covered; native radio/checkbox/range
+  get `accent-color: var(--primary)`. Neutral gray/slate untouched.
+- **`!important` is load-bearing**: the Tailwind Play CDN injects its
+  stylesheet at runtime (after any static `<link>`), so specificity
+  alone can't win. The selector list is the exact class inventory of
+  the 5 tools — extend it if a tool gains new color utilities.
+- Because everything maps to tokens, the internals follow the accent
+  picker AND the dark palette automatically (verified: accent=blue +
+  dark renders tracker buttons in the dark-blue accent token).
+- Verified renders: tracker, expenses, TaxEstimatorV5, roth all green
+  in light mode. TaxAssetCalcv4 blanks in HEADLESS Chrome both before
+  and after the change (heavy Babel+D3 page vs virtual-time budget) —
+  pre-existing headless limitation, not a regression; the reskin is
+  pure CSS.
+- Charts inside tools (Chart.js/D3 JS-set colors) keep their own
+  palettes — only class-styled UI was reskinned.
+
 ## Constraints to preserve
 
 - **Zero build step.** No Vite/Webpack until scope demands it.
