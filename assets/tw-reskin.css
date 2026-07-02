@@ -1,0 +1,98 @@
+/* =============================================================
+ * Wealth Suite — Tailwind reskin (design-handoff palette)
+ * -------------------------------------------------------------
+ * The 5 React tools (portfolio_tracker, expenses, TaxEstimatorV5,
+ * roth_conversion, TaxAssetCalcv4) style their internals with
+ * Tailwind utility classes hardcoding blue/indigo brand hues. This
+ * layer re-points those utilities at the shared theme tokens so the
+ * tools match the handoff look WITHOUT touching any tool's markup —
+ * and follow the accent picker + dark palette automatically (tokens
+ * are re-declared per theme/accent).
+ *
+ * !important is load-bearing: the Tailwind Play CDN injects its
+ * stylesheet at runtime (after any static <link>), so specificity
+ * alone can't win. The class list below is the exact inventory used
+ * by the 5 tools (see CLAUDE.md Phase 13k); extend it if a tool
+ * gains new color utilities.
+ *
+ * Mapping:  blue/indigo/purple/violet → --primary family
+ *           emerald/green             → --pos
+ *           red                       → --neg
+ *           amber/orange              → --warn
+ * Neutral gray/slate utilities are left untouched.
+ * ============================================================= */
+
+/* ---- Native controls follow the accent ---- */
+input[type="radio"], input[type="checkbox"], input[type="range"], progress {
+  accent-color: var(--primary);
+}
+
+/* ---- Brand: solid fills (buttons, active tabs) ---- */
+.bg-blue-600, .bg-indigo-600, .bg-purple-600, .bg-violet-600, .bg-emerald-600 {
+  background-color: var(--primary) !important;
+  color: var(--on-primary) !important;
+}
+.hover\:bg-blue-700:hover, .hover\:bg-indigo-700:hover, .hover\:bg-purple-700:hover,
+.hover\:bg-violet-700:hover, .hover\:bg-emerald-700:hover,
+.active\:bg-blue-800:active, .active\:bg-violet-800:active, .active\:bg-emerald-800:active {
+  background-color: var(--primary-strong) !important;
+}
+.disabled\:bg-violet-300:disabled, .disabled\:bg-emerald-300:disabled {
+  background-color: var(--primary-weak) !important;
+  color: var(--primary-text) !important;
+}
+
+/* ---- Brand: weak fills (chips, highlight cards) ---- */
+.bg-blue-50, .bg-blue-100, .bg-indigo-50, .bg-indigo-100, .bg-purple-50 {
+  background-color: var(--primary-weak) !important;
+}
+.hover\:bg-blue-100:hover { background-color: var(--primary-weak) !important; }
+
+/* ---- Brand: text ---- */
+.text-blue-400, .text-blue-500, .text-blue-600, .text-blue-700, .text-blue-800,
+.text-indigo-400, .text-indigo-500, .text-indigo-600, .text-indigo-700, .text-indigo-800,
+.text-purple-700, .text-violet-700 {
+  color: var(--primary-text) !important;
+}
+
+/* ---- Brand: borders + rings (focus states, selected cards) ---- */
+.border-blue-100, .border-blue-200, .border-indigo-100, .border-indigo-200 {
+  border-color: var(--primary-weak) !important;
+}
+.border-blue-500, .border-indigo-500,
+.focus\:border-indigo-500:focus { border-color: var(--primary) !important; }
+.ring-blue-400, .ring-blue-500,
+.focus\:ring-blue-400:focus, .focus\:ring-indigo-500:focus, .focus\:ring-purple-500:focus {
+  --tw-ring-color: var(--primary) !important;
+}
+
+/* ---- Positive (emerald/green) ---- */
+.text-emerald-400, .text-emerald-500, .text-emerald-600, .text-emerald-700, .text-emerald-800,
+.text-green-700, .hover\:text-emerald-800:hover {
+  color: var(--pos) !important;
+}
+.bg-emerald-50, .bg-emerald-100, .hover\:bg-emerald-200:hover {
+  background-color: var(--pos-weak) !important;
+}
+.border-emerald-100, .border-emerald-200 { border-color: var(--pos-weak) !important; }
+.border-emerald-300 { border-color: var(--pos) !important; }
+
+/* ---- Negative (red) ---- */
+.text-red-400, .text-red-500, .text-red-600, .text-red-700,
+.hover\:text-red-400:hover, .hover\:text-red-600:hover {
+  color: var(--neg) !important;
+}
+.bg-red-50, .bg-red-100 { background-color: var(--neg-weak) !important; }
+.border-red-100, .border-red-200 { border-color: var(--neg-weak) !important; }
+.border-red-300, .border-red-400 { border-color: var(--neg) !important; }
+
+/* ---- Warning (amber/orange) ---- */
+.text-amber-500, .text-amber-600, .text-amber-700, .text-amber-800,
+.text-orange-500, .text-orange-600, .text-orange-700 {
+  color: var(--warn) !important;
+}
+.bg-amber-50, .bg-amber-100, .hover\:bg-amber-100:hover {
+  background-color: var(--warn-weak) !important;
+}
+.border-amber-100, .border-amber-200 { border-color: var(--warn-weak) !important; }
+.border-amber-300 { border-color: var(--warn) !important; }
