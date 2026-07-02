@@ -171,6 +171,23 @@ Phase 12 additions (chat polish):
 - `assets/suite.css?v=15` (index.html only — `.suite-chat__open` link
   chip + focus-visible outlines on chat buttons/links/inputs)
 
+Phase 13 additions (design-handoff retheme — step 1 of
+`design/Wealth-Suite/design_handoff_wealth_suite/README.md`):
+- `assets/theme.css?v=1` (ALL pages — linked immediately AFTER
+  `suite.css` so it wins the `:root` cascade). New shared theme layer:
+  ships the handoff design tokens (`--bg`/`--surface`/`--primary` green
+  `#2E7D32`/`--text`… + light & dark) and REMAPS the legacy
+  `--md-sys-color-*` / `--status-*` names onto them via `var()`, so the
+  injected shell topbar + every vanilla tool (which already consume
+  those vars) repaint to the new look with no per-tool edits. Also
+  `@import`s Roboto / Roboto Mono and sets the base UI font.
+  Load-order is load-bearing: legacy remaps share `:root` specificity
+  with suite.css and rely on being declared later. The 5 Tailwind tools
+  (portfolio_tracker, expenses, TaxEstimatorV5, roth_conversion,
+  TaxAssetCalcv4) pick up the topbar + page chrome only; their internal
+  utility-class colours still need the deferred pixel-perfect reskin
+  (handoff steps 2–4).
+
 ## Constraints to preserve
 
 - **Zero build step.** No Vite/Webpack until scope demands it.

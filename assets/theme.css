@@ -1,0 +1,113 @@
+@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&family=Roboto+Mono:wght@400;500&display=swap');
+
+/* =============================================================
+ * Wealth Suite — shared theme layer (design-handoff palette)
+ * -------------------------------------------------------------
+ * Single source of truth for colour + typography across the whole
+ * suite. Ships the design-handoff tokens (--bg / --surface /
+ * --primary green #2E7D32 / Roboto) and REMAPS the legacy
+ * --md-sys-color-* / --status-* names onto them so every page that
+ * already consumes those vars (the injected shell topbar + the
+ * vanilla tools) repaints to the new look with no per-tool edits.
+ *
+ * LOAD ORDER MATTERS: link this AFTER assets/suite.css on every
+ * page. The legacy remaps below share :root's specificity (0,1,0)
+ * with suite.css, so the later-loaded file wins. The remaps point
+ * at the handoff tokens via var(), so they follow light/dark
+ * automatically — only the handoff tokens are redefined for dark.
+ * ============================================================= */
+
+:root {
+  /* ---- design-handoff tokens · LIGHT (default) ---- */
+  --bg:#F1F3F4; --surface:#FFFFFF; --surface-2:#F1F3F4; --track:#E3E6E8;
+  --border:#E1E4E8; --text:#202124; --text-2:#5F6368; --text-3:#80868B;
+  --primary:#2E7D32; --primary-strong:#1B5E20; --primary-weak:#E6F4EA;
+  --on-primary:#FFFFFF; --primary-text:#1E6B2A;
+  --pos:#188038; --pos-weak:rgba(24,128,56,.10);
+  --neg:#D93025; --neg-weak:rgba(217,48,37,.10);
+  --warn:#E37400; --warn-weak:rgba(227,116,0,.10);
+  --cat2:#4285F4; --cat2-weak:rgba(66,133,244,.10);
+  --cat3:#00897B; --cat4:#F9AB00; --cat5:#9AA0A6;
+  --shadow:0 1px 2px rgba(60,64,67,.10),0 1px 3px rgba(60,64,67,.06);
+  --shadow-2:0 1px 3px rgba(60,64,67,.12),0 4px 8px rgba(60,64,67,.08);
+
+  /* ---- legacy MD3 names → handoff palette ---- */
+  --md-sys-color-primary:                   var(--primary);
+  --md-sys-color-on-primary:                var(--on-primary);
+  --md-sys-color-primary-container:         var(--primary-weak);
+  --md-sys-color-on-primary-container:      var(--primary-text);
+
+  --md-sys-color-secondary:                 var(--text-2);
+  --md-sys-color-on-secondary:              var(--on-primary);
+  --md-sys-color-secondary-container:       var(--surface-2);
+  --md-sys-color-on-secondary-container:    var(--text);
+
+  --md-sys-color-tertiary:                  var(--cat2);
+  --md-sys-color-on-tertiary:               #FFFFFF;
+  --md-sys-color-tertiary-container:        var(--cat2-weak);
+  --md-sys-color-on-tertiary-container:     var(--cat2);
+
+  --md-sys-color-error:                     var(--neg);
+  --md-sys-color-on-error:                  #FFFFFF;
+  --md-sys-color-error-container:           var(--neg-weak);
+
+  --md-sys-color-background:                var(--bg);
+  --md-sys-color-on-background:             var(--text);
+  --md-sys-color-surface:                   var(--bg);
+  --md-sys-color-on-surface:                var(--text);
+  --md-sys-color-on-surface-variant:        var(--text-2);
+  --md-sys-color-surface-container-lowest:  var(--surface);
+  --md-sys-color-surface-container-low:     var(--surface);
+  --md-sys-color-surface-container:         var(--surface-2);
+  --md-sys-color-surface-container-high:    var(--surface-2);
+  --md-sys-color-surface-container-highest: var(--track);
+
+  --md-sys-color-outline:                   var(--text-3);
+  --md-sys-color-outline-variant:           var(--border);
+  --md-sys-color-inverse-surface:           var(--text);
+  --md-sys-color-inverse-on-surface:        var(--bg);
+
+  --md-sys-color-success:                   var(--pos);
+  --md-sys-color-success-container:         var(--pos-weak);
+  --md-sys-color-on-success-container:      var(--pos);
+
+  /* ---- semantic status names → handoff palette ---- */
+  --status-positive:           var(--pos);
+  --status-positive-container: var(--pos-weak);
+  --status-positive-on:        var(--pos);
+  --status-warning:            var(--warn);
+  --status-warning-container:  var(--warn-weak);
+  --status-warning-on:         var(--warn);
+  --status-critical:           var(--neg);
+  --status-critical-container: var(--neg-weak);
+  --status-critical-on:        var(--neg);
+  --status-info:               var(--cat2);
+  --status-info-container:     var(--cat2-weak);
+  --status-info-on:            var(--cat2);
+  --status-neutral:            var(--text-3);
+
+  /* ---- elevation → handoff shadows ---- */
+  --md-sys-elevation-1: var(--shadow);
+  --md-sys-elevation-2: var(--shadow-2);
+  --md-sys-elevation-3: var(--shadow-2);
+}
+
+/* ---- design-handoff tokens · DARK ---- */
+[data-theme="dark"] {
+  --bg:#0E1113; --surface:#1B1E20; --surface-2:#26292C; --track:#33373B;
+  --border:rgba(255,255,255,.10); --text:#E8EAED; --text-2:#BDC1C6; --text-3:#9AA0A6;
+  --primary:#7CC47F; --primary-strong:#9CD49E; --primary-weak:rgba(124,196,127,.16);
+  --on-primary:#0A2A0C; --primary-text:#9CD49E;
+  --pos:#81C995; --pos-weak:rgba(129,201,149,.14);
+  --neg:#F28B82; --neg-weak:rgba(242,139,130,.14);
+  --warn:#FDD663; --warn-weak:rgba(253,214,99,.14);
+  --cat2:#8AB4F8; --cat2-weak:rgba(138,180,248,.14);
+  --cat3:#4DB6AC; --cat4:#FDD663; --cat5:#9AA0A6;
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 1px 3px rgba(0,0,0,.3);
+  --shadow-2:0 2px 6px rgba(0,0,0,.5),0 1px 3px rgba(0,0,0,.4);
+}
+
+/* ---- typography: Roboto UI, Roboto Mono for numeric fields ---- */
+html, body {
+  font-family: 'Roboto', -apple-system, 'Helvetica Neue', Arial, sans-serif;
+}
