@@ -103,8 +103,17 @@
     .ws-profile__name { font-size: 12px; font-weight: 500; color: var(--text); line-height: 1.2; }
     .ws-profile__sub { font-size: 10px; color: var(--text-2); line-height: 1.2; }
 
-    /* ---- Scrollable content ---- */
-    .ws-content { flex: 1; overflow-y: auto; padding: 24px 28px 40px; animation: ws-fade .4s ease; }
+    /* ---- Top-bar nav cluster (back / title / new-tab) ---- */
+    .ws-topbar__nav { display: flex; align-items: center; gap: 10px; }
+    .ws-back { display: inline-flex; align-items: center; gap: 6px; padding: 7px 13px; border-radius: 24px; cursor: pointer; color: var(--text-2); font-size: 12.5px; font-weight: 500; border: 1px solid var(--border); background: none; font-family: inherit; }
+    .ws-back:hover { color: var(--text); border-color: var(--primary); }
+    .ws-newtab { display: inline-flex; align-items: center; gap: 5px; padding: 6px 12px; border-radius: 20px; background: var(--surface-2); border: 1px solid var(--border); font-size: 11px; color: var(--text-2); text-decoration: none; }
+    .ws-newtab:hover { color: var(--text); border-color: var(--primary); }
+
+    /* ---- Scrollable content + embedded tool frame ---- */
+    .ws-content { flex: 1; display: flex; flex-direction: column; overflow-y: auto; padding: 24px 28px 40px; animation: ws-fade .4s ease; }
+    .ws-content.is-tool { padding: 0; overflow: hidden; }
+    .ws-frame { flex: 1 1 auto; width: 100%; height: 100%; border: 0; background: var(--surface); display: block; }
     @keyframes ws-fade { from { opacity: 0; } to { opacity: 1; } }
     @keyframes ws-draw { from { stroke-dashoffset: 900; } to { stroke-dashoffset: 0; } }
     @keyframes ws-pulse { 0%,100% { opacity: .4; } 50% { opacity: 1; } }
@@ -314,9 +323,19 @@
       <button class="ws-hamburger" id="ws-hamburger" type="button" title="Toggle sidebar" aria-label="Toggle sidebar">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
       </button>
-      <span class="ws-pagetitle">Dashboard</span>
-      <span class="ws-sep">·</span>
-      <span class="ws-date" id="ws-date">—</span>
+      <div class="ws-topbar__nav">
+        <button class="ws-back" id="ws-back" type="button" hidden title="Back to Dashboard">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+          Dashboard
+        </button>
+        <span class="ws-pagetitle" id="ws-title">Dashboard</span>
+        <span class="ws-sep" id="ws-datesep">·</span>
+        <span class="ws-date" id="ws-date">—</span>
+        <a class="ws-newtab" id="ws-newtab" hidden target="_blank" rel="noopener" title="Open in a new tab">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
+          New tab
+        </a>
+      </div>
       <div class="ws-topbar__spacer"></div>
 
       <button class="ws-themebtn" id="ws-theme" type="button" title="Cycle theme: system → light → dark">
@@ -343,7 +362,8 @@
       </div>
     </header>
 
-    <div class="ws-content">
+    <div class="ws-content" id="ws-content">
+      <div id="ws-dash-view">
       <div class="ws-dash">
 
         <!-- ═══ PAGE HEADER ═══ -->
@@ -634,6 +654,8 @@
         <span>Wealth Suite — runs entirely in your browser. No tracking, no upload.</span>
         <span>Sample figures shown · live data arrives with the Data Hub</span>
       </footer>
+      </div><!-- /#ws-dash-view -->
+      <iframe id="ws-frame" class="ws-frame" title="Tool" hidden></iframe>
     </div>
   </div>
 </div>
@@ -655,6 +677,96 @@
       if (collapsed) root.removeAttribute('data-ws-collapsed'); else root.setAttribute('data-ws-collapsed', '1');
       writeNav({ collapsed: !collapsed });
     });
+
+    // ---- Single-window router: tools open inside the shell iframe so
+    // the sidebar + top bar never reload. Hash-based (#tool.html) for
+    // deep-linking + native back/forward. Cmd/Ctrl-click or the "New
+    // tab" chip still opens a tool standalone. ----
+    var ROUTES = {
+      'net_worth.html': 'Net Worth',
+      'portfolio_tracker.html': 'Portfolio Tracker',
+      'expenses.html': 'Expenses',
+      'retirement_master_plan_2.html': 'Retirement Plan',
+      'TaxEstimatorV5.html': 'Tax Plan (Estimator)',
+      'roth_conversion.html': 'Roth Conversion',
+      'social_security.html': 'Social Security',
+      'TaxAssetCalcv4.html': 'Asset & Cap-Gains',
+      'portfolio_review.html': 'Portfolio Review',
+      'golden_ratio_portfolio_dashboard.html': 'Golden φ Portfolio',
+      'monte_carlo.html': 'Monte Carlo'
+    };
+    var frame = document.getElementById('ws-frame');
+    var dashView = document.getElementById('ws-dash-view');
+    var content = document.getElementById('ws-content');
+    var titleEl = document.getElementById('ws-title');
+    var backEl = document.getElementById('ws-back');
+    var dateSep = document.getElementById('ws-datesep');
+    var newtabEl = document.getElementById('ws-newtab');
+    var navItems = Array.prototype.slice.call(document.querySelectorAll('.ws-navitem[href]'));
+
+    function fileFromHref(href) {
+      if (!href) return '';
+      var clean = href.split('#')[0].split('?')[0].split('/');
+      return clean[clean.length - 1];
+    }
+    function setActive(file) {
+      navItems.forEach(function (a) {
+        var on = file ? (fileFromHref(a.getAttribute('href')) === file)
+                      : (fileFromHref(a.getAttribute('href')) === 'index.html');
+        a.classList.toggle('is-active', on);
+        if (on) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current');
+      });
+    }
+    function showDashboard() {
+      if (frame) { frame.hidden = true; frame.removeAttribute('src'); }
+      if (dashView) dashView.hidden = false;
+      if (content) content.classList.remove('is-tool');
+      if (backEl) backEl.hidden = true;
+      if (newtabEl) newtabEl.hidden = true;
+      if (dateSep) dateSep.hidden = false;
+      var d = document.getElementById('ws-date'); if (d) d.hidden = false;
+      if (titleEl) titleEl.textContent = 'Dashboard';
+      document.title = 'Wealth Suite — Dashboard';
+      setActive(null);
+    }
+    function showTool(file) {
+      var title = ROUTES[file];
+      if (!title) { showDashboard(); return; }
+      if (dashView) dashView.hidden = true;
+      if (content) content.classList.add('is-tool');
+      if (frame) { if (frame.getAttribute('src') !== file) frame.setAttribute('src', file); frame.hidden = false; frame.setAttribute('title', title); }
+      if (backEl) backEl.hidden = false;
+      if (dateSep) dateSep.hidden = true;
+      var d = document.getElementById('ws-date'); if (d) d.hidden = true;
+      if (newtabEl) { newtabEl.hidden = false; newtabEl.setAttribute('href', file); }
+      if (titleEl) titleEl.textContent = title;
+      document.title = 'Wealth Suite — ' + title;
+      setActive(file);
+    }
+    function currentFile() {
+      var h = fileFromHref((location.hash || '').replace(/^#/, ''));
+      return ROUTES[h] ? h : '';
+    }
+    function route() {
+      var f = currentFile();
+      if (f) showTool(f); else showDashboard();
+      if (content) content.scrollTop = 0;
+    }
+    function navigate(file) {
+      var target = (file && ROUTES[file]) ? ('#' + file) : '#';
+      if (location.hash === target) route(); else location.hash = target;
+    }
+    window.addEventListener('hashchange', route);
+    document.body.addEventListener('click', function (e) {
+      if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+      var a = e.target.closest && e.target.closest('a[href]');
+      if (!a || a.target === '_blank') return;
+      var file = fileFromHref(a.getAttribute('href'));
+      if (file === 'index.html') { e.preventDefault(); navigate(''); }
+      else if (ROUTES[file]) { e.preventDefault(); navigate(file); }
+    });
+    if (backEl) backEl.addEventListener('click', function () { navigate(''); });
+    route();
 
     // ---- Theme cycle (system → light → dark), shared preference key ----
     var TKEY = 'wealthSuite.themePreference';
