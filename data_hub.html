@@ -1,0 +1,668 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Data Hub — Wealth Suite</title>
+  <meta name="description" content="Single source of truth for the Wealth Suite: accounts, holdings, other assets, liabilities. Every tool reads from here.">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="assets/suite.css?v=15">
+  <link rel="stylesheet" href="assets/theme.css?v=1">
+  <script>
+    (function () {
+      try {
+        var p = localStorage.getItem('wealthSuite.themePreference');
+        if (!['system','light','dark'].includes(p)) p = 'system';
+        var resolved = p === 'system'
+          ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
+          : p;
+        document.documentElement.setAttribute('data-theme', resolved);
+        document.documentElement.setAttribute('data-theme-pref', p);
+      } catch (e) {}
+    })();
+  </script>
+
+  <style>
+    body.suite-body { background: var(--bg); }
+    .dh-wrap { max-width: 1180px; margin: 0 auto; padding: 28px 32px 56px; display: flex; flex-direction: column; gap: 20px; font-family: 'Roboto', sans-serif; color: var(--text); }
+    .dh-mono { font-family: 'Roboto Mono', monospace; }
+
+    .dh-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+    .dh-head__title { display: flex; align-items: center; gap: 10px; }
+    .dh-logo { width: 34px; height: 34px; background: var(--primary); border-radius: 10px; display: flex; align-items: center; justify-content: center; color: var(--on-primary); }
+    .dh-h1 { font-size: 22px; font-weight: 500; }
+    .dh-sot { padding: 3px 10px; background: var(--primary-weak); border-radius: 20px; font-size: 10px; font-weight: 700; color: var(--primary-text); letter-spacing: .5px; }
+    .dh-sub { font-size: 13px; color: var(--text-2); margin-top: 7px; max-width: 720px; }
+    .dh-headbtns { display: flex; gap: 10px; flex-shrink: 0; }
+    .dh-btn-outline { display: inline-flex; align-items: center; gap: 7px; padding: 9px 16px; background: transparent; border: 1px solid var(--border); border-radius: 24px; color: var(--text-2); font-size: 12.5px; font-weight: 500; cursor: pointer; font-family: inherit; }
+    .dh-btn-outline:hover { border-color: var(--primary); color: var(--text); }
+    .dh-btn-primary { display: inline-flex; align-items: center; gap: 7px; padding: 9px 18px; background: var(--primary); border: none; border-radius: 24px; color: var(--on-primary); font-size: 12.5px; font-weight: 500; cursor: pointer; font-family: inherit; box-shadow: var(--shadow); }
+    .dh-btn-primary:hover { background: var(--primary-strong); }
+
+    .dh-status { font-size: 12px; color: var(--text-2); min-height: 0; }
+    .dh-status.is-on { padding: 8px 14px; background: var(--pos-weak); color: var(--pos); border-radius: 10px; }
+
+    /* health strip */
+    .dh-health { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+    .dh-hcard { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 15px 17px; box-shadow: var(--shadow); }
+    .dh-hcard--warn { background: var(--warn-weak); border-color: var(--warn); box-shadow: none; }
+    .dh-hlabel { font-size: 10.5px; color: var(--text-2); text-transform: uppercase; letter-spacing: .6px; font-weight: 500; margin-bottom: 7px; }
+    .dh-hcard--warn .dh-hlabel { color: var(--warn); font-weight: 700; }
+    .dh-hbig { font-size: 22px; font-weight: 500; letter-spacing: -.5px; }
+    .dh-hbig small { font-size: 12px; color: var(--text-3); font-weight: 400; }
+    .dh-hnote { font-size: 11px; color: var(--text-3); margin-top: 4px; }
+    .dh-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+
+    /* section card */
+    .dh-card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; box-shadow: var(--shadow); padding: 20px 24px; }
+    .dh-sechead { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; flex-wrap: wrap; }
+    .dh-sectitle { display: flex; align-items: center; gap: 9px; }
+    .dh-num { width: 22px; height: 22px; background: var(--primary-weak); border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; color: var(--primary-text); }
+    .dh-secname { font-size: 16px; font-weight: 500; }
+    .dh-feeds { padding: 2px 8px; background: var(--cat2-weak); border-radius: 20px; font-size: 9px; font-weight: 700; color: var(--cat2); }
+    .dh-hint { font-size: 11.5px; color: var(--text-3); }
+    .dh-addbtn { display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; background: var(--primary-weak); border: none; border-radius: 20px; color: var(--primary-text); font-size: 11.5px; font-weight: 500; cursor: pointer; font-family: inherit; }
+    .dh-addbtn:hover { filter: brightness(0.96); }
+
+    /* import */
+    .dh-import { display: grid; grid-template-columns: 320px 1fr; gap: 18px; }
+    .dh-drop { border: 2px dashed var(--border); border-radius: 14px; padding: 26px 18px; display: flex; flex-direction: column; align-items: center; gap: 9px; text-align: center; cursor: pointer; background: var(--surface-2); transition: border-color .15s ease; }
+    .dh-drop:hover, .dh-drop.is-drag { border-color: var(--primary); }
+    .dh-drop__t { font-size: 13px; font-weight: 500; }
+    .dh-drop__s { font-size: 11px; color: var(--text-3); }
+    .dh-paste { padding: 9px; background: transparent; border: 1px solid var(--border); border-radius: 10px; color: var(--text-2); font-size: 12px; font-weight: 500; cursor: pointer; font-family: inherit; }
+    .dh-paste:hover { border-color: var(--primary); color: var(--text); }
+    .dh-textarea { width: 100%; min-height: 92px; border: 1px solid var(--border); border-radius: 10px; padding: 8px 10px; font-family: 'Roboto Mono', monospace; font-size: 12px; background: var(--surface); color: var(--text); resize: vertical; }
+    .dh-preview { border: 1px solid var(--border); border-radius: 14px; overflow: hidden; }
+    .dh-preview__head { padding: 11px 16px; background: var(--surface-2); display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+    .dh-preview__name { font-size: 12px; font-weight: 500; }
+    .dh-ok { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; color: var(--pos); font-weight: 500; }
+    .dh-prow { display: grid; grid-template-columns: 1fr .8fr 1fr 1.4fr 1fr; padding: 9px 16px; border-bottom: 1px solid var(--border); align-items: center; }
+    .dh-prow--head { padding: 8px 16px; background: var(--surface); }
+    .dh-ph { font-size: 10px; color: var(--text-2); font-weight: 700; text-transform: uppercase; letter-spacing: .5px; }
+    .dh-cell { font-size: 12px; color: var(--text-2); }
+    .dh-cell--r { text-align: right; }
+    .dh-cell--tk { font-size: 12.5px; font-weight: 500; color: var(--text); font-family: 'Roboto Mono', monospace; }
+    .dh-st-new { color: var(--pos); font-weight: 500; }
+    .dh-st-upd { color: var(--cat2); font-weight: 500; }
+    .dh-st-warn { color: var(--warn); font-weight: 500; }
+    .dh-preview__foot { padding: 12px 16px; display: flex; align-items: center; justify-content: space-between; gap: 10px; background: var(--surface-2); flex-wrap: wrap; }
+    .dh-empty { padding: 26px 16px; text-align: center; color: var(--text-3); font-size: 12.5px; }
+
+    /* generic table */
+    .dh-thead, .dh-trow { display: grid; align-items: center; }
+    .dh-thead { padding: 8px 12px; border-bottom: 1px solid var(--border); }
+    .dh-trow { padding: 11px 12px; border-bottom: 1px solid var(--border); }
+    .dh-th { font-size: 10px; color: var(--text-2); font-weight: 700; text-transform: uppercase; letter-spacing: .5px; }
+    .dh-td { font-size: 13px; color: var(--text); }
+    .dh-td--2 { font-size: 12px; color: var(--text-2); }
+    .dh-td--r { text-align: right; }
+    .dh-accounts .dh-thead, .dh-accounts .dh-trow { grid-template-columns: 1.6fr 1fr .8fr 1.1fr .8fr 1fr 32px; }
+    .dh-del { width: 24px; height: 24px; border: 1px solid var(--border); background: transparent; border-radius: 6px; color: var(--text-3); cursor: pointer; font-size: 13px; line-height: 1; display: inline-flex; align-items: center; justify-content: center; }
+    .dh-del:hover { color: var(--neg); border-color: var(--neg); }
+
+    /* add form */
+    .dh-form { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--border); }
+    .dh-form[hidden] { display: none; }
+    .dh-form input, .dh-form select { font-size: 12px; color: var(--text); background: var(--surface-2); border: 1px solid var(--border); border-radius: 8px; padding: 7px 9px; font-family: inherit; }
+    .dh-form input:focus, .dh-form select:focus { outline: none; border-color: var(--primary); }
+
+    /* asset/liability rows */
+    .dh-2col { display: grid; grid-template-columns: 1.4fr 1fr; gap: 18px; }
+    .dh-item { display: flex; align-items: center; gap: 12px; padding: 12px 14px; background: var(--surface-2); border-radius: 12px; }
+    .dh-item--neg { background: var(--neg-weak); }
+    .dh-item__body { flex: 1; min-width: 0; }
+    .dh-item__name { font-size: 13px; font-weight: 500; }
+    .dh-item__meta { font-size: 11px; color: var(--text-3); }
+    .dh-item__val { font-size: 13px; font-weight: 500; font-family: 'Roboto Mono', monospace; }
+    .dh-item__val--neg { color: var(--neg); }
+    .dh-nettotal { margin-top: 6px; padding: 12px 14px; border: 1px solid var(--border); border-radius: 12px; display: flex; justify-content: space-between; align-items: center; }
+    .dh-list { display: flex; flex-direction: column; gap: 9px; }
+
+    /* expense import + sync */
+    .dh-4col { display: grid; grid-template-columns: 1fr 1.4fr; gap: 18px; }
+    .dh-expdrop { display: block; border: 2px dashed var(--border); border-radius: 12px; padding: 18px; text-align: center; background: var(--surface-2); cursor: pointer; text-decoration: none; }
+    .dh-expdrop.is-stale { border-color: var(--warn); background: var(--warn-weak); }
+    .dh-syncrow { display: grid; grid-template-columns: 1.3fr 1.6fr 1fr; align-items: center; padding: 9px 12px; background: var(--surface-2); border-radius: 10px; }
+    .dh-syncname { font-size: 12.5px; font-weight: 500; }
+    .dh-syncwhat { font-size: 11.5px; color: var(--text-2); }
+    .dh-syncstatus { font-size: 11px; font-weight: 500; text-align: right; }
+
+    @media (max-width: 900px) {
+      .dh-health { grid-template-columns: repeat(2, 1fr); }
+      .dh-import, .dh-2col, .dh-4col { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body class="suite-body">
+
+<div class="dh-wrap">
+
+  <!-- Header -->
+  <div class="dh-head">
+    <div>
+      <div class="dh-head__title">
+        <div class="dh-logo"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><ellipse cx="12" cy="5" rx="9" ry="3"></ellipse><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"></path><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"></path></svg></div>
+        <span class="dh-h1">Data Hub</span>
+        <span class="dh-sot">SINGLE SOURCE OF TRUTH</span>
+      </div>
+      <div class="dh-sub">All data entry happens here. Every tool — Portfolio Tracker, Net Worth, Expenses, Retirement Plan — reads from this hub.</div>
+    </div>
+    <div class="dh-headbtns">
+      <button class="dh-btn-outline" id="dh-export" type="button">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"></path></svg>
+        Export Backup
+      </button>
+      <button class="dh-btn-primary" id="dh-refresh" type="button">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M3 12a9 9 0 009 9 9.75 9.75 0 006.74-2.74L21 16"></path><path d="M21 12a9 9 0 00-9-9 9.75 9.75 0 00-6.74 2.74L3 8"></path><path d="M21 4v4h-4M3 20v-4h4"></path></svg>
+        Refresh Prices
+      </button>
+    </div>
+  </div>
+
+  <div class="dh-status" id="dh-status" hidden></div>
+
+  <!-- Data health strip -->
+  <div class="dh-health" id="dh-health"><!-- rendered --></div>
+
+  <!-- 1 · Stock import -->
+  <div class="dh-card">
+    <div class="dh-sechead">
+      <div class="dh-sectitle">
+        <span class="dh-num">1</span>
+        <span class="dh-secname">Import Stock Assets</span>
+        <span class="dh-feeds">FEEDS PORTFOLIO TRACKER</span>
+      </div>
+      <span class="dh-hint" id="dh-lastimport">No imports yet</span>
+    </div>
+    <div class="dh-import">
+      <div style="display:flex; flex-direction:column; gap:10px;">
+        <div class="dh-drop" id="dh-drop">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="var(--text-3)" stroke-width="1.6" stroke-linecap="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12"></path></svg>
+          <div class="dh-drop__t">Drop CSV here</div>
+          <div class="dh-drop__s">or click to browse · .csv</div>
+        </div>
+        <input type="file" id="dh-file" accept=".csv,text/csv" hidden>
+        <button class="dh-paste" id="dh-paste-toggle" type="button">Paste rows instead</button>
+        <textarea class="dh-textarea" id="dh-paste-area" hidden placeholder="Ticker,Shares,Cost Basis,Account
+VTI,120,198400,Fidelity Brokerage
+AAPL,50,41900,Schwab 401(k)"></textarea>
+        <div class="dh-hint" style="line-height:1.5;">Accepted columns: Ticker, Shares, Cost Basis, Account, Date. Fidelity / Schwab / Vanguard headers auto-map; extra columns are ignored.</div>
+      </div>
+      <div class="dh-preview" id="dh-preview">
+        <div class="dh-empty">Drop or paste a CSV to preview holdings before committing.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2 · Accounts registry -->
+  <div class="dh-card dh-accounts">
+    <div class="dh-sechead">
+      <div class="dh-sectitle">
+        <span class="dh-num">2</span>
+        <span class="dh-secname">Accounts Registry</span>
+        <span class="dh-hint">— define once, referenced everywhere</span>
+      </div>
+      <button class="dh-addbtn" id="dh-acct-add" type="button">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+        Add Account
+      </button>
+    </div>
+    <div class="dh-thead">
+      <span class="dh-th">Account</span><span class="dh-th">Type</span><span class="dh-th">Owner</span>
+      <span class="dh-th">Tax Treatment</span><span class="dh-th dh-td--r">Holdings</span><span class="dh-th dh-td--r">Value</span><span></span>
+    </div>
+    <div id="dh-acct-rows"></div>
+    <form class="dh-form" id="dh-acct-form" hidden autocomplete="off">
+      <input name="name" placeholder="Account name" style="min-width:180px;" required>
+      <select name="type"><option>Taxable</option><option>Roth</option><option>Traditional</option><option>HSA</option><option>Cash</option><option>Other</option></select>
+      <input name="owner" placeholder="Owner" style="width:90px;">
+      <input name="taxTreatment" placeholder="Tax treatment" style="width:130px;">
+      <button class="dh-btn-primary" type="submit" style="padding:7px 14px;">Add</button>
+      <button class="dh-btn-outline" type="button" data-cancel style="padding:7px 14px;">Cancel</button>
+    </form>
+    <div class="dh-hint" style="margin-top:10px;">Account type &amp; tax treatment drive the Tax Plan and Roth Conversion tools automatically.</div>
+  </div>
+
+  <!-- 3 · Other assets + liabilities -->
+  <div class="dh-2col">
+    <div class="dh-card">
+      <div class="dh-sechead">
+        <div class="dh-sectitle">
+          <span class="dh-num">3</span>
+          <span class="dh-secname">Other Assets</span>
+          <span class="dh-feeds">FEEDS NET WORTH</span>
+        </div>
+        <button class="dh-addbtn" id="dh-asset-add" type="button">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+          Add Asset
+        </button>
+      </div>
+      <div class="dh-list" id="dh-asset-rows"></div>
+      <form class="dh-form" id="dh-asset-form" hidden autocomplete="off">
+        <input name="name" placeholder="Asset name" style="min-width:150px;" required>
+        <select name="category"><option value="realEstate">Real estate</option><option value="cash">Cash</option><option value="vehicle">Vehicle</option><option value="other">Other</option></select>
+        <input name="value" placeholder="Value $" inputmode="numeric" style="width:110px;" required>
+        <button class="dh-btn-primary" type="submit" style="padding:7px 14px;">Add</button>
+        <button class="dh-btn-outline" type="button" data-cancel style="padding:7px 14px;">Cancel</button>
+      </form>
+    </div>
+    <div class="dh-card">
+      <div class="dh-sechead">
+        <span class="dh-secname">Liabilities</span>
+        <button class="dh-btn-outline" id="dh-liab-add" type="button" style="padding:7px 14px;">Add</button>
+      </div>
+      <div class="dh-list" id="dh-liab-rows"></div>
+      <form class="dh-form" id="dh-liab-form" hidden autocomplete="off">
+        <input name="name" placeholder="e.g. Mortgage" style="min-width:140px;" required>
+        <input name="rate" placeholder="Rate %" style="width:74px;">
+        <input name="balance" placeholder="Balance $" inputmode="numeric" style="width:110px;" required>
+        <button class="dh-btn-primary" type="submit" style="padding:7px 14px;">Add</button>
+        <button class="dh-btn-outline" type="button" data-cancel style="padding:7px 14px;">Cancel</button>
+      </form>
+      <div class="dh-nettotal" id="dh-net"><span class="dh-td--2">Net of liabilities</span><span class="dh-mono" id="dh-net-val" style="font-weight:500;">$0</span></div>
+    </div>
+  </div>
+
+  <!-- 4 · Expense import + who reads what -->
+  <div class="dh-4col">
+    <div class="dh-card">
+      <div class="dh-sectitle" style="margin-bottom:6px;">
+        <span class="dh-num">4</span>
+        <span class="dh-secname">Expense Import</span>
+        <span class="dh-feeds">FEEDS EXPENSES</span>
+      </div>
+      <div style="font-size:12px; color:var(--text-2); margin-bottom:14px;">Bank / credit-card CSV, auto-categorized. Imports run in the Expense Tracker.</div>
+      <a class="dh-expdrop" id="dh-expdrop" href="expenses.html#transactions">
+        <div id="dh-exp-note" style="font-size:12.5px; font-weight:500;">Open the Expense Tracker to import</div>
+        <div style="font-size:11px; color:var(--text-2); margin-top:4px;">Chase · Amex · Citi statement CSVs</div>
+      </a>
+      <div class="dh-hint" id="dh-exp-recent" style="margin-top:12px; line-height:1.6;"></div>
+    </div>
+    <div class="dh-card">
+      <div class="dh-sectitle" style="margin-bottom:14px;">
+        <span class="dh-num">5</span>
+        <span class="dh-secname">Who Reads What</span>
+        <span class="dh-hint">— sync status per tool</span>
+      </div>
+      <div class="dh-list" id="dh-sync"></div>
+    </div>
+  </div>
+
+</div>
+
+<script src="assets/suite.js?v=12" defer></script>
+<script src="assets/suite-state.js?v=8" defer></script>
+<script>
+(function () {
+  'use strict';
+  function init() {
+    var store = window.WealthSuite && window.WealthSuite.store;
+    if (!store) { setTimeout(init, 50); return; }
+
+    var EDIT = { editedBy: 'datahub' };
+    var $ = function (id) { return document.getElementById(id); };
+    function uid() { return 'id-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 7); }
+    function num(v) { var n = parseFloat(String(v == null ? '' : v).replace(/[^0-9.\-]/g, '')); return isFinite(n) ? n : 0; }
+    function fmtM(n) {
+      var a = Math.abs(n);
+      if (a >= 1e6) return '$' + (n / 1e6).toFixed(2) + 'M';
+      if (a >= 1e3) return '$' + Math.round(n / 1e3) + 'K';
+      return '$' + Math.round(n);
+    }
+    function fmtFull(n) { return '$' + Math.round(n).toLocaleString('en-US'); }
+    function daysSince(ts) { if (!ts) return null; return Math.floor((Date.now() - ts) / 86400000); }
+    function fmtDate(ts) { return ts ? new Date(ts).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '—'; }
+    function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]; }); }
+
+    // ---------- data accessors ----------
+    function accounts() { return store.get('accounts') || []; }
+    function holdings() { return store.get('portfolio.holdings') || []; }
+    function otherAssets() { return store.get('otherAssets') || []; }
+    function liabilities() { return (store.get('liabilities.items')) || []; }
+
+    function acctValue(name) {
+      return holdings().filter(function (h) { return h.account === name; })
+        .reduce(function (s, h) { return s + num(h.costBasis); }, 0);
+    }
+    function acctCount(name) { return holdings().filter(function (h) { return h.account === name; }).length; }
+
+    // Recompute portfolio.totalValue from holdings (cost basis until a
+    // price refresh fills currentPrice) and mirror otherAssets totals into
+    // the scalar `assets` block the current net_worth tool still reads.
+    function recompute() {
+      var hs = holdings();
+      var total = hs.reduce(function (s, h) {
+        var v = (num(h.currentPrice) > 0) ? num(h.currentPrice) * num(h.shares) : num(h.costBasis);
+        return s + v;
+      }, 0);
+      store.set('portfolio.totalValue', total || null, EDIT);
+      var oa = otherAssets();
+      var byCat = { realEstate: 0, vehicles: 0, other: 0 };
+      oa.forEach(function (a) {
+        if (a.category === 'realEstate') byCat.realEstate += num(a.value);
+        else if (a.category === 'vehicle' || a.category === 'vehicles') byCat.vehicles += num(a.value);
+        else byCat.other += num(a.value);
+      });
+      store.set('assets', {
+        realEstate: byCat.realEstate || null,
+        vehicles: byCat.vehicles || null,
+        other: byCat.other || null,
+      }, EDIT);
+    }
+
+    // ---------- health strip ----------
+    function renderHealth() {
+      var hs = holdings();
+      var accts = {};
+      hs.forEach(function (h) { if (h.account) accts[h.account] = 1; });
+      var lastPrice = hs.reduce(function (m, h) { return Math.max(m, h.priceUpdatedAt || 0); }, 0);
+      var priceAge = daysSince(lastPrice);
+      var oa = otherAssets(), liab = liabilities();
+      var exp = store.get('expenses') || {};
+      var hist = (exp.importHistory || []);
+      var lastExp = hist.reduce(function (m, r) { return Math.max(m, (r && (r.at || r.date)) || 0); }, 0);
+      var expAge = daysSince(lastExp);
+      var priceHtml = lastPrice
+        ? '<div style="display:flex;align-items:center;gap:7px;"><span class="dh-dot" style="background:var(--pos);"></span><span style="font-size:15px;font-weight:500;">Live</span></div><div class="dh-hnote">updated ' + (priceAge <= 0 ? 'today' : priceAge + 'd ago') + '</div>'
+        : '<div style="display:flex;align-items:center;gap:7px;"><span class="dh-dot" style="background:var(--text-3);"></span><span style="font-size:15px;font-weight:500;">No prices</span></div><div class="dh-hnote">refresh in Portfolio Tracker</div>';
+      var staleHtml = (expAge != null && expAge > 30)
+        ? '<div class="dh-hcard dh-hcard--warn"><div class="dh-hlabel">Stale Data</div><div class="dh-hbig" style="font-size:15px;">Expenses feed</div><div class="dh-hnote" style="color:var(--text-2);">last import ' + expAge + ' days ago</div></div>'
+        : '<div class="dh-hcard"><div class="dh-hlabel">Data Health</div><div style="display:flex;align-items:center;gap:7px;"><span class="dh-dot" style="background:var(--pos);"></span><span style="font-size:15px;font-weight:500;">All fresh</span></div><div class="dh-hnote">no feeds &gt; 30 days old</div></div>';
+      $('dh-health').innerHTML =
+        '<div class="dh-hcard"><div class="dh-hlabel">Holdings</div><div class="dh-hbig">' + hs.length + ' <small>rows</small></div><div class="dh-hnote">across ' + Object.keys(accts).length + ' account' + (Object.keys(accts).length === 1 ? '' : 's') + '</div></div>' +
+        '<div class="dh-hcard"><div class="dh-hlabel">Prices</div>' + priceHtml + '</div>' +
+        '<div class="dh-hcard"><div class="dh-hlabel">Other Assets</div><div class="dh-hbig">' + oa.length + ' <small>items</small></div><div class="dh-hnote">' + liab.length + ' liabilit' + (liab.length === 1 ? 'y' : 'ies') + '</div></div>' +
+        staleHtml;
+    }
+
+    // ---------- accounts ----------
+    function renderAccounts() {
+      var rows = accounts();
+      var host = $('dh-acct-rows');
+      if (!rows.length) { host.innerHTML = '<div class="dh-empty">No accounts yet — add one, or commit a CSV that names accounts.</div>'; return; }
+      host.innerHTML = rows.map(function (a) {
+        return '<div class="dh-trow">' +
+          '<span class="dh-td" style="font-weight:500;">' + esc(a.name) + '</span>' +
+          '<span class="dh-td--2">' + esc(a.type || '—') + '</span>' +
+          '<span class="dh-td--2">' + esc(a.owner || '—') + '</span>' +
+          '<span class="dh-td--2">' + esc(a.taxTreatment || '—') + '</span>' +
+          '<span class="dh-td--2 dh-td--r dh-mono">' + acctCount(a.name) + '</span>' +
+          '<span class="dh-td dh-td--r dh-mono" style="font-weight:500;">' + fmtM(acctValue(a.name)) + '</span>' +
+          '<span class="dh-td--r"><button class="dh-del" data-del-acct="' + esc(a.id) + '" title="Remove">×</button></span>' +
+          '</div>';
+      }).join('');
+    }
+
+    // ---------- other assets ----------
+    var ASSET_ICON = {
+      realEstate: '<path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"></path>',
+      cash: '<rect x="2" y="5" width="20" height="14" rx="2"></rect><line x1="2" y1="10" x2="22" y2="10"></line>',
+      vehicle: '<path d="M5 17h14l-1.5-4.5a2 2 0 00-1.9-1.5H8.4a2 2 0 00-1.9 1.5z"></path><circle cx="7.5" cy="17.5" r="1.5"></circle><circle cx="16.5" cy="17.5" r="1.5"></circle>',
+      other: '<circle cx="12" cy="12" r="9"></circle>'
+    };
+    var ASSET_LABEL = { realEstate: 'Real estate', cash: 'Cash', vehicle: 'Vehicle', other: 'Other' };
+    function renderAssets() {
+      var rows = otherAssets();
+      var host = $('dh-asset-rows');
+      if (!rows.length) { host.innerHTML = '<div class="dh-empty">No other assets yet.</div>'; return; }
+      host.innerHTML = rows.map(function (a) {
+        return '<div class="dh-item">' +
+          '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-2)" stroke-width="1.8" stroke-linecap="round">' + (ASSET_ICON[a.category] || ASSET_ICON.other) + '</svg>' +
+          '<div class="dh-item__body"><div class="dh-item__name">' + esc(a.name) + '</div>' +
+          '<div class="dh-item__meta">' + esc(ASSET_LABEL[a.category] || 'Other') + ' · manual · updated ' + fmtDate(a.updatedAt) + '</div></div>' +
+          '<span class="dh-item__val">' + fmtFull(num(a.value)) + '</span>' +
+          '<button class="dh-del" data-del-asset="' + esc(a.id) + '" title="Remove">×</button>' +
+          '</div>';
+      }).join('');
+    }
+
+    // ---------- liabilities ----------
+    function renderLiabilities() {
+      var rows = liabilities();
+      var host = $('dh-liab-rows');
+      host.innerHTML = rows.length ? rows.map(function (l) {
+        var meta = [l.rate ? (l.rate + '%') : null, l.remainingTerm ? (l.remainingTerm + ' yrs remaining') : null].filter(Boolean).join(' · ');
+        return '<div class="dh-item dh-item--neg">' +
+          '<div class="dh-item__body"><div class="dh-item__name">' + esc(l.name) + '</div>' +
+          (meta ? '<div class="dh-item__meta">' + esc(meta) + '</div>' : '') + '</div>' +
+          '<span class="dh-item__val dh-item__val--neg">−' + fmtFull(num(l.balance)) + '</span>' +
+          '<button class="dh-del" data-del-liab="' + esc(l.id) + '" title="Remove">×</button>' +
+          '</div>';
+      }).join('') : '<div class="dh-empty">No liabilities yet.</div>';
+
+      var assetTotal = otherAssets().reduce(function (s, a) { return s + num(a.value); }, 0)
+        + holdings().reduce(function (s, h) { return s + (num(h.currentPrice) > 0 ? num(h.currentPrice) * num(h.shares) : num(h.costBasis)); }, 0);
+      var liabTotal = rows.reduce(function (s, l) { return s + num(l.balance); }, 0);
+      $('dh-net-val').textContent = fmtFull(assetTotal - liabTotal);
+    }
+
+    // ---------- expense import + sync ----------
+    function renderExpenses() {
+      var exp = store.get('expenses') || {};
+      var hist = exp.importHistory || [];
+      var lastExp = hist.reduce(function (m, r) { return Math.max(m, (r && (r.at || r.date)) || 0); }, 0);
+      var age = daysSince(lastExp);
+      var drop = $('dh-expdrop'), note = $('dh-exp-note');
+      if (age != null && age > 30) { drop.classList.add('is-stale'); note.textContent = '⚠ ' + age + ' days since last import'; note.style.color = 'var(--warn)'; }
+      else if (age != null) { note.textContent = 'Last import ' + (age <= 0 ? 'today' : age + 'd ago') + ' — open to add more'; }
+      var recent = hist.slice(-2).map(function (r) { return (r.name || r.file || 'import') + (r.count ? ' (' + r.count + ' rows)' : ''); });
+      $('dh-exp-recent').textContent = recent.length ? 'Recent: ' + recent.join(' · ') : 'No imports recorded yet.';
+    }
+
+    function renderSync() {
+      var meta = store.get('meta') || {};
+      var lastAge = daysSince(meta.lastUpdated);
+      var exp = store.get('expenses') || {};
+      var hist = exp.importHistory || [];
+      var expAge = daysSince(hist.reduce(function (m, r) { return Math.max(m, (r && (r.at || r.date)) || 0); }, 0));
+      function dot(stale, label) {
+        var col = stale ? 'var(--warn)' : 'var(--pos)';
+        return '<span class="dh-syncstatus" style="color:' + col + ';">● ' + label + '</span>';
+      }
+      function fresh(age) { return age == null ? 'Not yet' : (age <= 0 ? 'Synced today' : (age > 30 ? 'Stale ' + age + 'd' : 'Synced ' + age + 'd')); }
+      var rows = [
+        ['Portfolio Tracker', 'Holdings + accounts + prices', holdings().length === 0, fresh(lastAge)],
+        ['Net Worth', 'All assets + liabilities', false, fresh(lastAge)],
+        ['Expenses', 'Transaction imports', (expAge != null && expAge > 30), fresh(expAge)],
+        ['Retirement + Tax + Roth', 'Accounts, tax treatment, balances', accounts().length === 0, fresh(lastAge)]
+      ];
+      $('dh-sync').innerHTML = rows.map(function (r) {
+        return '<div class="dh-syncrow"><span class="dh-syncname">' + r[0] + '</span><span class="dh-syncwhat">' + r[1] + '</span>' + dot(r[2], r[3]) + '</div>';
+      }).join('');
+    }
+
+    function renderAll() {
+      renderHealth(); renderAccounts(); renderAssets(); renderLiabilities(); renderExpenses(); renderSync();
+    }
+
+    // ---------- CSV import ----------
+    function splitLine(line) {
+      var out = [], cur = '', q = false;
+      for (var i = 0; i < line.length; i++) {
+        var c = line[i];
+        if (q) { if (c === '"') { if (line[i + 1] === '"') { cur += '"'; i++; } else q = false; } else cur += c; }
+        else { if (c === '"') q = true; else if (c === ',') { out.push(cur); cur = ''; } else cur += c; }
+      }
+      out.push(cur);
+      return out.map(function (s) { return s.trim(); });
+    }
+    function findCol(headers, names) {
+      var lower = headers.map(function (h) { return h.toLowerCase(); });
+      for (var n = 0; n < names.length; n++) { var i = lower.indexOf(names[n]); if (i >= 0) return i; }
+      for (var j = 0; j < lower.length; j++) { for (var m = 0; m < names.length; m++) { if (lower[j].indexOf(names[m]) >= 0) return j; } }
+      return -1;
+    }
+    var parsed = [];
+    function parseCSV(text) {
+      var lines = text.replace(/\r\n?/g, '\n').split('\n').filter(function (l) { return l.trim() !== ''; });
+      if (lines.length < 2) return [];
+      var headers = splitLine(lines[0]);
+      var tk = findCol(headers, ['ticker', 'symbol']);
+      var sh = findCol(headers, ['shares', 'quantity', 'qty']);
+      var cb = findCol(headers, ['cost basis total', 'average cost basis', 'cost basis', 'cost_basis', 'cost']);
+      var ac = findCol(headers, ['account']);
+      // Fallback for 3-col generic (ticker,shares,cost_basis) with odd headers
+      if (tk < 0 && headers.length >= 3) { tk = 0; sh = 1; cb = 2; }
+      var existing = holdings();
+      var acctNames = accounts().map(function (a) { return a.name; });
+      return lines.slice(1).map(function (line) {
+        var c = splitLine(line);
+        var ticker = (tk >= 0 ? c[tk] : '').toUpperCase();
+        if (!ticker) return null;
+        var account = ac >= 0 ? c[ac] : '';
+        var already = existing.some(function (h) { return h.ticker === ticker && (!account || h.account === account); });
+        var status = already ? 'update' : 'new';
+        if (account && acctNames.length && acctNames.indexOf(account) < 0) status = 'warn';
+        return { ticker: ticker, shares: num(c[sh]), costBasis: num(c[cb]), account: account, status: status };
+      }).filter(Boolean);
+    }
+    function renderPreview() {
+      var host = $('dh-preview');
+      if (!parsed.length) { host.innerHTML = '<div class="dh-empty">Drop or paste a CSV to preview holdings before committing.</div>'; return; }
+      var shown = parsed.slice(0, 6);
+      var counts = parsed.reduce(function (a, r) { a[r.status]++; return a; }, { new: 0, update: 0, warn: 0 });
+      var stLabel = { new: '✓ New', update: '↻ Update', warn: '⚠ Check acct' };
+      var stClass = { new: 'dh-st-new', update: 'dh-st-upd', warn: 'dh-st-warn' };
+      host.innerHTML =
+        '<div class="dh-preview__head"><span class="dh-preview__name">Preview · ' + parsed.length + ' rows</span>' +
+        '<span class="dh-ok"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"></polyline></svg>Columns mapped automatically</span></div>' +
+        '<div class="dh-prow dh-prow--head"><span class="dh-ph">Ticker</span><span class="dh-ph dh-cell--r">Shares</span><span class="dh-ph dh-cell--r">Cost Basis</span><span class="dh-ph" style="padding-left:12px;">Account</span><span class="dh-ph dh-cell--r">Status</span></div>' +
+        shown.map(function (r) {
+          return '<div class="dh-prow"><span class="dh-cell--tk">' + esc(r.ticker) + '</span>' +
+            '<span class="dh-cell dh-cell--r dh-mono">' + (r.shares ? r.shares.toLocaleString('en-US') : '—') + '</span>' +
+            '<span class="dh-cell dh-cell--r dh-mono">' + (r.costBasis ? fmtFull(r.costBasis) : '—') + '</span>' +
+            '<span class="dh-cell" style="padding-left:12px;">' + (esc(r.account) || '—') + '</span>' +
+            '<span class="dh-cell--r ' + stClass[r.status] + '">' + stLabel[r.status] + '</span></div>';
+        }).join('') +
+        '<div class="dh-preview__foot"><span class="dh-cell">' + (parsed.length > 6 ? (parsed.length - 6) + ' more rows · ' : '') + counts.new + ' new, ' + counts.update + ' updates' + (counts.warn ? ', ' + counts.warn + ' need review' : '') + '</span>' +
+        '<button class="dh-btn-primary" id="dh-commit" type="button" style="padding:7px 16px;">Commit ' + parsed.length + ' rows</button></div>';
+      $('dh-commit').addEventListener('click', commit);
+    }
+    function commit() {
+      if (!parsed.length) return;
+      var hs = holdings();
+      parsed.forEach(function (r) {
+        var idx = hs.findIndex(function (h) { return h.ticker === r.ticker && (h.account || '') === (r.account || ''); });
+        if (idx >= 0) { hs[idx].shares = r.shares; hs[idx].costBasis = r.costBasis; }
+        else hs.push({ ticker: r.ticker, name: r.ticker, shares: r.shares, costBasis: r.costBasis, account: r.account, assetClass: 'equity', currentPrice: null, priceUpdatedAt: null });
+      });
+      store.set('portfolio.holdings', hs, EDIT);
+      // record import + auto-register any unknown accounts referenced
+      var accts = accounts();
+      parsed.forEach(function (r) {
+        if (r.account && !accts.some(function (a) { return a.name === r.account; })) {
+          accts.push({ id: uid(), name: r.account, type: 'Taxable', owner: '', taxTreatment: '' });
+        }
+      });
+      store.set('accounts', accts, EDIT);
+      recompute();
+      var n = parsed.length;
+      parsed = [];
+      $('dh-paste-area').value = '';
+      renderPreview();
+      renderAll();
+      flash('Committed ' + n + ' holding' + (n === 1 ? '' : 's') + ' to the store.');
+    }
+
+    function ingestText(text) { parsed = parseCSV(text); renderPreview(); if (!parsed.length) flash('No rows found — expected a header row with Ticker / Shares / Cost Basis.'); }
+
+    // ---------- status flash ----------
+    var flashTimer = null;
+    function flash(msg) {
+      var el = $('dh-status');
+      el.textContent = msg; el.hidden = false; el.classList.add('is-on');
+      clearTimeout(flashTimer);
+      flashTimer = setTimeout(function () { el.hidden = true; el.classList.remove('is-on'); }, 4000);
+    }
+
+    // ---------- wire up ----------
+    // Export backup
+    $('dh-export').addEventListener('click', function () {
+      var blob = new Blob([JSON.stringify(store.export(), null, 2)], { type: 'application/json' });
+      var a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'wealth-suite-backup-' + new Date().toISOString().slice(0, 10) + '.json';
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(function () { URL.revokeObjectURL(a.href); }, 1000);
+      flash('Backup downloaded.');
+    });
+    // Refresh prices (v1 stub — live quotes live in the Portfolio Tracker)
+    $('dh-refresh').addEventListener('click', function () {
+      flash('Live price refresh runs in the Portfolio Tracker for now — open it to fetch quotes.');
+    });
+
+    // CSV file + drag/drop + paste
+    var drop = $('dh-drop'), fileIn = $('dh-file');
+    drop.addEventListener('click', function () { fileIn.click(); });
+    fileIn.addEventListener('change', function () { if (fileIn.files[0]) fileIn.files[0].text().then(ingestText); });
+    ['dragenter', 'dragover'].forEach(function (ev) { drop.addEventListener(ev, function (e) { e.preventDefault(); drop.classList.add('is-drag'); }); });
+    ['dragleave', 'drop'].forEach(function (ev) { drop.addEventListener(ev, function (e) { e.preventDefault(); drop.classList.remove('is-drag'); }); });
+    drop.addEventListener('drop', function (e) { var f = e.dataTransfer && e.dataTransfer.files[0]; if (f) f.text().then(ingestText); });
+    var pasteArea = $('dh-paste-area');
+    $('dh-paste-toggle').addEventListener('click', function () {
+      pasteArea.hidden = !pasteArea.hidden;
+      if (!pasteArea.hidden) pasteArea.focus();
+    });
+    pasteArea.addEventListener('input', function () { if (pasteArea.value.trim()) ingestText(pasteArea.value); });
+
+    // add-form toggles
+    function bindForm(addBtnId, formId, onSubmit) {
+      var form = $(formId), btn = $(addBtnId);
+      btn.addEventListener('click', function () { form.hidden = !form.hidden; if (!form.hidden) form.querySelector('input').focus(); });
+      form.querySelector('[data-cancel]').addEventListener('click', function () { form.hidden = true; form.reset(); });
+      form.addEventListener('submit', function (e) {
+        e.preventDefault();
+        onSubmit(new FormData(form));
+        form.reset(); form.hidden = true;
+      });
+    }
+    bindForm('dh-acct-add', 'dh-acct-form', function (fd) {
+      var a = accounts();
+      a.push({ id: uid(), name: fd.get('name').trim(), type: fd.get('type'), owner: (fd.get('owner') || '').trim(), taxTreatment: (fd.get('taxTreatment') || '').trim() });
+      store.set('accounts', a, EDIT); renderAll(); flash('Account added.');
+    });
+    bindForm('dh-asset-add', 'dh-asset-form', function (fd) {
+      var a = otherAssets();
+      a.push({ id: uid(), name: fd.get('name').trim(), category: fd.get('category'), value: num(fd.get('value')), updatedAt: Date.now() });
+      store.set('otherAssets', a, EDIT); recompute(); renderAll(); flash('Asset added.');
+    });
+    bindForm('dh-liab-add', 'dh-liab-form', function (fd) {
+      var items = liabilities();
+      items.push({ id: uid(), name: fd.get('name').trim(), rate: num(fd.get('rate')) || null, balance: num(fd.get('balance')), remainingTerm: null });
+      store.set('liabilities.items', items, EDIT);
+      store.set('liabilities.total', items.reduce(function (s, l) { return s + num(l.balance); }, 0), EDIT);
+      renderAll(); flash('Liability added.');
+    });
+
+    // delete (delegated)
+    document.body.addEventListener('click', function (e) {
+      var t = e.target.closest && e.target.closest('button[data-del-acct],button[data-del-asset],button[data-del-liab]');
+      if (!t) return;
+      if (t.hasAttribute('data-del-acct')) {
+        store.set('accounts', accounts().filter(function (a) { return a.id !== t.getAttribute('data-del-acct'); }), EDIT);
+      } else if (t.hasAttribute('data-del-asset')) {
+        store.set('otherAssets', otherAssets().filter(function (a) { return a.id !== t.getAttribute('data-del-asset'); }), EDIT); recompute();
+      } else if (t.hasAttribute('data-del-liab')) {
+        var items = liabilities().filter(function (l) { return l.id !== t.getAttribute('data-del-liab'); });
+        store.set('liabilities.items', items, EDIT);
+        store.set('liabilities.total', items.reduce(function (s, l) { return s + num(l.balance); }, 0), EDIT);
+      }
+      renderAll();
+    });
+
+    // last-import label from holdings
+    var lastHoldingUpdate = store.get('meta') && store.get('meta').lastUpdated;
+    $('dh-lastimport').textContent = holdings().length ? (holdings().length + ' holdings on file') : 'No imports yet';
+
+    store.subscribe('', renderAll);
+    renderAll();
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
+  else init();
+})();
+</script>
+</body>
+</html>
