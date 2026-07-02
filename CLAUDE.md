@@ -247,6 +247,36 @@ Phase 13c (single-window navigation — tools open inside the shell):
 - Follow-up: the tool pages still work standalone (opened directly, they
   render their own topnav as before) — only the embedded case changes.
 
+Phase 13d (Data Hub — handoff step 2):
+- `data_hub.html` (NEW) — the "single source of truth" page from
+  Data Hub.dc.html, rendered in the shell (route `#data_hub.html`; the
+  sidebar promo, top-bar "Import Data", and dashboard "Add Entry" all
+  point here). Loads suite.css/theme.css + suite.js?v=12 (embed-aware)
+  + suite-state.js?v=8. Functional and store-backed:
+  - **Export Backup** downloads `store.export()` as JSON (restores the
+    backup path dropped from the dashboard).
+  - **Import Stock Assets** — CSV upload / drag-drop / paste → auto-maps
+    Ticker/Shares/Cost Basis/Account columns (Fidelity/Schwab/Vanguard/
+    generic headers) → preview with per-row New/Update/Check-acct status
+    → Commit merges into `portfolio.holdings[]` by ticker+account,
+    recomputes `portfolio.totalValue`, and auto-registers any unknown
+    accounts named in the CSV.
+  - **Accounts Registry** (`accounts[]`), **Other Assets**
+    (`otherAssets[]`), **Liabilities** (`liabilities.items[]`) — add/
+    delete, persisted. Other Assets totals are mirrored into the scalar
+    `assets` block so the current net_worth tool keeps working until its
+    step-4 refactor.
+  - Data-health strip, Expense-Import panel (links to the Expense
+    Tracker + shows staleness), and a "Who Reads What" sync table are all
+    derived live from the store.
+  - **Refresh Prices** is a v1 stub (live quotes still fetched in the
+    Portfolio Tracker).
+- `assets/suite-state.js?v=8` (ALL pages — schema v4 → v5): adds
+  `accounts: []` and `otherAssets: []` with a v4→v5 `migrate()` step.
+- Not yet done for the Data Hub: brokerage column-mapping editor UI,
+  in-hub expense CSV parsing (still done in the Expense Tracker), and
+  live price refresh from the hub.
+
 ## Constraints to preserve
 
 - **Zero build step.** No Vite/Webpack until scope demands it.

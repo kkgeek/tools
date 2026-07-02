@@ -95,7 +95,8 @@
     .ws-topbar__spacer { flex: 1; }
     .ws-themebtn { display: flex; align-items: center; gap: 7px; padding: 8px 14px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 24px; color: var(--text-2); font-size: 12px; font-weight: 500; cursor: pointer; font-family: inherit; user-select: none; }
     .ws-themebtn:hover { color: var(--text); border-color: var(--primary); }
-    .ws-importbtn { display: flex; align-items: center; gap: 7px; padding: 9px 16px; background: var(--primary-weak); border: none; border-radius: 24px; color: var(--primary-text); font-size: 12.5px; font-weight: 500; cursor: default; font-family: inherit; }
+    .ws-importbtn { display: flex; align-items: center; gap: 7px; padding: 9px 16px; background: var(--primary-weak); border: none; border-radius: 24px; color: var(--primary-text); font-size: 12.5px; font-weight: 500; cursor: pointer; font-family: inherit; text-decoration: none; }
+    .ws-importbtn:hover { filter: brightness(0.96); }
     .ws-bell { width: 40px; height: 40px; border-radius: 50%; background: var(--surface-2); display: flex; align-items: center; justify-content: center; cursor: pointer; position: relative; }
     .ws-bell__dot { position: absolute; top: 9px; right: 9px; width: 7px; height: 7px; background: var(--warn); border-radius: 50%; border: 2px solid var(--surface); }
     .ws-profile { display: flex; align-items: center; gap: 9px; padding: 5px 12px 5px 6px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 24px; cursor: default; }
@@ -299,14 +300,14 @@
     </nav>
 
     <div class="ws-sidefoot">
-      <span class="ws-datahub" title="Data Hub — coming soon">
+      <a class="ws-datahub" href="data_hub.html" title="Data Hub">
         <span class="ws-datahub__row">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><ellipse cx="12" cy="5" rx="9" ry="3"></ellipse><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"></path><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"></path></svg>
           <span class="ws-datahub__title sb-x">Data Hub</span>
-          <span class="ws-badge ws-badge--soon sb-x">Soon</span>
+          <span class="sb-x" style="margin-left:auto; width:6px; height:6px; background:var(--pos); border-radius:50%;"></span>
         </span>
         <span class="ws-datahub__desc sb-x">Single source · CSV, live prices, manual</span>
-      </span>
+      </a>
       <div class="ws-sidefoot__row">
         <span class="ws-navitem is-soon" title="Settings — coming soon" style="padding:7px 10px;">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
@@ -343,10 +344,10 @@
         <span id="ws-theme-label">Theme</span>
       </button>
 
-      <button class="ws-importbtn" type="button" title="Import data — arrives with the Data Hub (step 2)">
+      <a class="ws-importbtn" href="data_hub.html" title="Import data in the Data Hub">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"></path></svg>
         Import Data
-      </button>
+      </a>
 
       <div class="ws-bell" title="Notifications">
         <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="var(--text-2)" stroke-width="2" stroke-linecap="round"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 01-3.46 0"></path></svg>
@@ -377,10 +378,10 @@
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
               Customize
             </button>
-            <button class="ws-btn-primary" type="button" title="Add entry — arrives with the Data Hub (step 2)">
+            <a class="ws-btn-primary" href="data_hub.html" title="Add data in the Data Hub">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
               Add Entry
-            </button>
+            </a>
           </div>
         </div>
 
@@ -693,7 +694,8 @@
       'TaxAssetCalcv4.html': 'Asset & Cap-Gains',
       'portfolio_review.html': 'Portfolio Review',
       'golden_ratio_portfolio_dashboard.html': 'Golden φ Portfolio',
-      'monte_carlo.html': 'Monte Carlo'
+      'monte_carlo.html': 'Monte Carlo',
+      'data_hub.html': 'Data Hub'
     };
     var frame = document.getElementById('ws-frame');
     var dashView = document.getElementById('ws-dash-view');
@@ -899,6 +901,6 @@
   })();
 </script>
 
-<script src="assets/suite-state.js?v=7" defer></script>
+<script src="assets/suite-state.js?v=8" defer></script>
 </body>
 </html>
