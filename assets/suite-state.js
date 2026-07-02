@@ -30,7 +30,7 @@
   'use strict';
 
   const STORAGE_KEY = 'wealthSuite.state';
-  const CURRENT_VERSION = 4;
+  const CURRENT_VERSION = 5;
 
   function emptySpouse() { return { s1: null, s2: null }; }
 
@@ -76,6 +76,14 @@
         allocations: {},
         holdings: [],
       },
+      // Data Hub (schema v5): single source of truth for account defs and
+      // manually-tracked assets. `accounts` is referenced by holdings
+      // (holding.accountId) and drives tax treatment for Tax/Roth tools;
+      // `otherAssets` is the itemised non-market asset list feeding Net
+      // Worth (the scalar `assets` block below is kept as a derived mirror
+      // for the current net_worth tool until its step-4 refactor).
+      accounts: [],        // { id, name, type, owner, taxTreatment }
+      otherAssets: [],     // { id, name, category, value, updatedAt }
       deductions: {
         method: 'standard',
         mortgage: null,
@@ -190,6 +198,15 @@
       if (!state.preferences.aiProvider) state.preferences.aiProvider = 'off';
       state.meta.version = 4;
       v = 4;
+    }
+
+    // v4 → v5: add Data Hub collections (accounts registry + itemised
+    // other-assets list)
+    if (v === 4) {
+      if (!Array.isArray(state.accounts)) state.accounts = [];
+      if (!Array.isArray(state.otherAssets)) state.otherAssets = [];
+      state.meta.version = 5;
+      v = 5;
     }
 
     if (v === CURRENT_VERSION) return state;
