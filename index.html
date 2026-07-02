@@ -474,18 +474,18 @@
                   <div class="ws-cardtitle">Net Worth Growth</div>
                   <div class="ws-cardsub">12-month trend · Net worth &amp; top buckets</div>
                 </div>
-                <div class="ws-rangebtns">
-                  <button class="ws-rangebtn is-active" type="button">1Y</button>
-                  <button class="ws-rangebtn" type="button">3Y</button>
-                  <button class="ws-rangebtn" type="button">5Y</button>
-                  <button class="ws-rangebtn" type="button">All</button>
+                <div class="ws-rangebtns" id="ws-nw-ranges">
+                  <button class="ws-rangebtn is-active" type="button" data-months="12">1Y</button>
+                  <button class="ws-rangebtn" type="button" data-months="36">3Y</button>
+                  <button class="ws-rangebtn" type="button" data-months="60">5Y</button>
+                  <button class="ws-rangebtn" type="button" data-months="0">All</button>
                 </div>
               </div>
               <div style="display:flex; align-items:baseline; gap:12px; margin-bottom:16px;">
-                <span style="font-family:'Roboto',sans-serif; font-size:32px; font-weight:500; color:var(--text); letter-spacing:-1.2px;">$3,247,580</span>
-                <span class="ws-pill-pos" style="padding:5px 10px;"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><polyline points="18 15 12 9 6 15"></polyline></svg>+$248K (+8.3%) this year</span>
+                <span id="ws-nw-callout" style="font-family:'Roboto',sans-serif; font-size:32px; font-weight:500; color:var(--text); letter-spacing:-1.2px;">$3,247,580</span>
+                <span class="ws-pill-pos" id="ws-nw-delta" style="padding:5px 10px;"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><polyline points="18 15 12 9 6 15"></polyline></svg>+$248K (+8.3%) this year</span>
               </div>
-              <div class="ws-legend" style="margin-bottom:14px;">
+              <div class="ws-legend" id="ws-nw-legend" style="margin-bottom:14px;">
                 <div class="ws-legend__item"><div class="ws-legend__dash" style="background:var(--primary);"></div>Net Worth<span class="ws-legend__val">$3.25M</span></div>
                 <div class="ws-legend__item"><div class="ws-legend__dash" style="background:var(--cat2);"></div>Investments<span class="ws-legend__val">$2.18M</span></div>
                 <div class="ws-legend__item"><div class="ws-legend__dash" style="background:var(--cat3);"></div>Retirement<span class="ws-legend__val">$1.15M</span></div>
@@ -493,7 +493,7 @@
               </div>
             </div>
             <div style="position:relative;">
-              <svg viewBox="0 0 660 165" style="width:100%; height:165px; display:block; overflow:visible;">
+              <svg id="ws-nw-svg" viewBox="0 0 660 165" style="width:100%; height:165px; display:block; overflow:visible;">
                 <defs>
                   <linearGradient id="wsArea" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="0%" style="stop-color:var(--primary); stop-opacity:0.22"></stop>
@@ -517,7 +517,7 @@
                 <circle cx="628" cy="24.6" r="10" style="fill:var(--primary-weak);"></circle>
                 <circle cx="628" cy="24.6" r="4" style="fill:var(--primary); stroke:var(--surface);" stroke-width="2"></circle>
               </svg>
-              <div style="display:flex; justify-content:space-between; padding:4px 34px 14px 34px;">
+              <div id="ws-nw-months" style="display:flex; justify-content:space-between; padding:4px 34px 14px 34px;">
                 <span class="ws-date" style="font-size:11.5px;color:var(--text-3);">Jul</span><span class="ws-date" style="font-size:11.5px;color:var(--text-3);">Aug</span><span class="ws-date" style="font-size:11.5px;color:var(--text-3);">Sep</span><span class="ws-date" style="font-size:11.5px;color:var(--text-3);">Oct</span><span class="ws-date" style="font-size:11.5px;color:var(--text-3);">Nov</span><span class="ws-date" style="font-size:11.5px;color:var(--text-3);">Dec</span><span class="ws-date" style="font-size:11.5px;color:var(--text-3);">Jan</span><span class="ws-date" style="font-size:11.5px;color:var(--text-3);">Feb</span><span class="ws-date" style="font-size:11.5px;color:var(--text-3);">Mar</span><span class="ws-date" style="font-size:11.5px;color:var(--text-3);">Apr</span><span class="ws-date" style="font-size:11.5px;color:var(--text-3);">May</span><span class="ws-date" style="font-size:11.5px;color:var(--primary-text);font-weight:500;">Jun ▲</span>
               </div>
             </div>
@@ -532,8 +532,8 @@
           <!-- Asset Allocation -->
           <div class="ws-card ws-cardpad" style="display:flex; flex-direction:column;" data-ws-metric="allocation">
             <div class="ws-cardtitle" style="margin-bottom:3px;">Asset Allocation</div>
-            <div class="ws-cardsub" style="margin-bottom:16px;">$2.18M · 5 asset classes</div>
-            <div style="display:flex; justify-content:center; margin-bottom:18px;">
+            <div class="ws-cardsub" id="ws-alloc-sub" style="margin-bottom:16px;">$2.18M · 5 asset classes</div>
+            <div id="ws-alloc-pie" style="display:flex; justify-content:center; margin-bottom:18px;">
               <svg viewBox="0 0 200 150" style="width:186px; height:140px;">
                 <path d="M 184 78 A 84 48 0 0 1 125.96 123.65 L 125.96 143.65 A 84 48 0 0 0 184 98 Z" style="fill:var(--primary);"></path>
                 <path d="M 184 78 A 84 48 0 0 1 125.96 123.65 L 125.96 143.65 A 84 48 0 0 0 184 98 Z" fill="rgba(0,0,0,0.30)"></path>
@@ -551,7 +551,7 @@
                 <text x="48" y="78" text-anchor="middle" fill="#FFFFFF" font-size="10.5" font-weight="500" font-family="Roboto,sans-serif">20%</text>
               </svg>
             </div>
-            <div class="ws-alloc-legend">
+            <div class="ws-alloc-legend" id="ws-alloc-legend">
               <div class="ws-alloc-row"><div class="ws-alloc-name"><div class="ws-swatch" style="background:var(--primary);"></div>US Stocks</div><div class="ws-alloc-vals"><span class="ws-alloc-dollar">$981K</span><span class="ws-alloc-pct">45%</span></div></div>
               <div class="ws-alloc-row"><div class="ws-alloc-name"><div class="ws-swatch" style="background:var(--cat2);"></div>Intl Stocks</div><div class="ws-alloc-vals"><span class="ws-alloc-dollar">$436K</span><span class="ws-alloc-pct">20%</span></div></div>
               <div class="ws-alloc-row"><div class="ws-alloc-name"><div class="ws-swatch" style="background:var(--cat3);"></div>Bonds</div><div class="ws-alloc-vals"><span class="ws-alloc-dollar">$436K</span><span class="ws-alloc-pct">20%</span></div></div>
@@ -600,11 +600,11 @@
             <div class="ws-cardhead">
               <div>
                 <div class="ws-cardtitle">Retirement Planning</div>
-                <div class="ws-cardsub">Monte Carlo · 1,000 simulations · retire 2031</div>
+                <div class="ws-cardsub" id="ws-ret-sub">Monte Carlo · 1,000 simulations · retire 2031</div>
               </div>
-              <div style="padding:5px 11px; background:var(--pos-weak); border-radius:20px; font-size:11px; font-weight:500; color:var(--pos); flex-shrink:0;">On Track</div>
+              <div id="ws-ret-badge" style="padding:5px 11px; background:var(--pos-weak); border-radius:20px; font-size:11px; font-weight:500; color:var(--pos); flex-shrink:0;">On Track</div>
             </div>
-            <svg viewBox="0 0 420 110" style="width:100%; height:100px; display:block; margin-bottom:16px;">
+            <svg id="ws-ret-svg" viewBox="0 0 420 110" style="width:100%; height:100px; display:block; margin-bottom:16px;">
               <path d="M 20,90 Q 120,62 210,28 Q 300,4 400,2 L 400,28 Q 300,40 210,68 Q 120,90 20,102 Z" style="fill:var(--primary-weak);"></path>
               <path d="M 20,102 Q 120,90 210,68 Q 300,40 400,28 L 400,56 Q 300,68 210,92 Q 120,108 20,110 Z" style="fill:var(--primary-weak); opacity:0.55;"></path>
               <path d="M 20,90 Q 120,62 210,28 Q 300,4 400,2" fill="none" style="stroke:var(--primary);" stroke-width="2.5" stroke-dasharray="5 3" opacity="0.9"></path>
@@ -616,7 +616,7 @@
               <text x="24" y="100" font-size="8" style="fill:var(--text-3);" font-family="Roboto,sans-serif">p50</text>
               <text x="24" y="108" font-size="8" style="fill:var(--text-3);" font-family="Roboto,sans-serif">p10</text>
             </svg>
-            <div class="ws-statgrid" style="margin-bottom:16px;">
+            <div class="ws-statgrid" id="ws-ret-stats" style="margin-bottom:16px;">
               <div class="ws-stat" style="background:var(--pos-weak);"><div class="ws-stat__big" style="color:var(--pos);">89%</div><div class="ws-stat__label">Success rate</div></div>
               <div class="ws-stat" style="background:var(--primary-weak);"><div class="ws-stat__big" style="color:var(--primary-text);">$8.4M</div><div class="ws-stat__label">Median at 85</div></div>
               <div class="ws-stat" style="background:var(--warn-weak);"><div class="ws-stat__big" style="color:var(--warn);">2031</div><div class="ws-stat__label">Target retire</div></div>
@@ -695,7 +695,7 @@
 
       <footer class="suite-footer" style="max-width:1180px; margin-top:28px;">
         <span>Wealth Suite — runs entirely in your browser. No tracking, no upload.</span>
-        <span>Sample figures shown · live data arrives with the Data Hub</span>
+        <span>Data Hub is the single source of truth · sample figures shown until you add data</span>
       </footer>
       </div><!-- /#ws-dash-view -->
       <iframe id="ws-frame" class="ws-frame" title="Tool" hidden></iframe>
@@ -968,7 +968,9 @@
         // holding.costBasis is PER-SHARE (Portfolio Tracker convention)
         var portfolioVal = Number(s.portfolio && s.portfolio.totalValue) ||
           holdings.reduce(function (t, h) { var per = Number(h.currentPrice) > 0 ? Number(h.currentPrice) : (Number(h.costBasis) || 0); return t + per * (Number(h.shares) || 0); }, 0);
-        var otherAssets = ((s.otherAssets) || []).reduce(function (t, a) { return t + (Number(a.value) || 0); }, 0);
+        var oaList = (s.otherAssets) || [];
+        var otherAssets = oaList.reduce(function (t, a) { return t + (Number(a.value) || 0); }, 0);
+        var homeVal = oaList.reduce(function (t, a) { return t + (a.category === 'realEstate' ? (Number(a.value) || 0) : 0); }, 0);
         var retire = Number(s.retirement && s.retirement.balances && s.retirement.balances.total) || 0;
         var liabItems = (s.liabilities && s.liabilities.items) || [];
         var liab = Number(s.liabilities && s.liabilities.total) || liabItems.reduce(function (t, l) { return t + (Number(l.balance) || 0); }, 0);
@@ -1009,7 +1011,237 @@
           var meter = sp.querySelector('.ws-meter > i'); if (meter) meter.style.width = (budget ? pct : 0) + '%';
           sp.querySelector('.ws-kpi__foot').innerHTML = '<span style="font-size:11px;color:var(--pos);font-weight:500;">' + (budget ? (full(Math.max(0, budget - monthSpend)) + ' remaining') : 'no budget set') + '</span><span class="ws-hint">this month</span>';
         }
+
+        // ---- charts + retirement (step 4 slice 3) ----
+        recordHistory({ nw: netWorth, inv: portfolioVal, ret: retire, home: homeVal });
+        renderNWChart();
+        renderAllocation(holdings, portfolioVal);
+        renderRetirement(s, portfolioVal, retire, budget);
       } catch (e) {}
+    }
+
+    // ---- Net-worth history: one snapshot per day, kept outside the store
+    // (derived data; keeps export/import lean). The Growth chart draws from
+    // it once ≥2 days exist — history accrues from daily dashboard visits.
+    var HKEY = 'wealthSuite.nwHistory';
+    function readHistory() { try { return JSON.parse(localStorage.getItem(HKEY) || '[]'); } catch (e) { return []; } }
+    function recordHistory(snap) {
+      try {
+        var hist = readHistory();
+        var today = new Date().toISOString().slice(0, 10);
+        var last = hist[hist.length - 1];
+        if (last && last.d === today) { last.nw = snap.nw; last.inv = snap.inv; last.ret = snap.ret; last.home = snap.home; }
+        else hist.push({ d: today, nw: snap.nw, inv: snap.inv, ret: snap.ret, home: snap.home });
+        if (hist.length > 1100) hist = hist.slice(-1100);
+        localStorage.setItem(HKEY, JSON.stringify(hist));
+      } catch (e) {}
+    }
+
+    var nwRangeMonths = 12;
+    var rangesEl = document.getElementById('ws-nw-ranges');
+    if (rangesEl) rangesEl.addEventListener('click', function (e) {
+      var b = e.target.closest('[data-months]'); if (!b) return;
+      nwRangeMonths = +b.getAttribute('data-months');
+      Array.prototype.forEach.call(rangesEl.children, function (x) { x.classList.toggle('is-active', x === b); });
+      renderNWChart();
+    });
+
+    function renderNWChart() {
+      var hist = readHistory();
+      if (hist.length < 2) return; // keep illustrative sample until history accrues
+      if (nwRangeMonths > 0) {
+        var cutoff = new Date(); cutoff.setMonth(cutoff.getMonth() - nwRangeMonths);
+        var cut = cutoff.toISOString().slice(0, 10);
+        var windowed = hist.filter(function (p) { return p.d >= cut; });
+        if (windowed.length >= 2) hist = windowed;
+      }
+      var W = { x0: 34, x1: 648, y0: 150, y1: 20 };
+      var maxV = hist.reduce(function (m, p) { return Math.max(m, p.nw || 0); }, 0) * 1.08 || 1;
+      function X(i) { return W.x0 + (W.x1 - W.x0) * (hist.length === 1 ? 1 : i / (hist.length - 1)); }
+      function Y(v) { return W.y0 - (W.y0 - W.y1) * ((v || 0) / maxV); }
+      function line(key) { return hist.map(function (p, i) { return (i ? 'L' : 'M') + ' ' + X(i).toFixed(1) + ',' + Y(p[key]).toFixed(1); }).join(' '); }
+      var grid = '', labels = '';
+      for (var g = 0; g <= 3; g++) {
+        var gv = maxV * g / 3, gy = Y(gv);
+        grid += '<line x1="34" y1="' + gy.toFixed(1) + '" x2="648" y2="' + gy.toFixed(1) + '" style="stroke:var(--border);" stroke-width="1"></line>';
+        labels += '<text x="2" y="' + (gy - 4).toFixed(1) + '" font-size="14" style="fill:var(--text-3);" font-family="Roboto Mono,monospace">' + money(gv) + '</text>';
+      }
+      var lastP = hist[hist.length - 1];
+      var cx = X(hist.length - 1).toFixed(1), cy = Y(lastP.nw).toFixed(1);
+      var svg = document.getElementById('ws-nw-svg');
+      if (svg) svg.innerHTML =
+        '<defs><linearGradient id="wsArea" x1="0" y1="0" x2="0" y2="1">' +
+        '<stop offset="0%" style="stop-color:var(--primary); stop-opacity:0.22"></stop>' +
+        '<stop offset="85%" style="stop-color:var(--primary); stop-opacity:0.02"></stop>' +
+        '<stop offset="100%" style="stop-color:var(--primary); stop-opacity:0"></stop></linearGradient></defs>' +
+        grid + labels +
+        '<path d="' + line('nw') + ' L ' + W.x1 + ',' + W.y0 + ' L ' + W.x0 + ',' + W.y0 + ' Z" fill="url(#wsArea)" stroke="none"></path>' +
+        '<path d="' + line('home') + '" fill="none" style="stroke:var(--cat4);" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>' +
+        '<path d="' + line('ret') + '" fill="none" style="stroke:var(--cat3);" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>' +
+        '<path d="' + line('inv') + '" fill="none" style="stroke:var(--cat2);" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>' +
+        '<path d="' + line('nw') + '" fill="none" style="stroke:var(--primary);" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"></path>' +
+        '<circle cx="' + cx + '" cy="' + cy + '" r="10" style="fill:var(--primary-weak);"></circle>' +
+        '<circle cx="' + cx + '" cy="' + cy + '" r="4" style="fill:var(--primary); stroke:var(--surface);" stroke-width="2"></circle>';
+      // callout + delta vs window start
+      var first = hist[0];
+      var delta = (lastP.nw || 0) - (first.nw || 0);
+      var pctD = first.nw ? (delta / first.nw * 100) : 0;
+      var co = document.getElementById('ws-nw-callout'); if (co) co.textContent = full(lastP.nw);
+      var de = document.getElementById('ws-nw-delta');
+      if (de) {
+        de.innerHTML = '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><polyline points="' + (delta >= 0 ? '18 15 12 9 6 15' : '6 9 12 15 18 9') + '"></polyline></svg>' +
+          (delta >= 0 ? '+' : '−') + money(Math.abs(delta)) + ' (' + (pctD >= 0 ? '+' : '') + pctD.toFixed(1) + '%) this period';
+        de.style.background = delta >= 0 ? 'var(--pos-weak)' : 'var(--neg-weak)';
+        de.style.color = delta >= 0 ? 'var(--pos)' : 'var(--neg)';
+      }
+      var lg = document.getElementById('ws-nw-legend');
+      if (lg) lg.innerHTML =
+        '<div class="ws-legend__item"><div class="ws-legend__dash" style="background:var(--primary);"></div>Net Worth<span class="ws-legend__val">' + money(lastP.nw) + '</span></div>' +
+        '<div class="ws-legend__item"><div class="ws-legend__dash" style="background:var(--cat2);"></div>Investments<span class="ws-legend__val">' + money(lastP.inv) + '</span></div>' +
+        '<div class="ws-legend__item"><div class="ws-legend__dash" style="background:var(--cat3);"></div>Retirement<span class="ws-legend__val">' + money(lastP.ret) + '</span></div>' +
+        '<div class="ws-legend__item"><div class="ws-legend__dash" style="background:var(--cat4);"></div>Home<span class="ws-legend__val">' + money(lastP.home) + '</span></div>';
+      var months = document.getElementById('ws-nw-months');
+      if (months) {
+        var MO = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+        var n = Math.min(12, hist.length);
+        var out = '';
+        for (var i = 0; i < n; i++) {
+          var p = hist[Math.round(i * (hist.length - 1) / Math.max(1, n - 1))];
+          var d = new Date(p.d + 'T12:00:00');
+          var isLast = i === n - 1;
+          out += '<span class="ws-date" style="font-size:11.5px;color:' + (isLast ? 'var(--primary-text)' : 'var(--text-3)') + (isLast ? ';font-weight:500' : '') + ';">' + MO[d.getMonth()] + (isLast ? ' ▲' : '') + '</span>';
+        }
+        months.innerHTML = out;
+      }
+    }
+
+    // ---- Asset allocation donut from holdings' asset classes ----
+    var CLS = [
+      { k: 'equity', label: 'Equities',    color: 'var(--primary)' },
+      { k: 'bond',   label: 'Bonds',       color: 'var(--cat2)' },
+      { k: 'cash',   label: 'Cash',        color: 'var(--cat3)' },
+      { k: 'other',  label: 'Other',       color: 'var(--cat5)' }
+    ];
+    function renderAllocation(holdings, totalVal) {
+      if (!holdings.length || !(totalVal > 0)) return; // keep sample
+      function hv(h) { var per = Number(h.currentPrice) > 0 ? Number(h.currentPrice) : (Number(h.costBasis) || 0); return per * (Number(h.shares) || 0); }
+      var slices = CLS.map(function (c) {
+        var v = holdings.filter(function (h) { return (h.assetClass || 'other') === c.k; }).reduce(function (t, h) { return t + hv(h); }, 0);
+        return { label: c.label, color: c.color, v: v };
+      }).filter(function (x) { return x.v > 0; });
+      var total = slices.reduce(function (t, x) { return t + x.v; }, 0);
+      if (!(total > 0)) return;
+      var sub = document.getElementById('ws-alloc-sub');
+      if (sub) sub.textContent = money(total) + ' · ' + slices.length + ' asset class' + (slices.length === 1 ? '' : 'es');
+      // flat donut (dynamic data can't reuse the fixed 3-D mockup slices)
+      var R = 52, CIRC = 2 * Math.PI * R, off = CIRC * 0.25; // start at 12 o'clock
+      var rings = slices.map(function (x) {
+        var len = x.v / total * CIRC;
+        var seg = '<circle cx="100" cy="75" r="' + R + '" fill="none" stroke="' + x.color + '" stroke-width="26" stroke-dasharray="' + len.toFixed(2) + ' ' + (CIRC - len).toFixed(2) + '" stroke-dashoffset="' + off.toFixed(2) + '"></circle>';
+        off -= len;
+        return seg;
+      }).join('');
+      var pie = document.getElementById('ws-alloc-pie');
+      if (pie) pie.innerHTML =
+        '<svg viewBox="0 0 200 150" style="width:186px; height:140px;">' + rings +
+        '<text x="100" y="71" text-anchor="middle" style="fill:var(--text);" font-size="17" font-weight="500" font-family="Roboto,sans-serif">' + money(total) + '</text>' +
+        '<text x="100" y="87" text-anchor="middle" style="fill:var(--text-3);" font-size="9" font-family="Roboto,sans-serif">portfolio</text></svg>';
+      var lg = document.getElementById('ws-alloc-legend');
+      if (lg) lg.innerHTML = slices.map(function (x) {
+        return '<div class="ws-alloc-row"><div class="ws-alloc-name"><div class="ws-swatch" style="background:' + x.color + ';"></div>' + x.label + '</div>' +
+          '<div class="ws-alloc-vals"><span class="ws-alloc-dollar">' + money(x.v) + '</span><span class="ws-alloc-pct">' + Math.round(x.v / total * 100) + '%</span></div></div>';
+      }).join('');
+    }
+
+    // ---- Retirement readiness: inline Monte Carlo (1,000 paths, seeded
+    // so re-renders are stable). Needs age, retire age, balance, expenses. ----
+    function mulberry32(a) { return function () { a |= 0; a = a + 0x6D2B79F5 | 0; var t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+    function renderRetirement(s, portfolioVal, retireBal, monthlyBudget) {
+      var plan = (s.retirement && s.retirement.plan) || {};
+      var spouses = (s.household && s.household.spouses) || [];
+      var ages = spouses.map(function (x) { return Number(x && x.age); }).filter(function (n) { return n > 0; });
+      var curAge = ages.length ? Math.min.apply(null, ages) : null;
+      var retAge = Number(plan.targetRetireAge) || null;
+      var startBal = (portfolioVal || 0) + (retireBal || 0);
+      var expenses = Number(plan.annualExpenses) || (monthlyBudget ? monthlyBudget * 12 : 0);
+      if (!curAge || !retAge || retAge <= curAge || !(startBal > 0) || !(expenses > 0)) return; // keep sample
+      var c = (s.retirement && s.retirement.contributions) || {};
+      function sumSp(o) { return o ? (Number(o.s1) || 0) + (Number(o.s2) || 0) : 0; }
+      var contrib = sumSp(c.traditional401k) + sumSp(c.roth401k) + sumSp(c.afterTax401k) + sumSp(c.catchup) + sumSp(c.ira) + (Number(c.hsa) || 0);
+      var mean = (Number(plan.growthAssumption) || 7) / 100, sd = 0.15;
+      var END = 95, YRS = END - curAge, SIMS = 1000;
+      var rand = mulberry32(Math.round(startBal + expenses * 7 + retAge * 131 + curAge * 17));
+      function gauss() { var u = Math.max(rand(), 1e-9), v = rand(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v); }
+      var byYear = []; for (var y = 0; y <= YRS; y++) byYear.push([]);
+      var success = 0;
+      for (var i = 0; i < SIMS; i++) {
+        var bal = startBal, alive = true;
+        byYear[0].push(bal);
+        for (var y2 = 1; y2 <= YRS; y2++) {
+          var age = curAge + y2;
+          var r = mean + sd * gauss();
+          bal = bal * (1 + r) + (age <= retAge ? contrib : -expenses);
+          if (bal < 0) { bal = 0; alive = false; }
+          byYear[y2].push(bal);
+        }
+        if (alive) success++;
+      }
+      var pct = Math.round(success / SIMS * 100);
+      function pctile(arr, p) { var a = arr.slice().sort(function (x, y3) { return x - y3; }); return a[Math.min(a.length - 1, Math.floor(p * a.length))]; }
+      var p10 = [], p50 = [], p90 = [];
+      for (var y4 = 0; y4 <= YRS; y4++) { p10.push(pctile(byYear[y4], 0.10)); p50.push(pctile(byYear[y4], 0.50)); p90.push(pctile(byYear[y4], 0.90)); }
+      var med85 = p50[Math.min(YRS, Math.max(0, 85 - curAge))];
+      var retYear = new Date().getFullYear() + (retAge - curAge);
+
+      // KPI tile
+      var rr = metricEl('retirementReadiness');
+      if (rr) {
+        var col = pct >= 80 ? 'var(--pos)' : pct >= 60 ? 'var(--warn)' : 'var(--neg)';
+        var lbl = pct >= 80 ? 'On Track' : pct >= 60 ? 'Tight' : 'At Risk';
+        rr.querySelector('.ws-kpi__big').innerHTML = pct + '<small>%</small>';
+        var hints = rr.querySelectorAll('.ws-hint'); if (hints[0]) hints[0].textContent = 'Prob. funds last to 95 · retire at ' + retAge;
+        var mi = rr.querySelector('.ws-meter > i'); if (mi) { mi.style.width = pct + '%'; mi.style.background = col; }
+        rr.querySelector('.ws-kpi__foot').innerHTML = '<span style="font-size:11px;color:' + col + ';font-weight:500;">' + lbl + '</span><span class="ws-hint">1,000 simulations</span>';
+      }
+      // Planning card
+      var sub2 = document.getElementById('ws-ret-sub');
+      if (sub2) sub2.textContent = 'Monte Carlo · 1,000 simulations · retire ' + retYear;
+      var badge = document.getElementById('ws-ret-badge');
+      if (badge) {
+        var col2 = pct >= 80 ? 'var(--pos)' : pct >= 60 ? 'var(--warn)' : 'var(--neg)';
+        var bg2 = pct >= 80 ? 'var(--pos-weak)' : pct >= 60 ? 'var(--warn-weak)' : 'var(--neg-weak)';
+        badge.textContent = pct >= 80 ? 'On Track' : pct >= 60 ? 'Tight' : 'At Risk';
+        badge.style.color = col2; badge.style.background = bg2;
+      }
+      var stats = document.getElementById('ws-ret-stats');
+      if (stats) stats.innerHTML =
+        '<div class="ws-stat" style="background:var(--pos-weak);"><div class="ws-stat__big" style="color:var(--pos);">' + pct + '%</div><div class="ws-stat__label">Success rate</div></div>' +
+        '<div class="ws-stat" style="background:var(--primary-weak);"><div class="ws-stat__big" style="color:var(--primary-text);">' + money(med85) + '</div><div class="ws-stat__label">Median at 85</div></div>' +
+        '<div class="ws-stat" style="background:var(--warn-weak);"><div class="ws-stat__big" style="color:var(--warn);">' + retYear + '</div><div class="ws-stat__label">Target retire</div></div>';
+      // Fan chart from real percentile paths
+      var FX0 = 20, FX1 = 400, FY0 = 106, FY1 = 6;
+      var fmax = Math.max.apply(null, p90) * 1.05 || 1;
+      function fx(y5) { return FX0 + (FX1 - FX0) * y5 / YRS; }
+      function fy(v) { return FY0 - (FY0 - FY1) * (v / fmax); }
+      function fpath(arr) { return arr.map(function (v, i2) { return (i2 ? 'L' : 'M') + ' ' + fx(i2).toFixed(1) + ',' + fy(v).toFixed(1); }).join(' '); }
+      function band(hi, lo) {
+        var fwd = hi.map(function (v, i2) { return (i2 ? 'L' : 'M') + ' ' + fx(i2).toFixed(1) + ',' + fy(v).toFixed(1); }).join(' ');
+        var back = lo.slice().reverse().map(function (v, i2) { return 'L ' + fx(YRS - i2).toFixed(1) + ',' + fy(v).toFixed(1); }).join(' ');
+        return fwd + ' ' + back + ' Z';
+      }
+      var rx = fx(retAge - curAge).toFixed(1);
+      var svg2 = document.getElementById('ws-ret-svg');
+      if (svg2) svg2.innerHTML =
+        '<path d="' + band(p90, p50) + '" style="fill:var(--primary-weak);"></path>' +
+        '<path d="' + band(p50, p10) + '" style="fill:var(--primary-weak); opacity:0.55;"></path>' +
+        '<path d="' + fpath(p90) + '" fill="none" style="stroke:var(--primary);" stroke-width="2.5" stroke-dasharray="5 3" opacity="0.9"></path>' +
+        '<path d="' + fpath(p50) + '" fill="none" style="stroke:var(--text-3);" stroke-width="1" stroke-dasharray="3 4" opacity="0.6"></path>' +
+        '<line x1="' + rx + '" y1="4" x2="' + rx + '" y2="110" style="stroke:var(--warn);" stroke-width="1.5" stroke-dasharray="4 3" opacity="0.6"></line>' +
+        '<rect x="' + (+rx + 2) + '" y="6" width="52" height="14" rx="4" style="fill:var(--warn-weak);"></rect>' +
+        '<text x="' + (+rx + 28) + '" y="16" font-size="8.5" style="fill:var(--warn);" font-family="Roboto,sans-serif" text-anchor="middle" font-weight="500">Retire @' + retAge + '</text>' +
+        '<text x="24" y="10" font-size="8" style="fill:var(--text-3);" font-family="Roboto,sans-serif">p90</text>' +
+        '<text x="' + (FX1 - 14) + '" y="' + (fy(p50[YRS]) - 4).toFixed(1) + '" font-size="8" style="fill:var(--text-3);" font-family="Roboto,sans-serif">p50</text>' +
+        '<text x="' + (FX1 - 14) + '" y="' + Math.min(108, fy(p10[YRS]) + 10).toFixed(1) + '" font-size="8" style="fill:var(--text-3);" font-family="Roboto,sans-serif">p10</text>';
     }
     function refreshAll() { refreshProfile(); refreshKPIs(); }
 

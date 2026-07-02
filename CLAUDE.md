@@ -367,6 +367,36 @@ Phase 13g (step 4 slice 2 — hub↔tool data contract):
   live-subscribe to store changes while open — acceptable in the shell
   (iframe remounts per navigation).
 
+Phase 13h (step 4 slice 3 — dashboard charts + retirement readiness):
+- **Net Worth Growth chart** now draws from real history once ≥2 daily
+  snapshots exist. Snapshots (`{d, nw, inv, ret, home}`, one per day,
+  updated in place same-day, capped 1100) are recorded by the dashboard
+  in `localStorage['wealthSuite.nwHistory']` — deliberately OUTSIDE the
+  store (derived data; keeps export/import lean). History accrues from
+  dashboard visits; the 1Y/3Y/5Y/All range pills window it. Callout,
+  delta pill (green/red by sign), legend values, y-axis, and month
+  labels all recompute; <2 points keeps the illustrative sample.
+- **Asset Allocation** renders a dynamic flat donut from holdings
+  grouped by `assetClass` (equity/bond/cash/other, valued at
+  currentPrice||costBasis × shares) with a $total center label — the
+  mockup's fixed 3-D pie stays for the sample state only (its slice
+  paths aren't parameterisable).
+- **Retirement Readiness tile + Retirement Planning card** run an
+  inline seeded Monte Carlo (1,000 paths, ~O(45yr), mulberry32 seeded
+  from inputs so re-renders are stable): balance = portfolio +
+  retirement.balances.total, annual contributions summed from
+  retirement.contributions until targetRetireAge, then
+  −plan.annualExpenses (fallback: monthly budget ×12), growth
+  N(plan.growthAssumption||7%, 15%), horizon age 95, currentAge = min
+  spouse age. Outputs: success % (funds last to 95) → tile meter +
+  On Track/Tight/At Risk at 80/60 thresholds; median at 85; retire
+  year; real p10/p50/p90 fan-chart paths + Retire@age marker. Gated on
+  age + retireAge + balance + expenses all present; else sample stays.
+- Footer reworded (no longer claims sample when data is live).
+- Note: allocation card totals derive from holdings, while the KPI tile
+  prefers stored `portfolio.totalValue` — tracker/hub recompute keeps
+  those consistent in real flows.
+
 ## Constraints to preserve
 
 - **Zero build step.** No Vite/Webpack until scope demands it.
