@@ -188,6 +188,33 @@ Phase 13 additions (design-handoff retheme — step 1 of
   utility-class colours still need the deferred pixel-perfect reskin
   (handoff steps 2–4).
 
+Phase 13b (app-shell rebuild — the new Dashboard home):
+- `index.html` rebuilt from the horizontal cluster-topnav into the
+  design-handoff **sidebar app shell** (Dashboard.dc.html): 240px
+  collapsible sidebar (↔72px icon rail, `html[data-ws-collapsed="1"]`,
+  persisted in `localStorage['ws-shell-nav']`) with logo header +
+  TRACK / PLAN / OPTIMIZATION TOOLS / REVIEW nav sections + Data Hub
+  promo/Settings/avatar footer; 60px top bar with hamburger, page
+  title + date, theme cycle button, household profile chip.
+- **index.html deliberately no longer loads `assets/suite.js`** — it
+  owns its own shell + inline theme cycler (same `wealthSuite.themePreference`
+  key, so preference stays in sync with tool pages). Nav items are plain
+  `href` links to the tool pages (multi-page, not the mockup's iframe
+  SPA). All tool pages still load suite.js and its injected topnav,
+  untouched. Shell styles are inline in index.html (not suite.css) to
+  avoid a suite-wide cache-buster bump.
+- Existing dashboard functionality preserved: the same DOM hooks
+  (`#suite-chat`, `#suite-snapshot`, `#suite-snapshot-actions`,
+  `#suite-scenarios`, `#suite-compact-*`, module grid) are re-homed
+  inside `.ws-content`; `dashboard.js`/`chat.js` need only the store, not
+  suite.js. The mockup's placeholder KPI/chart/perf-table content was
+  NOT fabricated — the real Snapshot occupies that role and gets the
+  richer treatment when wired to a computed layer (handoff step 4).
+- Site Map / Data Hub / Settings render as visible but non-navigating
+  "Soon" items until handoff steps 2–3 build those pages.
+- Follow-up: unify the tool pages into the same sidebar shell (currently
+  they keep suite.js's horizontal topnav).
+
 ## Constraints to preserve
 
 - **Zero build step.** No Vite/Webpack until scope demands it.

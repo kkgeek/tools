@@ -4,15 +4,16 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Wealth Suite — Personal Finance & Wealth Management</title>
-  <meta name="description" content="Unified Material Design 3 hub for tax estimation, asset planning, retirement, and portfolio review.">
+  <meta name="description" content="Unified personal-finance hub for tax, retirement, portfolio, and net-worth planning. Runs entirely in your browser.">
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap">
   <link rel="stylesheet" href="assets/suite.css?v=15">
   <link rel="stylesheet" href="assets/theme.css?v=1">
 
-  <!-- Apply theme before paint to avoid flash -->
+  <!-- Apply theme + sidebar-collapse state before paint to avoid flash.
+       index.html owns its own app-shell (sidebar + top bar), so it does
+       NOT load suite.js's injected topnav — the tool pages still do. -->
   <script>
     (function () {
       try {
@@ -24,216 +25,568 @@
         document.documentElement.setAttribute('data-theme', resolved);
         document.documentElement.setAttribute('data-theme-pref', p);
       } catch (e) {}
+      try {
+        var nav = JSON.parse(localStorage.getItem('ws-shell-nav') || '{}');
+        if (nav && nav.collapsed) document.documentElement.setAttribute('data-ws-collapsed', '1');
+      } catch (e) {}
     })();
   </script>
+
+  <style>
+    /* ============================================================
+     * App shell (design-handoff Dashboard.dc.html). All colours come
+     * from the shared tokens in theme.css. Scoped to index.html so the
+     * shared suite.css / other tool pages are untouched.
+     * ============================================================ */
+    body.suite-body {
+      margin: 0;
+      padding-top: 0 !important;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    .ws-shell { display: flex; height: 100vh; overflow: hidden; background: var(--bg); }
+
+    /* ---- Sidebar ---- */
+    .ws-sidebar {
+      width: 240px; min-width: 240px;
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      display: flex; flex-direction: column;
+      overflow: hidden; flex-shrink: 0;
+      transition: width .25s ease, min-width .25s ease;
+    }
+    html[data-ws-collapsed="1"] .ws-sidebar { width: 72px; min-width: 72px; }
+    html[data-ws-collapsed="1"] .sb-x { display: none !important; }
+    html[data-ws-collapsed="1"] .ws-navitem,
+    html[data-ws-collapsed="1"] .ws-datahub { justify-content: center; }
+    html[data-ws-collapsed="1"] .ws-logo__row { justify-content: center; }
+    html[data-ws-collapsed="1"] .ws-sidefoot__row { justify-content: center; }
+
+    .ws-logo { padding: 20px 18px 16px; flex-shrink: 0; border-bottom: 1px solid var(--border); }
+    .ws-logo__row { display: flex; align-items: center; gap: 10px; }
+    .ws-logo__badge {
+      width: 36px; height: 36px; background: var(--primary); border-radius: 50%;
+      display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: var(--on-primary);
+    }
+    .ws-logo__title { font-size: 15px; font-weight: 500; color: var(--text); line-height: 1.2; }
+    .ws-logo__sub { font-size: 10px; color: var(--text-3); font-weight: 500; letter-spacing: .6px; text-transform: uppercase; margin-top: 2px; }
+
+    .ws-nav { flex: 1; padding: 8px 12px; display: flex; flex-direction: column; gap: 2px; overflow-y: auto; }
+    .ws-navlabel { font-size: 10px; color: var(--text-3); font-weight: 700; letter-spacing: 1px; text-transform: uppercase; padding: 10px 14px 4px; margin-top: 4px; }
+    .ws-navitem {
+      display: flex; align-items: center; gap: 12px;
+      padding: 9px 14px; border-radius: 24px; cursor: pointer;
+      color: var(--text-2); font-size: 13px; font-weight: 500;
+      text-decoration: none; white-space: nowrap;
+    }
+    .ws-navitem svg { flex-shrink: 0; }
+    .ws-navitem:hover { background: var(--surface-2); color: var(--text); }
+    .ws-navitem.is-active { background: var(--primary-weak); color: var(--primary-text); }
+    .ws-navitem.is-soon { opacity: .5; cursor: default; }
+    .ws-navitem.is-soon:hover { background: transparent; color: var(--text-2); }
+    .ws-dot { margin-left: auto; width: 6px; height: 6px; border-radius: 50%; background: var(--pos); }
+    .ws-dot--pulse { animation: ws-pulse 2s ease-in-out infinite; }
+    @keyframes ws-pulse { 0%,100% { opacity: .4; } 50% { opacity: 1; } }
+    .ws-badge { margin-left: auto; padding: 2px 7px; border-radius: 20px; font-size: 9px; font-weight: 700; }
+    .ws-badge--q2 { background: var(--warn-weak); color: var(--warn); }
+    .ws-badge--new { background: var(--primary-weak); color: var(--primary-text); }
+    .ws-badge--soon { background: var(--surface-2); color: var(--text-3); }
+
+    .ws-sidefoot { padding: 12px; border-top: 1px solid var(--border); flex-shrink: 0; display: flex; flex-direction: column; gap: 8px; }
+    .ws-datahub { padding: 12px 14px; background: var(--primary-weak); border-radius: 12px; cursor: default; display: block; text-decoration: none; }
+    .ws-datahub__row { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; color: var(--primary-text); }
+    .ws-datahub__title { font-size: 12px; font-weight: 500; }
+    .ws-datahub__desc { font-size: 10.5px; color: var(--text-2); padding-left: 22px; line-height: 1.4; }
+    .ws-sidefoot__row { display: flex; align-items: center; justify-content: space-between; padding: 0 4px; }
+    .ws-avatar { width: 30px; height: 30px; background: var(--primary); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 500; color: var(--on-primary); flex-shrink: 0; }
+
+    /* ---- Main column ---- */
+    .ws-mainwrap { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-width: 0; }
+    .ws-topbar {
+      height: 60px; background: var(--surface); border-bottom: 1px solid var(--border);
+      box-shadow: var(--shadow); display: flex; align-items: center;
+      padding: 0 24px; gap: 14px; flex-shrink: 0; z-index: 5;
+    }
+    .ws-hamburger {
+      width: 38px; height: 38px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+      cursor: pointer; color: var(--text-2); flex-shrink: 0; margin-left: -8px; background: none; border: none;
+    }
+    .ws-hamburger:hover { background: var(--surface-2); color: var(--text); }
+    .ws-pagetitle { font-family: 'Roboto', sans-serif; font-size: 16px; font-weight: 500; color: var(--text); }
+    .ws-sep { color: var(--text-3); font-size: 16px; }
+    .ws-date { font-size: 12.5px; color: var(--text-2); font-family: 'Roboto Mono', monospace; }
+    .ws-topbar__spacer { flex: 1; }
+    .ws-themebtn {
+      display: flex; align-items: center; gap: 7px; padding: 8px 14px;
+      background: var(--surface-2); border: 1px solid var(--border); border-radius: 24px;
+      color: var(--text-2); font-size: 12px; font-weight: 500; cursor: pointer; font-family: inherit; user-select: none;
+    }
+    .ws-themebtn:hover { color: var(--text); border-color: var(--primary); }
+    .ws-profile { display: flex; align-items: center; gap: 9px; padding: 5px 12px 5px 6px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 24px; cursor: default; }
+    .ws-profile__avatar { width: 28px; height: 28px; border-radius: 50%; background: var(--primary); color: var(--on-primary); display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 11px; font-weight: 500; }
+    .ws-profile__name { font-size: 12px; font-weight: 500; color: var(--text); line-height: 1.2; }
+    .ws-profile__sub { font-size: 10px; color: var(--text-2); line-height: 1.2; }
+
+    /* ---- Scrollable content ---- */
+    .ws-content { flex: 1; overflow-y: auto; padding: 24px 28px 40px; animation: fadeIn .4s ease; }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    .ws-pagehead { margin-bottom: 20px; }
+    .ws-greeting { font-family: 'Roboto', sans-serif; font-size: 24px; font-weight: 500; color: var(--text); line-height: 1.2; }
+    .ws-subline { font-size: 13.5px; color: var(--text-2); margin-top: 5px; }
+    .ws-subline strong { color: var(--text); font-weight: 500; }
+
+    /* Neutralize suite.css centering/padding so the shared content
+       sections flow full-width inside the shell content area. */
+    .ws-content .suite-main {
+      max-width: none; margin: 0; padding: 0;
+      display: flex; flex-direction: column; gap: 22px;
+    }
+    .ws-content .suite-footer { max-width: none; margin-top: 28px; }
+
+    @media (max-width: 860px) {
+      .ws-sidebar { position: absolute; z-index: 20; height: 100vh; box-shadow: var(--shadow-2); }
+      html:not([data-ws-collapsed="1"]) .ws-content { filter: none; }
+    }
+  </style>
 </head>
 <body class="suite-body">
 
-<!-- Topbar (cluster nav + sub-nav + theme button) is built by suite.js
-     after load. The data attributes on <body> below reserve the right
-     amount of top padding pre-paint so content doesn't jump. -->
+<div class="ws-shell">
 
+  <!-- ██████████████  SIDEBAR  ██████████████ -->
+  <aside class="ws-sidebar">
+    <div class="ws-logo">
+      <div class="ws-logo__row">
+        <div class="ws-logo__badge">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
+        </div>
+        <div class="sb-x">
+          <div class="ws-logo__title">Wealth Suite</div>
+          <div class="ws-logo__sub">Personal Finance</div>
+        </div>
+      </div>
+    </div>
 
-<main class="suite-main">
+    <nav class="ws-nav" aria-label="Primary navigation">
+      <a class="ws-navitem is-active" href="index.html" title="Dashboard" aria-current="page" style="margin-bottom:6px;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="7" height="7" rx="1"></rect><rect x="14" y="3" width="7" height="7" rx="1"></rect><rect x="3" y="14" width="7" height="7" rx="1"></rect><rect x="14" y="14" width="7" height="7" rx="1"></rect></svg>
+        <span class="sb-x">Dashboard</span>
+      </a>
 
-  <section class="suite-chat" id="suite-chat" aria-label="AI chat">
-    <!-- Filled by assets/ai/chat.js — enable CTA until preferences.aiProvider is set. -->
-  </section>
+      <div class="ws-navlabel sb-x">Track</div>
+      <a class="ws-navitem" href="net_worth.html" title="Net Worth">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 3v18h18M7 16l4-4 4 4 4-4"></path></svg>
+        <span class="sb-x">Net Worth</span>
+      </a>
+      <a class="ws-navitem" href="portfolio_tracker.html" title="Portfolio Tracker">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="9"></circle><path d="M12 3v9l5.5 5.5"></path></svg>
+        <span class="sb-x">Portfolio Tracker</span>
+      </a>
+      <a class="ws-navitem" href="expenses.html" title="Expenses">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="2" y="5" width="20" height="14" rx="2"></rect><line x1="2" y1="10" x2="22" y2="10"></line><line x1="6" y1="15" x2="10" y2="15"></line></svg>
+        <span class="sb-x">Expenses</span>
+      </a>
 
-  <div class="suite-section-head">
-    <h3 class="suite-section-title">Snapshot</h3>
-    <div class="suite-section-actions" id="suite-snapshot-actions"
-         aria-label="Snapshot actions">
-      <!-- Filled by assets/dashboard.js — Export / Import / status -->
+      <div class="ws-navlabel sb-x">Plan</div>
+      <a class="ws-navitem" href="retirement_master_plan_2.html" title="Retirement Plan">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+        <span class="sb-x">Retirement Plan</span>
+      </a>
+      <a class="ws-navitem" href="TaxEstimatorV5.html" title="Tax Plan (Estimator)">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"></path></svg>
+        <span class="sb-x">Tax Plan (Estimator)</span>
+        <span class="ws-badge ws-badge--q2 sb-x">Q2</span>
+      </a>
+      <a class="ws-navitem" href="retirement_master_plan_2.html" title="Estate Plan">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+        <span class="sb-x">Estate Plan</span>
+      </a>
+      <a class="ws-navitem" href="roth_conversion.html" title="Roth Conversion">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 12a9 9 0 009 9 9.75 9.75 0 006.74-2.74L21 16"></path><path d="M21 12a9 9 0 00-9-9 9.75 9.75 0 00-6.74 2.74L3 8"></path><path d="M21 4v4h-4M3 20v-4h4"></path></svg>
+        <span class="sb-x">Roth Conversion</span>
+      </a>
+      <a class="ws-navitem" href="social_security.html" title="Social Security">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"></path></svg>
+        <span class="sb-x">Social Security</span>
+      </a>
+
+      <div class="ws-navlabel sb-x">Optimization Tools</div>
+      <a class="ws-navitem" href="TaxAssetCalcv4.html" title="Asset &amp; Cap-Gains">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M18 20V10M12 20V4M6 20v-6"></path></svg>
+        <span class="sb-x">Asset &amp; Cap-Gains</span>
+      </a>
+      <a class="ws-navitem" href="portfolio_review.html" title="Portfolio Review">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+        <span class="sb-x">Portfolio Review</span>
+      </a>
+      <a class="ws-navitem" href="golden_ratio_portfolio_dashboard.html" title="Golden φ Portfolio">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+        <span class="sb-x">Golden φ Portfolio</span>
+      </a>
+      <a class="ws-navitem" href="monte_carlo.html" title="Monte Carlo">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3 3"></path></svg>
+        <span class="sb-x">Monte Carlo</span>
+      </a>
+
+      <div class="ws-navlabel sb-x">Review</div>
+      <span class="ws-navitem is-soon" title="Site Map — coming soon">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"></polygon><line x1="8" y1="2" x2="8" y2="18"></line><line x1="16" y1="6" x2="16" y2="22"></line></svg>
+        <span class="sb-x">Site Map</span>
+        <span class="ws-badge ws-badge--soon sb-x">Soon</span>
+      </span>
+    </nav>
+
+    <div class="ws-sidefoot">
+      <span class="ws-datahub" title="Data Hub — coming soon">
+        <span class="ws-datahub__row">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><ellipse cx="12" cy="5" rx="9" ry="3"></ellipse><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"></path><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"></path></svg>
+          <span class="ws-datahub__title sb-x">Data Hub</span>
+          <span class="ws-badge ws-badge--soon sb-x">Soon</span>
+        </span>
+        <span class="ws-datahub__desc sb-x">Single source · CSV, live prices, manual</span>
+      </span>
+      <div class="ws-sidefoot__row">
+        <span class="ws-navitem is-soon" title="Settings — coming soon" style="padding:7px 10px;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+          <span class="sb-x">Settings</span>
+        </span>
+        <div class="ws-avatar" id="ws-avatar" title="Household">WC</div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ██████████████  MAIN  ██████████████ -->
+  <div class="ws-mainwrap">
+    <header class="ws-topbar">
+      <button class="ws-hamburger" id="ws-hamburger" type="button" title="Toggle sidebar" aria-label="Toggle sidebar">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+      </button>
+      <span class="ws-pagetitle">Dashboard</span>
+      <span class="ws-sep">·</span>
+      <span class="ws-date" id="ws-date">—</span>
+      <div class="ws-topbar__spacer"></div>
+
+      <button class="ws-themebtn" id="ws-theme" type="button" title="Cycle theme: system → light → dark">
+        <span id="ws-theme-icon" aria-hidden="true"></span>
+        <span id="ws-theme-label">Theme</span>
+      </button>
+
+      <div class="ws-profile" title="Active household">
+        <div class="ws-profile__avatar" id="ws-profile-avatar">WC</div>
+        <div class="sb-x">
+          <div class="ws-profile__name" id="ws-profile-name">Your household</div>
+          <div class="ws-profile__sub" id="ws-profile-sub">Private · this browser</div>
+        </div>
+      </div>
+    </header>
+
+    <div class="ws-content">
+      <div class="ws-pagehead">
+        <div class="ws-greeting" id="ws-greeting">Welcome back 👋</div>
+        <div class="ws-subline" id="ws-subline">Your financial snapshot · <strong>runs entirely in your browser</strong> — no tracking, no upload.</div>
+      </div>
+
+      <main class="suite-main">
+
+        <section class="suite-chat" id="suite-chat" aria-label="AI chat">
+          <!-- Filled by assets/ai/chat.js — enable CTA until preferences.aiProvider is set. -->
+        </section>
+
+        <div class="suite-section-head">
+          <h3 class="suite-section-title">Snapshot</h3>
+          <div class="suite-section-actions" id="suite-snapshot-actions"
+               aria-label="Snapshot actions">
+            <!-- Filled by assets/dashboard.js — Export / Import / status -->
+          </div>
+        </div>
+        <section class="suite-snapshot" id="suite-snapshot" aria-label="Household snapshot">
+          <!-- Filled by assets/dashboard.js — empty state until tool adapters write to the store. -->
+        </section>
+
+        <div class="suite-section-head">
+          <h3 class="suite-section-title">Scenarios</h3>
+        </div>
+        <div id="suite-scenarios" class="suite-scenarios" aria-label="Retirement scenarios">
+          <!-- Filled by assets/dashboard.js — scenario chips write retirement.plan.targetRetireAge to the store -->
+        </div>
+
+        <div class="suite-section-head" id="suite-compact-head">
+          <h3 class="suite-section-title">Quick entry</h3>
+          <!-- toggle button filled by assets/dashboard.js -->
+        </div>
+        <div id="suite-compact-panel" hidden class="suite-compact-panel">
+          <!-- filled by assets/dashboard.js -->
+        </div>
+
+        <h3 class="suite-section-title">Modules</h3>
+        <section class="suite-grid" aria-label="Modules">
+
+          <a class="suite-card" href="TaxEstimatorV5.html" data-accent="primary">
+            <span class="suite-card__icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="currentColor"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm-1 7V3.5L18.5 9H13zM8 13h8v2H8v-2zm0 4h5v2H8v-2zm0-8h3v2H8V9z"/></svg>
+            </span>
+            <h4 class="suite-card__title">Tax Estimator</h4>
+            <p class="suite-card__desc">Federal &amp; WA tax, brackets, AMT, LTCG/NIIT, supplemental gap, quarterly payments. 2024–2041.</p>
+            <div class="suite-card__tags">
+              <span class="suite-card__tag">Federal</span>
+              <span class="suite-card__tag">WA State</span>
+              <span class="suite-card__tag">React</span>
+            </div>
+          </a>
+
+          <a class="suite-card" href="TaxAssetCalcv4.html" data-accent="secondary">
+            <span class="suite-card__icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 13h2v8H3v-8zm4-4h2v12H7V9zm4-4h2v16h-2V5zm4 2h2v14h-2V7zm4 4h2v10h-2V11z"/></svg>
+            </span>
+            <h4 class="suite-card__title">Asset &amp; Cap-Gains Calculator</h4>
+            <p class="suite-card__desc">Capital gains scenarios with D3 visualizations — short vs. long-term, lot selection, tax-loss harvesting.</p>
+            <div class="suite-card__tags">
+              <span class="suite-card__tag">D3</span>
+              <span class="suite-card__tag">Scenarios</span>
+            </div>
+          </a>
+
+          <a class="suite-card" href="retirement_master_plan_2.html" data-accent="success">
+            <span class="suite-card__icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm1 17.93V18a1 1 0 0 0-2 0v1.93A8 8 0 0 1 4.07 13H6a1 1 0 0 0 0-2H4.07A8 8 0 0 1 11 4.07V6a1 1 0 0 0 2 0V4.07A8 8 0 0 1 19.93 11H18a1 1 0 0 0 0 2h1.93A8 8 0 0 1 13 19.93zM12 8a4 4 0 1 0 4 4 4 4 0 0 0-4-4z"/></svg>
+            </span>
+            <h4 class="suite-card__title">Retirement Master Plan</h4>
+            <p class="suite-card__desc">Long-horizon projections for a married couple — contributions, growth assumptions, withdrawal phasing.</p>
+            <div class="suite-card__tags">
+              <span class="suite-card__tag">Projections</span>
+              <span class="suite-card__tag">WA Couple</span>
+            </div>
+          </a>
+
+          <a class="suite-card" href="portfolio_review.html" data-accent="tertiary">
+            <span class="suite-card__icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="currentColor"><path d="M21 3H3a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h18a1 1 0 0 0 1-1V4a1 1 0 0 0-1-1zM9 18H5v-4h4v4zm0-6H5V8h4v4zm10 6h-8v-4h8v4zm0-6h-8V8h8v4z"/></svg>
+            </span>
+            <h4 class="suite-card__title">Portfolio Review</h4>
+            <p class="suite-card__desc">Diversification analysis, concentration risk, sector &amp; geography breakdowns with rebalancing prompts.</p>
+            <div class="suite-card__tags">
+              <span class="suite-card__tag">Allocation</span>
+              <span class="suite-card__tag">Risk</span>
+            </div>
+          </a>
+
+          <a class="suite-card" href="golden_ratio_portfolio_dashboard.html" data-accent="tertiary">
+            <span class="suite-card__icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 3a9 9 0 1 0 9 9 9 9 0 0 0-9-9zm0 16a7 7 0 1 1 7-7 7 7 0 0 1-7 7zm3.5-7a3.5 3.5 0 1 1-3.5-3.5 3.5 3.5 0 0 1 3.5 3.5z"/></svg>
+            </span>
+            <h4 class="suite-card__title">Golden φ Portfolio</h4>
+            <p class="suite-card__desc">Phi-derived allocation, 15-year projection, sequence-of-returns stress test on $100K with 5% withdrawal.</p>
+            <div class="suite-card__tags">
+              <span class="suite-card__tag">Allocation</span>
+              <span class="suite-card__tag">SRR</span>
+            </div>
+          </a>
+
+          <a class="suite-card" href="roth_conversion.html" data-accent="success">
+            <span class="suite-card__icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="currentColor"><path d="M17 8C8 10 5.9 16.17 3.82 21.34L5.71 22l1-2.3A4.49 4.49 0 0 0 8 20C19 20 22 3 22 3c-1 2-8 2-14 7 .73-1.15 1.69-2.31 3-3z"/></svg>
+            </span>
+            <h4 class="suite-card__title">Roth Conversion Planner</h4>
+            <p class="suite-card__desc">Optimal annual conversion schedule to fill lower tax brackets before retirement, with RMD comparison and D3 projection.</p>
+            <div class="suite-card__tags">
+              <span class="suite-card__tag">Roth</span>
+              <span class="suite-card__tag">Tax Planning</span>
+              <span class="suite-card__tag">RMD</span>
+            </div>
+          </a>
+
+          <a class="suite-card" href="portfolio_tracker.html" data-accent="tertiary">
+            <span class="suite-card__icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="currentColor"><path d="M16 6l2.29 2.29-4.88 4.88-4-4L2 16.59 3.41 18l6-6 4 4 6.3-6.29L22 12V6z"/></svg>
+            </span>
+            <h4 class="suite-card__title">Portfolio Tracker</h4>
+            <p class="suite-card__desc">Live prices via Yahoo Finance, CSV import for Fidelity/Schwab/Vanguard, asset-class allocation donut, and 1–15 year projection chart.</p>
+            <div class="suite-card__tags">
+              <span class="suite-card__tag">Live Prices</span>
+              <span class="suite-card__tag">CSV Import</span>
+              <span class="suite-card__tag">Projections</span>
+            </div>
+          </a>
+
+          <a class="suite-card" href="social_security.html" data-accent="success">
+            <span class="suite-card__icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="currentColor"><path d="M11.5 2C6.81 2 3 5.81 3 10.5S6.81 19 11.5 19h.5v3c4.86-2.34 8-7 8-11.5C20 5.81 16.19 2 11.5 2zm1 14.5h-2v-2h2v2zm0-4h-2c0-3.25 3-3 3-5 0-1.1-.9-2-2-2s-2 .9-2 2h-2c0-2.21 1.79-4 4-4s4 1.79 4 4c0 2.5-3 2.75-3 5z"/></svg>
+            </span>
+            <h4 class="suite-card__title">Social Security Estimator</h4>
+            <p class="suite-card__desc">Break-even analysis by claiming age (62–70), cumulative lifetime benefit curves, and spouse comparison with COLA.</p>
+            <div class="suite-card__tags">
+              <span class="suite-card__tag">Break-even</span>
+              <span class="suite-card__tag">COLA</span>
+              <span class="suite-card__tag">Ages 62–70</span>
+            </div>
+          </a>
+
+          <a class="suite-card" href="net_worth.html" data-accent="primary">
+            <span class="suite-card__icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="currentColor"><path d="M11.8 10.9c-2.27-.59-3-1.2-3-2.15 0-1.09 1.01-1.85 2.7-1.85 1.78 0 2.44.85 2.5 2.1h2.21c-.07-1.72-1.12-3.3-3.21-3.81V3h-3v2.16c-1.94.42-3.5 1.68-3.5 3.61 0 2.31 1.91 3.46 4.7 4.13 2.5.6 3 1.48 3 2.41 0 .69-.49 1.79-2.7 1.79-2.06 0-2.87-.92-2.98-2.1h-2.2c.12 2.19 1.76 3.42 3.68 3.83V21h3v-2.15c1.95-.37 3.5-1.5 3.5-3.55 0-2.84-2.43-3.81-4.7-4.4z"/></svg>
+            </span>
+            <h4 class="suite-card__title">Net Worth Tracker</h4>
+            <p class="suite-card__desc">Portfolio + retirement + manual assets minus liabilities. Stacked bar chart, debt-to-asset ratio, monthly obligations.</p>
+            <div class="suite-card__tags">
+              <span class="suite-card__tag">Liabilities</span>
+              <span class="suite-card__tag">Net Worth</span>
+              <span class="suite-card__tag">Debt Ratio</span>
+            </div>
+          </a>
+
+          <a class="suite-card" href="expenses.html" data-accent="primary">
+            <span class="suite-card__icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2zm-7 14H7v-2h5v2zm5-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg>
+            </span>
+            <h4 class="suite-card__title">Expense Tracker</h4>
+            <p class="suite-card__desc">Bank CSV import (Chase, Amex, Citi), auto-categorisation, monthly budgets, calendar heat map, and 12-month spend trend.</p>
+            <div class="suite-card__tags">
+              <span class="suite-card__tag">CSV Import</span>
+              <span class="suite-card__tag">Budgets</span>
+              <span class="suite-card__tag">Trends</span>
+            </div>
+          </a>
+
+          <a class="suite-card" href="monte_carlo.html" data-accent="secondary">
+            <span class="suite-card__icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="currentColor"><path d="M22 12a10 10 0 1 1-10-10 1 1 0 0 1 0 2 8 8 0 1 0 8 8 1 1 0 0 1 2 0zm-10-6a1 1 0 0 1 1 1v5.586l3.707 3.707a1 1 0 0 1-1.414 1.414l-4-4A1 1 0 0 1 11 13V7a1 1 0 0 1 1-1z"/></svg>
+            </span>
+            <h4 class="suite-card__title">Monte Carlo Projections</h4>
+            <p class="suite-card__desc">1,000-simulation fan chart showing p10/p50/p90 portfolio outcomes, probability of success, and worst-case survival age.</p>
+            <div class="suite-card__tags">
+              <span class="suite-card__tag">Probability</span>
+              <span class="suite-card__tag">Fan Chart</span>
+              <span class="suite-card__tag">Risk</span>
+            </div>
+          </a>
+
+        </section>
+
+        <h3 class="suite-section-title">Reference data</h3>
+        <section class="suite-grid" aria-label="Reference">
+          <a class="suite-card" href="irs-rates.json" data-accent="secondary">
+            <span class="suite-card__icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2zm-7 14H7v-2h5v2zm0-4H7v-2h5v2zm0-4H7V7h5v2zm5 8h-3v-2h3v2zm0-4h-3v-2h3v2zm0-4h-3V7h3v2z"/></svg>
+            </span>
+            <h4 class="suite-card__title">IRS Rates Data</h4>
+            <p class="suite-card__desc">Auto-synced tax brackets, standard deductions, contribution limits. Tax Estimator pulls from this on startup.</p>
+            <div class="suite-card__tags">
+              <span class="suite-card__tag">2024–2041</span>
+              <span class="suite-card__tag">JSON</span>
+            </div>
+          </a>
+        </section>
+
+      </main>
+
+      <footer class="suite-footer">
+        <span>Wealth Suite — runs entirely in your browser. No tracking, no upload.</span>
+        <span>Personal finance hub · Responsive · GitHub Pages ready</span>
+      </footer>
     </div>
   </div>
-  <section class="suite-snapshot" id="suite-snapshot" aria-label="Household snapshot">
-    <!-- Filled by assets/dashboard.js — empty state until tool adapters write to the store. -->
-  </section>
+</div>
 
-  <div class="suite-section-head">
-    <h3 class="suite-section-title">Scenarios</h3>
-  </div>
-  <div id="suite-scenarios" class="suite-scenarios" aria-label="Retirement scenarios">
-    <!-- Filled by assets/dashboard.js — scenario chips write retirement.plan.targetRetireAge to the store -->
-  </div>
+<!-- Shell runtime: sidebar collapse, theme cycle, profile/date. index.html
+     owns its own shell so suite.js (topnav injector) is intentionally NOT
+     loaded here — tool pages still load it. -->
+<script>
+  (function () {
+    'use strict';
+    var root = document.documentElement;
 
-  <div class="suite-section-head" id="suite-compact-head">
-    <h3 class="suite-section-title">Quick entry</h3>
-    <!-- toggle button filled by assets/dashboard.js -->
-  </div>
-  <div id="suite-compact-panel" hidden class="suite-compact-panel">
-    <!-- filled by assets/dashboard.js -->
-  </div>
+    // ---- Sidebar collapse (persisted in ws-shell-nav) ----
+    var hb = document.getElementById('ws-hamburger');
+    function readNav() { try { return JSON.parse(localStorage.getItem('ws-shell-nav') || '{}'); } catch (e) { return {}; } }
+    function writeNav(patch) {
+      var n = readNav(); Object.assign(n, patch);
+      try { localStorage.setItem('ws-shell-nav', JSON.stringify(n)); } catch (e) {}
+    }
+    if (hb) hb.addEventListener('click', function () {
+      var collapsed = root.getAttribute('data-ws-collapsed') === '1';
+      if (collapsed) root.removeAttribute('data-ws-collapsed');
+      else root.setAttribute('data-ws-collapsed', '1');
+      writeNav({ collapsed: !collapsed });
+    });
 
-  <h3 class="suite-section-title">Modules</h3>
-  <section class="suite-grid" aria-label="Modules">
+    // ---- Theme cycle (system → light → dark), shared preference key ----
+    var TKEY = 'wealthSuite.themePreference';
+    var ORDER = ['system', 'light', 'dark'];
+    var mql = window.matchMedia('(prefers-color-scheme: dark)');
+    var ICONS = {
+      system: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>',
+      light:  '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"></path></svg>',
+      dark:   '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"></path></svg>'
+    };
+    var LABELS = { system: 'System', light: 'Light', dark: 'Dark' };
+    function readPref() { var v = localStorage.getItem(TKEY); return ORDER.indexOf(v) >= 0 ? v : 'system'; }
+    function resolve(p) { return p === 'system' ? (mql.matches ? 'dark' : 'light') : p; }
+    var iconEl = document.getElementById('ws-theme-icon');
+    var labelEl = document.getElementById('ws-theme-label');
+    function apply() {
+      var p = readPref();
+      root.setAttribute('data-theme', resolve(p));
+      root.setAttribute('data-theme-pref', p);
+      if (iconEl) iconEl.innerHTML = ICONS[p];
+      if (labelEl) labelEl.textContent = LABELS[p];
+    }
+    var themeBtn = document.getElementById('ws-theme');
+    if (themeBtn) themeBtn.addEventListener('click', function () {
+      var next = ORDER[(ORDER.indexOf(readPref()) + 1) % ORDER.length];
+      try { localStorage.setItem(TKEY, next); } catch (e) {}
+      apply();
+    });
+    mql.addEventListener('change', function () { if (readPref() === 'system') apply(); });
+    apply();
 
-    <a class="suite-card" href="TaxEstimatorV5.html" data-accent="primary">
-      <span class="suite-card__icon" aria-hidden="true">
-        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm-1 7V3.5L18.5 9H13zM8 13h8v2H8v-2zm0 4h5v2H8v-2zm0-8h3v2H8V9z"/></svg>
-      </span>
-      <h4 class="suite-card__title">Tax Estimator</h4>
-      <p class="suite-card__desc">Federal &amp; WA tax, brackets, AMT, LTCG/NIIT, supplemental gap, quarterly payments. 2024–2041.</p>
-      <div class="suite-card__tags">
-        <span class="suite-card__tag">Federal</span>
-        <span class="suite-card__tag">WA State</span>
-        <span class="suite-card__tag">React</span>
-      </div>
-    </a>
+    // ---- Greeting + date ----
+    var now = new Date();
+    var h = now.getHours();
+    var greet = h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening';
+    var gEl = document.getElementById('ws-greeting');
+    if (gEl) gEl.textContent = greet + ' 👋';
+    var dEl = document.getElementById('ws-date');
+    if (dEl) dEl.textContent = now.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 
-    <a class="suite-card" href="TaxAssetCalcv4.html" data-accent="secondary">
-      <span class="suite-card__icon" aria-hidden="true">
-        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 13h2v8H3v-8zm4-4h2v12H7V9zm4-4h2v16h-2V5zm4 2h2v14h-2V7zm4 4h2v10h-2V11z"/></svg>
-      </span>
-      <h4 class="suite-card__title">Asset &amp; Cap-Gains Calculator</h4>
-      <p class="suite-card__desc">Capital gains scenarios with D3 visualizations — short vs. long-term, lot selection, tax-loss harvesting.</p>
-      <div class="suite-card__tags">
-        <span class="suite-card__tag">D3</span>
-        <span class="suite-card__tag">Scenarios</span>
-      </div>
-    </a>
-
-    <a class="suite-card" href="retirement_master_plan_2.html" data-accent="success">
-      <span class="suite-card__icon" aria-hidden="true">
-        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm1 17.93V18a1 1 0 0 0-2 0v1.93A8 8 0 0 1 4.07 13H6a1 1 0 0 0 0-2H4.07A8 8 0 0 1 11 4.07V6a1 1 0 0 0 2 0V4.07A8 8 0 0 1 19.93 11H18a1 1 0 0 0 0 2h1.93A8 8 0 0 1 13 19.93zM12 8a4 4 0 1 0 4 4 4 4 0 0 0-4-4z"/></svg>
-      </span>
-      <h4 class="suite-card__title">Retirement Master Plan</h4>
-      <p class="suite-card__desc">Long-horizon projections for a married couple — contributions, growth assumptions, withdrawal phasing.</p>
-      <div class="suite-card__tags">
-        <span class="suite-card__tag">Projections</span>
-        <span class="suite-card__tag">WA Couple</span>
-      </div>
-    </a>
-
-    <a class="suite-card" href="portfolio_review.html" data-accent="tertiary">
-      <span class="suite-card__icon" aria-hidden="true">
-        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M21 3H3a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h18a1 1 0 0 0 1-1V4a1 1 0 0 0-1-1zM9 18H5v-4h4v4zm0-6H5V8h4v4zm10 6h-8v-4h8v4zm0-6h-8V8h8v4z"/></svg>
-      </span>
-      <h4 class="suite-card__title">Portfolio Review</h4>
-      <p class="suite-card__desc">Diversification analysis, concentration risk, sector &amp; geography breakdowns with rebalancing prompts.</p>
-      <div class="suite-card__tags">
-        <span class="suite-card__tag">Allocation</span>
-        <span class="suite-card__tag">Risk</span>
-      </div>
-    </a>
-
-    <a class="suite-card" href="golden_ratio_portfolio_dashboard.html" data-accent="tertiary">
-      <span class="suite-card__icon" aria-hidden="true">
-        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 3a9 9 0 1 0 9 9 9 9 0 0 0-9-9zm0 16a7 7 0 1 1 7-7 7 7 0 0 1-7 7zm3.5-7a3.5 3.5 0 1 1-3.5-3.5 3.5 3.5 0 0 1 3.5 3.5z"/></svg>
-      </span>
-      <h4 class="suite-card__title">Golden φ Portfolio</h4>
-      <p class="suite-card__desc">Phi-derived allocation, 15-year projection, sequence-of-returns stress test on $100K with 5% withdrawal.</p>
-      <div class="suite-card__tags">
-        <span class="suite-card__tag">Allocation</span>
-        <span class="suite-card__tag">SRR</span>
-      </div>
-    </a>
-
-    <a class="suite-card" href="roth_conversion.html" data-accent="success">
-      <span class="suite-card__icon" aria-hidden="true">
-        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M17 8C8 10 5.9 16.17 3.82 21.34L5.71 22l1-2.3A4.49 4.49 0 0 0 8 20C19 20 22 3 22 3c-1 2-8 2-14 7 .73-1.15 1.69-2.31 3-3z"/></svg>
-      </span>
-      <h4 class="suite-card__title">Roth Conversion Planner</h4>
-      <p class="suite-card__desc">Optimal annual conversion schedule to fill lower tax brackets before retirement, with RMD comparison and D3 projection.</p>
-      <div class="suite-card__tags">
-        <span class="suite-card__tag">Roth</span>
-        <span class="suite-card__tag">Tax Planning</span>
-        <span class="suite-card__tag">RMD</span>
-      </div>
-    </a>
-
-    <a class="suite-card" href="portfolio_tracker.html" data-accent="tertiary">
-      <span class="suite-card__icon" aria-hidden="true">
-        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M16 6l2.29 2.29-4.88 4.88-4-4L2 16.59 3.41 18l6-6 4 4 6.3-6.29L22 12V6z"/></svg>
-      </span>
-      <h4 class="suite-card__title">Portfolio Tracker</h4>
-      <p class="suite-card__desc">Live prices via Yahoo Finance, CSV import for Fidelity/Schwab/Vanguard, asset-class allocation donut, and 1–15 year projection chart.</p>
-      <div class="suite-card__tags">
-        <span class="suite-card__tag">Live Prices</span>
-        <span class="suite-card__tag">CSV Import</span>
-        <span class="suite-card__tag">Projections</span>
-      </div>
-    </a>
-
-    <a class="suite-card" href="social_security.html" data-accent="success">
-      <span class="suite-card__icon" aria-hidden="true">
-        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M11.5 2C6.81 2 3 5.81 3 10.5S6.81 19 11.5 19h.5v3c4.86-2.34 8-7 8-11.5C20 5.81 16.19 2 11.5 2zm1 14.5h-2v-2h2v2zm0-4h-2c0-3.25 3-3 3-5 0-1.1-.9-2-2-2s-2 .9-2 2h-2c0-2.21 1.79-4 4-4s4 1.79 4 4c0 2.5-3 2.75-3 5z"/></svg>
-      </span>
-      <h4 class="suite-card__title">Social Security Estimator</h4>
-      <p class="suite-card__desc">Break-even analysis by claiming age (62–70), cumulative lifetime benefit curves, and spouse comparison with COLA.</p>
-      <div class="suite-card__tags">
-        <span class="suite-card__tag">Break-even</span>
-        <span class="suite-card__tag">COLA</span>
-        <span class="suite-card__tag">Ages 62–70</span>
-      </div>
-    </a>
-
-    <a class="suite-card" href="net_worth.html" data-accent="primary">
-      <span class="suite-card__icon" aria-hidden="true">
-        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M11.8 10.9c-2.27-.59-3-1.2-3-2.15 0-1.09 1.01-1.85 2.7-1.85 1.78 0 2.44.85 2.5 2.1h2.21c-.07-1.72-1.12-3.3-3.21-3.81V3h-3v2.16c-1.94.42-3.5 1.68-3.5 3.61 0 2.31 1.91 3.46 4.7 4.13 2.5.6 3 1.48 3 2.41 0 .69-.49 1.79-2.7 1.79-2.06 0-2.87-.92-2.98-2.1h-2.2c.12 2.19 1.76 3.42 3.68 3.83V21h3v-2.15c1.95-.37 3.5-1.5 3.5-3.55 0-2.84-2.43-3.81-4.7-4.4z"/></svg>
-      </span>
-      <h4 class="suite-card__title">Net Worth Tracker</h4>
-      <p class="suite-card__desc">Portfolio + retirement + manual assets minus liabilities. Stacked bar chart, debt-to-asset ratio, monthly obligations.</p>
-      <div class="suite-card__tags">
-        <span class="suite-card__tag">Liabilities</span>
-        <span class="suite-card__tag">Net Worth</span>
-        <span class="suite-card__tag">Debt Ratio</span>
-      </div>
-    </a>
-
-    <a class="suite-card" href="expenses.html" data-accent="primary">
-      <span class="suite-card__icon" aria-hidden="true">
-        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2zm-7 14H7v-2h5v2zm5-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg>
-      </span>
-      <h4 class="suite-card__title">Expense Tracker</h4>
-      <p class="suite-card__desc">Bank CSV import (Chase, Amex, Citi), auto-categorisation, monthly budgets, calendar heat map, and 12-month spend trend.</p>
-      <div class="suite-card__tags">
-        <span class="suite-card__tag">CSV Import</span>
-        <span class="suite-card__tag">Budgets</span>
-        <span class="suite-card__tag">Trends</span>
-      </div>
-    </a>
-
-    <a class="suite-card" href="monte_carlo.html" data-accent="secondary">
-      <span class="suite-card__icon" aria-hidden="true">
-        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M22 12a10 10 0 1 1-10-10 1 1 0 0 1 0 2 8 8 0 1 0 8 8 1 1 0 0 1 2 0zm-10-6a1 1 0 0 1 1 1v5.586l3.707 3.707a1 1 0 0 1-1.414 1.414l-4-4A1 1 0 0 1 11 13V7a1 1 0 0 1 1-1z"/></svg>
-      </span>
-      <h4 class="suite-card__title">Monte Carlo Projections</h4>
-      <p class="suite-card__desc">1,000-simulation fan chart showing p10/p50/p90 portfolio outcomes, probability of success, and worst-case survival age.</p>
-      <div class="suite-card__tags">
-        <span class="suite-card__tag">Probability</span>
-        <span class="suite-card__tag">Fan Chart</span>
-        <span class="suite-card__tag">Risk</span>
-      </div>
-    </a>
-
-  </section>
-
-  <h3 class="suite-section-title">Reference data</h3>
-  <section class="suite-grid" aria-label="Reference">
-    <a class="suite-card" href="irs-rates.json" data-accent="secondary">
-      <span class="suite-card__icon" aria-hidden="true">
-        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2zm-7 14H7v-2h5v2zm0-4H7v-2h5v2zm0-4H7V7h5v2zm5 8h-3v-2h3v2zm0-4h-3v-2h3v2zm0-4h-3V7h3v2z"/></svg>
-      </span>
-      <h4 class="suite-card__title">IRS Rates Data</h4>
-      <p class="suite-card__desc">Auto-synced tax brackets, standard deductions, contribution limits. Tax Estimator pulls from this on startup.</p>
-      <div class="suite-card__tags">
-        <span class="suite-card__tag">2024–2041</span>
-        <span class="suite-card__tag">JSON</span>
-      </div>
-    </a>
-  </section>
-
-</main>
-
-<footer class="suite-footer">
-  <span>Wealth Suite — runs entirely in your browser. No tracking, no upload.</span>
-  <span>Material Design 3 · Responsive · GitHub Pages ready</span>
-</footer>
+    // ---- Profile / avatar from store (best-effort, non-blocking) ----
+    function initials(names) {
+      var parts = names.filter(Boolean);
+      if (!parts.length) return 'WC';
+      return parts.map(function (n) { return String(n).trim().charAt(0).toUpperCase(); }).join('').slice(0, 2) || 'WC';
+    }
+    function refreshProfile() {
+      try {
+        var store = window.WealthSuite && window.WealthSuite.store;
+        if (!store) return;
+        var s = store.export();
+        var hh = (s && s.household) || {};
+        var spouses = (hh.spouses || []).map(function (x) { return x && x.name; }).filter(Boolean);
+        var name = spouses.length ? spouses.join(' & ') : 'Your household';
+        var filing = hh.filingStatus === 'single' ? 'Single' : 'MFJ';
+        var st = (hh.location && hh.location.state) || 'WA';
+        var yr = (s && s.preferences && s.preferences.taxYear) || now.getFullYear();
+        var nEl = document.getElementById('ws-profile-name');
+        var subEl = document.getElementById('ws-profile-sub');
+        var avEl = document.getElementById('ws-profile-avatar');
+        var av2 = document.getElementById('ws-avatar');
+        if (nEl) nEl.textContent = name;
+        if (subEl) subEl.textContent = filing + ' · ' + st + ' · ' + yr;
+        var ini = initials(spouses);
+        if (avEl) avEl.textContent = ini;
+        if (av2) av2.textContent = ini;
+      } catch (e) {}
+    }
+    if (window.WealthSuite && window.WealthSuite.store) {
+      refreshProfile();
+      try { window.WealthSuite.store.subscribe(refreshProfile); } catch (e) {}
+    } else {
+      window.addEventListener('DOMContentLoaded', function () { setTimeout(refreshProfile, 0); });
+    }
+  })();
+</script>
 
 <script src="assets/suite-state.js?v=7" defer></script>
-<script src="assets/suite.js?v=11" defer></script>
 <script src="assets/dashboard.js?v=13" defer></script>
 <script src="assets/ai/chat.js?v=2" defer></script>
 </body>
