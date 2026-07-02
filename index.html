@@ -34,63 +34,46 @@
 
   <style>
     /* ============================================================
-     * App shell (design-handoff Dashboard.dc.html). All colours come
-     * from the shared tokens in theme.css. Scoped to index.html so the
-     * shared suite.css / other tool pages are untouched.
+     * App shell + dashboard content (design-handoff Dashboard.dc.html).
+     * All colours come from the shared tokens in theme.css. Scoped to
+     * index.html so suite.css / the tool pages are untouched.
+     *
+     * NOTE: dashboard figures below are PLACEHOLDER content per the
+     * handoff ("all numbers shown are placeholder; real values come
+     * from the user's data"). Live wiring arrives with the Data Hub
+     * (handoff step 2) and the computed layer (step 4). Nodes carry
+     * data-ws-metric hooks so that wiring can target them later.
      * ============================================================ */
-    body.suite-body {
-      margin: 0;
-      padding-top: 0 !important;
-      height: 100vh;
-      overflow: hidden;
-    }
-
+    body.suite-body { margin: 0; padding-top: 0 !important; height: 100vh; overflow: hidden; }
     .ws-shell { display: flex; height: 100vh; overflow: hidden; background: var(--bg); }
 
     /* ---- Sidebar ---- */
     .ws-sidebar {
-      width: 240px; min-width: 240px;
-      background: var(--surface);
-      border-right: 1px solid var(--border);
-      display: flex; flex-direction: column;
-      overflow: hidden; flex-shrink: 0;
-      transition: width .25s ease, min-width .25s ease;
+      width: 240px; min-width: 240px; background: var(--surface);
+      border-right: 1px solid var(--border); display: flex; flex-direction: column;
+      overflow: hidden; flex-shrink: 0; transition: width .25s ease, min-width .25s ease;
     }
     html[data-ws-collapsed="1"] .ws-sidebar { width: 72px; min-width: 72px; }
     html[data-ws-collapsed="1"] .sb-x { display: none !important; }
-    html[data-ws-collapsed="1"] .ws-navitem,
-    html[data-ws-collapsed="1"] .ws-datahub { justify-content: center; }
-    html[data-ws-collapsed="1"] .ws-logo__row { justify-content: center; }
-    html[data-ws-collapsed="1"] .ws-sidefoot__row { justify-content: center; }
+    html[data-ws-collapsed="1"] .ws-navitem, html[data-ws-collapsed="1"] .ws-datahub { justify-content: center; }
+    html[data-ws-collapsed="1"] .ws-logo__row, html[data-ws-collapsed="1"] .ws-sidefoot__row { justify-content: center; }
 
     .ws-logo { padding: 20px 18px 16px; flex-shrink: 0; border-bottom: 1px solid var(--border); }
     .ws-logo__row { display: flex; align-items: center; gap: 10px; }
-    .ws-logo__badge {
-      width: 36px; height: 36px; background: var(--primary); border-radius: 50%;
-      display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: var(--on-primary);
-    }
+    .ws-logo__badge { width: 36px; height: 36px; background: var(--primary); border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: var(--on-primary); }
     .ws-logo__title { font-size: 15px; font-weight: 500; color: var(--text); line-height: 1.2; }
     .ws-logo__sub { font-size: 10px; color: var(--text-3); font-weight: 500; letter-spacing: .6px; text-transform: uppercase; margin-top: 2px; }
 
     .ws-nav { flex: 1; padding: 8px 12px; display: flex; flex-direction: column; gap: 2px; overflow-y: auto; }
     .ws-navlabel { font-size: 10px; color: var(--text-3); font-weight: 700; letter-spacing: 1px; text-transform: uppercase; padding: 10px 14px 4px; margin-top: 4px; }
-    .ws-navitem {
-      display: flex; align-items: center; gap: 12px;
-      padding: 9px 14px; border-radius: 24px; cursor: pointer;
-      color: var(--text-2); font-size: 13px; font-weight: 500;
-      text-decoration: none; white-space: nowrap;
-    }
+    .ws-navitem { display: flex; align-items: center; gap: 12px; padding: 9px 14px; border-radius: 24px; cursor: pointer; color: var(--text-2); font-size: 13px; font-weight: 500; text-decoration: none; white-space: nowrap; }
     .ws-navitem svg { flex-shrink: 0; }
     .ws-navitem:hover { background: var(--surface-2); color: var(--text); }
     .ws-navitem.is-active { background: var(--primary-weak); color: var(--primary-text); }
     .ws-navitem.is-soon { opacity: .5; cursor: default; }
     .ws-navitem.is-soon:hover { background: transparent; color: var(--text-2); }
-    .ws-dot { margin-left: auto; width: 6px; height: 6px; border-radius: 50%; background: var(--pos); }
-    .ws-dot--pulse { animation: ws-pulse 2s ease-in-out infinite; }
-    @keyframes ws-pulse { 0%,100% { opacity: .4; } 50% { opacity: 1; } }
     .ws-badge { margin-left: auto; padding: 2px 7px; border-radius: 20px; font-size: 9px; font-weight: 700; }
     .ws-badge--q2 { background: var(--warn-weak); color: var(--warn); }
-    .ws-badge--new { background: var(--primary-weak); color: var(--primary-text); }
     .ws-badge--soon { background: var(--surface-2); color: var(--text-3); }
 
     .ws-sidefoot { padding: 12px; border-top: 1px solid var(--border); flex-shrink: 0; display: flex; flex-direction: column; gap: 8px; }
@@ -101,53 +84,122 @@
     .ws-sidefoot__row { display: flex; align-items: center; justify-content: space-between; padding: 0 4px; }
     .ws-avatar { width: 30px; height: 30px; background: var(--primary); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 500; color: var(--on-primary); flex-shrink: 0; }
 
-    /* ---- Main column ---- */
+    /* ---- Main column + top bar ---- */
     .ws-mainwrap { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-width: 0; }
-    .ws-topbar {
-      height: 60px; background: var(--surface); border-bottom: 1px solid var(--border);
-      box-shadow: var(--shadow); display: flex; align-items: center;
-      padding: 0 24px; gap: 14px; flex-shrink: 0; z-index: 5;
-    }
-    .ws-hamburger {
-      width: 38px; height: 38px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
-      cursor: pointer; color: var(--text-2); flex-shrink: 0; margin-left: -8px; background: none; border: none;
-    }
+    .ws-topbar { height: 60px; background: var(--surface); border-bottom: 1px solid var(--border); box-shadow: var(--shadow); display: flex; align-items: center; padding: 0 24px; gap: 14px; flex-shrink: 0; z-index: 5; }
+    .ws-hamburger { width: 38px; height: 38px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--text-2); flex-shrink: 0; margin-left: -8px; background: none; border: none; }
     .ws-hamburger:hover { background: var(--surface-2); color: var(--text); }
     .ws-pagetitle { font-family: 'Roboto', sans-serif; font-size: 16px; font-weight: 500; color: var(--text); }
     .ws-sep { color: var(--text-3); font-size: 16px; }
     .ws-date { font-size: 12.5px; color: var(--text-2); font-family: 'Roboto Mono', monospace; }
     .ws-topbar__spacer { flex: 1; }
-    .ws-themebtn {
-      display: flex; align-items: center; gap: 7px; padding: 8px 14px;
-      background: var(--surface-2); border: 1px solid var(--border); border-radius: 24px;
-      color: var(--text-2); font-size: 12px; font-weight: 500; cursor: pointer; font-family: inherit; user-select: none;
-    }
+    .ws-themebtn { display: flex; align-items: center; gap: 7px; padding: 8px 14px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 24px; color: var(--text-2); font-size: 12px; font-weight: 500; cursor: pointer; font-family: inherit; user-select: none; }
     .ws-themebtn:hover { color: var(--text); border-color: var(--primary); }
+    .ws-importbtn { display: flex; align-items: center; gap: 7px; padding: 9px 16px; background: var(--primary-weak); border: none; border-radius: 24px; color: var(--primary-text); font-size: 12.5px; font-weight: 500; cursor: default; font-family: inherit; }
+    .ws-bell { width: 40px; height: 40px; border-radius: 50%; background: var(--surface-2); display: flex; align-items: center; justify-content: center; cursor: pointer; position: relative; }
+    .ws-bell__dot { position: absolute; top: 9px; right: 9px; width: 7px; height: 7px; background: var(--warn); border-radius: 50%; border: 2px solid var(--surface); }
     .ws-profile { display: flex; align-items: center; gap: 9px; padding: 5px 12px 5px 6px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 24px; cursor: default; }
     .ws-profile__avatar { width: 28px; height: 28px; border-radius: 50%; background: var(--primary); color: var(--on-primary); display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 11px; font-weight: 500; }
     .ws-profile__name { font-size: 12px; font-weight: 500; color: var(--text); line-height: 1.2; }
     .ws-profile__sub { font-size: 10px; color: var(--text-2); line-height: 1.2; }
 
     /* ---- Scrollable content ---- */
-    .ws-content { flex: 1; overflow-y: auto; padding: 24px 28px 40px; animation: fadeIn .4s ease; }
-    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-    .ws-pagehead { margin-bottom: 20px; }
+    .ws-content { flex: 1; overflow-y: auto; padding: 24px 28px 40px; animation: ws-fade .4s ease; }
+    @keyframes ws-fade { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes ws-draw { from { stroke-dashoffset: 900; } to { stroke-dashoffset: 0; } }
+    @keyframes ws-pulse { 0%,100% { opacity: .4; } 50% { opacity: 1; } }
+    .ws-dash { display: flex; flex-direction: column; gap: 20px; max-width: 1180px; }
+
+    .ws-pagehead { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
     .ws-greeting { font-family: 'Roboto', sans-serif; font-size: 24px; font-weight: 500; color: var(--text); line-height: 1.2; }
     .ws-subline { font-size: 13.5px; color: var(--text-2); margin-top: 5px; }
     .ws-subline strong { color: var(--text); font-weight: 500; }
+    .ws-btn-outline { display: inline-flex; align-items: center; gap: 7px; padding: 10px 18px; background: transparent; border: 1px solid var(--border); border-radius: 24px; color: var(--text-2); font-size: 13px; font-weight: 500; cursor: pointer; font-family: inherit; }
+    .ws-btn-outline:hover { border-color: var(--primary); color: var(--text); }
+    .ws-btn-primary { display: inline-flex; align-items: center; gap: 7px; padding: 10px 20px; background: var(--primary); border: none; border-radius: 24px; color: var(--on-primary); font-size: 13px; font-weight: 500; cursor: pointer; font-family: inherit; box-shadow: var(--shadow); }
+    .ws-btn-primary:hover { background: var(--primary-strong); }
 
-    /* Neutralize suite.css centering/padding so the shared content
-       sections flow full-width inside the shell content area. */
-    .ws-content .suite-main {
-      max-width: none; margin: 0; padding: 0;
-      display: flex; flex-direction: column; gap: 22px;
-    }
-    .ws-content .suite-footer { max-width: none; margin-top: 28px; }
+    .ws-card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; box-shadow: var(--shadow); }
+    .ws-cardpad { padding: 22px; }
+    .ws-cardtitle { font-family: 'Roboto', sans-serif; font-size: 16px; font-weight: 500; color: var(--text); }
+    .ws-cardsub { font-size: 12px; color: var(--text-2); margin-top: 3px; }
+    .ws-cardhead { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
 
-    @media (max-width: 860px) {
-      .ws-sidebar { position: absolute; z-index: 20; height: 100vh; box-shadow: var(--shadow-2); }
-      html:not([data-ws-collapsed="1"]) .ws-content { filter: none; }
-    }
+    .ws-row { display: grid; gap: 16px; }
+    .ws-kpis { grid-template-columns: repeat(4, 1fr); }
+    .ws-charts { grid-template-columns: 5fr 3fr; gap: 18px; }
+    .ws-planning { grid-template-columns: 1fr 1fr; gap: 18px; }
+
+    .ws-kpi { padding: 20px; transition: box-shadow .2s ease, transform .2s ease; }
+    .ws-kpi:hover { box-shadow: var(--shadow-2); transform: translateY(-2px); }
+    .ws-kpi__label { font-size: 11px; font-weight: 500; color: var(--text-2); text-transform: uppercase; letter-spacing: .7px; margin-bottom: 12px; }
+    .ws-kpi__big { font-family: 'Roboto', sans-serif; font-size: 30px; font-weight: 500; color: var(--text); letter-spacing: -1px; line-height: 1; margin-bottom: 5px; }
+    .ws-kpi__big small { font-size: 16px; color: var(--text-3); font-weight: 400; }
+    .ws-kpi__sub { font-family: 'Roboto Mono', monospace; font-size: 11px; color: var(--text-3); margin-bottom: 14px; }
+    .ws-kpi__foot { display: flex; align-items: center; justify-content: space-between; }
+    .ws-pill-pos { display: inline-flex; align-items: center; gap: 4px; padding: 4px 9px; background: var(--pos-weak); border-radius: 20px; font-size: 11px; font-weight: 500; color: var(--pos); }
+    .ws-hint { font-size: 11px; color: var(--text-3); }
+    .ws-meter { height: 6px; background: var(--track); border-radius: 3px; overflow: hidden; margin-bottom: 9px; }
+    .ws-meter > i { display: block; height: 100%; border-radius: 3px; background: var(--pos); }
+
+    .ws-rangebtns { display: flex; gap: 6px; }
+    .ws-rangebtn { padding: 5px 12px; border-radius: 20px; font-size: 11px; font-weight: 500; color: var(--text-2); border: 1px solid var(--border); background: transparent; cursor: pointer; font-family: inherit; }
+    .ws-rangebtn.is-active { background: var(--primary-weak); color: var(--primary-text); border-color: transparent; }
+    .ws-legend { display: flex; gap: 20px; flex-wrap: wrap; }
+    .ws-legend__item { display: flex; align-items: center; gap: 7px; font-size: 12px; color: var(--text-2); }
+    .ws-legend__dash { width: 16px; height: 3px; border-radius: 2px; }
+    .ws-legend__val { font-size: 12px; font-weight: 500; color: var(--text); font-family: 'Roboto Mono', monospace; }
+
+    .ws-crosslinks { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+    .ws-chip { padding: 4px 11px; border-radius: 20px; background: var(--surface-2); border: 1px solid var(--border); font-size: 11px; color: var(--text-2); text-decoration: none; cursor: pointer; }
+    .ws-chip:hover { color: var(--text); border-color: var(--primary); }
+
+    .ws-alloc-legend { display: flex; flex-direction: column; gap: 9px; flex: 1; }
+    .ws-alloc-row { display: flex; align-items: center; justify-content: space-between; }
+    .ws-alloc-name { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text-2); }
+    .ws-swatch { width: 9px; height: 9px; border-radius: 3px; flex-shrink: 0; }
+    .ws-alloc-vals { display: flex; gap: 10px; }
+    .ws-alloc-dollar { font-size: 11px; font-family: 'Roboto Mono', monospace; color: var(--text-3); }
+    .ws-alloc-pct { font-size: 11.5px; font-weight: 500; color: var(--text); }
+
+    .ws-perf-head, .ws-perf-row { display: grid; grid-template-columns: 1.7fr repeat(5, 1fr); }
+    .ws-perf-head { padding: 0 4px 10px; border-bottom: 1px solid var(--border); }
+    .ws-perf-row { align-items: center; padding: 12px 4px; border-bottom: 1px solid var(--border); }
+    .ws-perf-h { font-size: 10px; color: var(--text-2); font-weight: 500; text-transform: uppercase; letter-spacing: .6px; }
+    .ws-perf-h--r { text-align: right; }
+    .ws-perf-name { display: flex; align-items: center; gap: 9px; min-width: 0; }
+    .ws-perf-name span { font-size: 13px; font-weight: 500; color: var(--text); white-space: nowrap; }
+    .ws-perf-you { padding: 2px 7px; border-radius: 20px; background: var(--primary-weak); font-size: 8.5px; font-weight: 700; color: var(--primary-text); text-transform: uppercase; letter-spacing: .4px; }
+    .ws-perf-cell { text-align: right; padding-left: 10px; }
+    .ws-perf-pct { font-family: 'Roboto', sans-serif; font-size: 13.5px; font-weight: 500; color: var(--text); letter-spacing: -0.2px; }
+    .ws-perf-pct.is-leader { font-weight: 700; color: var(--pos); }
+    .ws-perf-dollar { font-family: 'Roboto Mono', monospace; font-size: 10px; color: var(--text-3); margin-top: 3px; }
+
+    .ws-statgrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+    .ws-stat { text-align: center; padding: 12px 6px; border-radius: 12px; }
+    .ws-stat__big { font-family: 'Roboto', sans-serif; font-size: 22px; font-weight: 500; letter-spacing: -0.5px; }
+    .ws-stat__label { font-size: 10px; color: var(--text-2); margin-top: 3px; }
+
+    .ws-budget-row { margin-bottom: 11px; }
+    .ws-budget-top { display: flex; justify-content: space-between; margin-bottom: 5px; }
+    .ws-budget-name { font-size: 12px; color: var(--text-2); }
+    .ws-budget-vals { display: flex; gap: 6px; align-items: center; }
+    .ws-budget-spent { font-size: 11px; font-family: 'Roboto Mono', monospace; color: var(--text-3); }
+    .ws-budget-cap { font-size: 11px; font-weight: 500; color: var(--text); }
+
+    .ws-alert { background: var(--warn-weak); border: 1px solid var(--warn); border-radius: 14px; padding: 16px 20px; display: flex; align-items: center; gap: 16px; }
+    .ws-alert__icon { width: 40px; height: 40px; background: var(--surface); border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; box-shadow: var(--shadow); }
+    .ws-alert__title { font-size: 13.5px; font-weight: 500; color: var(--text); }
+    .ws-alert__desc { font-size: 12px; color: var(--text-2); margin-top: 3px; }
+    .ws-alert__desc strong { color: var(--warn); font-weight: 500; }
+    .ws-alert__actions { display: flex; gap: 8px; flex-shrink: 0; }
+    .ws-alert__cta { display: inline-flex; align-items: center; padding: 9px 16px; border-radius: 24px; background: var(--warn); border: none; color: #fff; font-size: 12px; font-weight: 500; cursor: pointer; font-family: inherit; text-decoration: none; }
+    .ws-alert__dismiss { padding: 9px 16px; border-radius: 24px; background: transparent; border: 1px solid var(--border); color: var(--text-2); font-size: 12px; font-weight: 500; cursor: pointer; font-family: inherit; }
+    .ws-alert__dismiss:hover { color: var(--text); }
+
+    @media (max-width: 1100px) { .ws-charts, .ws-planning { grid-template-columns: 1fr; } .ws-kpis { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 860px) { .ws-sidebar { position: absolute; z-index: 20; height: 100vh; box-shadow: var(--shadow-2); } }
+    @media (max-width: 620px) { .ws-kpis { grid-template-columns: 1fr; } }
   </style>
 </head>
 <body class="suite-body">
@@ -272,225 +324,323 @@
         <span id="ws-theme-label">Theme</span>
       </button>
 
+      <button class="ws-importbtn" type="button" title="Import data — arrives with the Data Hub (step 2)">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"></path></svg>
+        Import Data
+      </button>
+
+      <div class="ws-bell" title="Notifications">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="var(--text-2)" stroke-width="2" stroke-linecap="round"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 01-3.46 0"></path></svg>
+        <span class="ws-bell__dot"></span>
+      </div>
+
       <div class="ws-profile" title="Active household">
         <div class="ws-profile__avatar" id="ws-profile-avatar">WC</div>
         <div class="sb-x">
           <div class="ws-profile__name" id="ws-profile-name">Your household</div>
-          <div class="ws-profile__sub" id="ws-profile-sub">Private · this browser</div>
+          <div class="ws-profile__sub" id="ws-profile-sub">Scenario A · 2026</div>
         </div>
       </div>
     </header>
 
     <div class="ws-content">
-      <div class="ws-pagehead">
-        <div class="ws-greeting" id="ws-greeting">Welcome back 👋</div>
-        <div class="ws-subline" id="ws-subline">Your financial snapshot · <strong>runs entirely in your browser</strong> — no tracking, no upload.</div>
-      </div>
+      <div class="ws-dash">
 
-      <main class="suite-main">
-
-        <section class="suite-chat" id="suite-chat" aria-label="AI chat">
-          <!-- Filled by assets/ai/chat.js — enable CTA until preferences.aiProvider is set. -->
-        </section>
-
-        <div class="suite-section-head">
-          <h3 class="suite-section-title">Snapshot</h3>
-          <div class="suite-section-actions" id="suite-snapshot-actions"
-               aria-label="Snapshot actions">
-            <!-- Filled by assets/dashboard.js — Export / Import / status -->
+        <!-- ═══ PAGE HEADER ═══ -->
+        <div class="ws-pagehead">
+          <div>
+            <div class="ws-greeting" id="ws-greeting">Welcome back 👋</div>
+            <div class="ws-subline">Wealth snapshot · <strong id="ws-hh">Your household</strong> · <span style="color:var(--warn);">sample figures — connect accounts in the Data Hub</span></div>
+          </div>
+          <div style="display:flex; gap:10px;">
+            <button class="ws-btn-outline" type="button" title="Customize dashboard — coming soon">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
+              Customize
+            </button>
+            <button class="ws-btn-primary" type="button" title="Add entry — arrives with the Data Hub (step 2)">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+              Add Entry
+            </button>
           </div>
         </div>
-        <section class="suite-snapshot" id="suite-snapshot" aria-label="Household snapshot">
-          <!-- Filled by assets/dashboard.js — empty state until tool adapters write to the store. -->
-        </section>
 
-        <div class="suite-section-head">
-          <h3 class="suite-section-title">Scenarios</h3>
+        <!-- ═══ KPI ROW ═══ -->
+        <div class="ws-row ws-kpis">
+          <div class="ws-card ws-kpi" data-ws-metric="netWorth">
+            <div class="ws-kpi__label">Total Net Worth</div>
+            <div class="ws-kpi__big">$3.25M</div>
+            <div class="ws-kpi__sub">$3,247,580</div>
+            <div class="ws-kpi__foot">
+              <span class="ws-pill-pos"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><polyline points="18 15 12 9 6 15"></polyline></svg>+8.3% YTD</span>
+              <span class="ws-hint">+$248K yr</span>
+            </div>
+          </div>
+          <div class="ws-card ws-kpi" data-ws-metric="portfolio">
+            <div class="ws-kpi__label">Investment Portfolio</div>
+            <div class="ws-kpi__big">$2.18M</div>
+            <div class="ws-kpi__sub">$2,180,000</div>
+            <div class="ws-kpi__foot">
+              <span class="ws-pill-pos"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><polyline points="18 15 12 9 6 15"></polyline></svg>+6.1% YTD</span>
+              <span class="ws-hint">+$125K yr</span>
+            </div>
+          </div>
+          <div class="ws-card ws-kpi" data-ws-metric="retirementReadiness">
+            <div class="ws-kpi__label">Retirement Readiness</div>
+            <div class="ws-kpi__big">89<small>%</small></div>
+            <div class="ws-hint" style="margin-bottom:14px;">Prob. of success at age 65</div>
+            <div class="ws-meter"><i style="width:89%;"></i></div>
+            <div class="ws-kpi__foot"><span style="font-size:11px;color:var(--pos);font-weight:500;">On Track</span><span class="ws-hint">↑3pp vs last yr</span></div>
+          </div>
+          <div class="ws-card ws-kpi" data-ws-metric="monthlySpending">
+            <div class="ws-kpi__label">Monthly Spending</div>
+            <div class="ws-kpi__big">$8,420</div>
+            <div class="ws-hint" style="margin-bottom:14px;">of $20,000 budget · 42.1%</div>
+            <div class="ws-meter"><i style="width:42.1%;"></i></div>
+            <div class="ws-kpi__foot"><span style="font-size:11px;color:var(--pos);font-weight:500;">$11,580 remaining</span><span class="ws-hint">this month</span></div>
+          </div>
         </div>
-        <div id="suite-scenarios" class="suite-scenarios" aria-label="Retirement scenarios">
-          <!-- Filled by assets/dashboard.js — scenario chips write retirement.plan.targetRetireAge to the store -->
+
+        <!-- ═══ CHARTS ROW ═══ -->
+        <div class="ws-row ws-charts">
+
+          <!-- Net Worth Growth -->
+          <div class="ws-card" style="overflow:hidden;" data-ws-metric="netWorthSeries">
+            <div style="padding:20px 22px 0;">
+              <div class="ws-cardhead" style="margin-bottom:14px;">
+                <div>
+                  <div class="ws-cardtitle">Net Worth Growth</div>
+                  <div class="ws-cardsub">12-month trend · Net worth &amp; top buckets</div>
+                </div>
+                <div class="ws-rangebtns">
+                  <button class="ws-rangebtn is-active" type="button">1Y</button>
+                  <button class="ws-rangebtn" type="button">3Y</button>
+                  <button class="ws-rangebtn" type="button">5Y</button>
+                  <button class="ws-rangebtn" type="button">All</button>
+                </div>
+              </div>
+              <div style="display:flex; align-items:baseline; gap:12px; margin-bottom:16px;">
+                <span style="font-family:'Roboto',sans-serif; font-size:32px; font-weight:500; color:var(--text); letter-spacing:-1.2px;">$3,247,580</span>
+                <span class="ws-pill-pos" style="padding:5px 10px;"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><polyline points="18 15 12 9 6 15"></polyline></svg>+$248K (+8.3%) this year</span>
+              </div>
+              <div class="ws-legend" style="margin-bottom:14px;">
+                <div class="ws-legend__item"><div class="ws-legend__dash" style="background:var(--primary);"></div>Net Worth<span class="ws-legend__val">$3.25M</span></div>
+                <div class="ws-legend__item"><div class="ws-legend__dash" style="background:var(--cat2);"></div>Investments<span class="ws-legend__val">$2.18M</span></div>
+                <div class="ws-legend__item"><div class="ws-legend__dash" style="background:var(--cat3);"></div>Retirement<span class="ws-legend__val">$1.15M</span></div>
+                <div class="ws-legend__item"><div class="ws-legend__dash" style="background:var(--cat4);"></div>Home<span class="ws-legend__val">$680K</span></div>
+              </div>
+            </div>
+            <div style="position:relative;">
+              <svg viewBox="0 0 660 165" style="width:100%; height:165px; display:block; overflow:visible;">
+                <defs>
+                  <linearGradient id="wsArea" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" style="stop-color:var(--primary); stop-opacity:0.22"></stop>
+                    <stop offset="85%" style="stop-color:var(--primary); stop-opacity:0.02"></stop>
+                    <stop offset="100%" style="stop-color:var(--primary); stop-opacity:0"></stop>
+                  </linearGradient>
+                </defs>
+                <line x1="34" y1="34" x2="648" y2="34" style="stroke:var(--border);" stroke-width="1"></line>
+                <line x1="34" y1="73" x2="648" y2="73" style="stroke:var(--border);" stroke-width="1"></line>
+                <line x1="34" y1="111" x2="648" y2="111" style="stroke:var(--border);" stroke-width="1"></line>
+                <line x1="34" y1="150" x2="648" y2="150" style="stroke:var(--border);" stroke-width="1"></line>
+                <text x="2" y="30" font-size="14" style="fill:var(--text-3);" font-family="Roboto Mono,monospace">$3M</text>
+                <text x="2" y="69" font-size="14" style="fill:var(--text-3);" font-family="Roboto Mono,monospace">$2M</text>
+                <text x="2" y="107" font-size="14" style="fill:var(--text-3);" font-family="Roboto Mono,monospace">$1M</text>
+                <text x="2" y="146" font-size="14" style="fill:var(--text-3);" font-family="Roboto Mono,monospace">$0</text>
+                <path d="M 34,42.8 L 88,40.8 L 142,38.5 L 196,36.2 L 250,37.8 L 304,33.5 L 358,30.4 L 412,31.6 L 466,28.1 L 520,26.6 L 574,25.4 L 628,24.6 L 648,24.6 L 648,150 L 34,150 Z" fill="url(#wsArea)" stroke="none"></path>
+                <path d="M 34,126.1 L 88,126.1 L 142,125.7 L 196,125.7 L 250,125.3 L 304,124.9 L 358,124.9 L 412,124.5 L 466,124.5 L 520,124.1 L 574,124.1 L 628,123.8" fill="none" style="stroke:var(--cat4); animation:ws-draw 1.4s ease 0.5s forwards;" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="900"></path>
+                <path d="M 34,113.4 L 88,112.6 L 142,111.8 L 196,110.7 L 250,111.4 L 304,109.9 L 358,108.7 L 412,109.1 L 466,107.6 L 520,106.8 L 574,106.0 L 628,105.6" fill="none" style="stroke:var(--cat3); animation:ws-draw 1.4s ease 0.42s forwards;" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="900"></path>
+                <path d="M 34,79.8 L 88,78.2 L 142,76.7 L 196,74.8 L 250,75.9 L 304,72.9 L 358,70.5 L 412,71.7 L 466,69.0 L 520,67.5 L 574,66.7 L 628,65.9" fill="none" style="stroke:var(--cat2); animation:ws-draw 1.4s ease 0.36s forwards;" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="900"></path>
+                <path d="M 34,42.8 L 88,40.8 L 142,38.5 L 196,36.2 L 250,37.8 L 304,33.5 L 358,30.4 L 412,31.6 L 466,28.1 L 520,26.6 L 574,25.4 L 628,24.6" fill="none" style="stroke:var(--primary); animation:ws-draw 1.4s ease 0.3s forwards;" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="900"></path>
+                <circle cx="628" cy="24.6" r="10" style="fill:var(--primary-weak);"></circle>
+                <circle cx="628" cy="24.6" r="4" style="fill:var(--primary); stroke:var(--surface);" stroke-width="2"></circle>
+              </svg>
+              <div style="display:flex; justify-content:space-between; padding:4px 34px 14px 34px;">
+                <span class="ws-date" style="font-size:11.5px;color:var(--text-3);">Jul</span><span class="ws-date" style="font-size:11.5px;color:var(--text-3);">Aug</span><span class="ws-date" style="font-size:11.5px;color:var(--text-3);">Sep</span><span class="ws-date" style="font-size:11.5px;color:var(--text-3);">Oct</span><span class="ws-date" style="font-size:11.5px;color:var(--text-3);">Nov</span><span class="ws-date" style="font-size:11.5px;color:var(--text-3);">Dec</span><span class="ws-date" style="font-size:11.5px;color:var(--text-3);">Jan</span><span class="ws-date" style="font-size:11.5px;color:var(--text-3);">Feb</span><span class="ws-date" style="font-size:11.5px;color:var(--text-3);">Mar</span><span class="ws-date" style="font-size:11.5px;color:var(--text-3);">Apr</span><span class="ws-date" style="font-size:11.5px;color:var(--text-3);">May</span><span class="ws-date" style="font-size:11.5px;color:var(--primary-text);font-weight:500;">Jun ▲</span>
+              </div>
+            </div>
+            <div style="padding:12px 22px 16px; border-top:1px solid var(--border);" class="ws-crosslinks">
+              <span class="ws-hint" style="flex-shrink:0;">Related:</span>
+              <a class="ws-chip" href="portfolio_tracker.html">Portfolio Tracker</a>
+              <a class="ws-chip" href="expenses.html">Expense Tracker</a>
+              <a class="ws-chip" href="monte_carlo.html">Monte Carlo</a>
+            </div>
+          </div>
+
+          <!-- Asset Allocation -->
+          <div class="ws-card ws-cardpad" style="display:flex; flex-direction:column;" data-ws-metric="allocation">
+            <div class="ws-cardtitle" style="margin-bottom:3px;">Asset Allocation</div>
+            <div class="ws-cardsub" style="margin-bottom:16px;">$2.18M · 5 asset classes</div>
+            <div style="display:flex; justify-content:center; margin-bottom:18px;">
+              <svg viewBox="0 0 200 150" style="width:186px; height:140px;">
+                <path d="M 184 78 A 84 48 0 0 1 125.96 123.65 L 125.96 143.65 A 84 48 0 0 0 184 98 Z" style="fill:var(--primary);"></path>
+                <path d="M 184 78 A 84 48 0 0 1 125.96 123.65 L 125.96 143.65 A 84 48 0 0 0 184 98 Z" fill="rgba(0,0,0,0.30)"></path>
+                <path d="M 125.96 123.65 A 84 48 0 0 1 32.04 106.21 L 32.04 126.21 A 84 48 0 0 0 125.96 143.65 Z" style="fill:var(--cat2);"></path>
+                <path d="M 125.96 123.65 A 84 48 0 0 1 32.04 106.21 L 32.04 126.21 A 84 48 0 0 0 125.96 143.65 Z" fill="rgba(0,0,0,0.30)"></path>
+                <path d="M 32.04 106.21 A 84 48 0 0 1 16 78 L 16 98 A 84 48 0 0 0 32.04 126.21 Z" style="fill:var(--cat3);"></path>
+                <path d="M 32.04 106.21 A 84 48 0 0 1 16 78 L 16 98 A 84 48 0 0 0 32.04 126.21 Z" fill="rgba(0,0,0,0.30)"></path>
+                <path d="M 100 78 L 100 30 A 84 48 0 0 1 125.96 123.65 Z" style="fill:var(--primary); stroke:var(--surface);" stroke-width="1.5" stroke-linejoin="round"></path>
+                <path d="M 100 78 L 125.96 123.65 A 84 48 0 0 1 32.04 106.21 Z" style="fill:var(--cat2); stroke:var(--surface);" stroke-width="1.5" stroke-linejoin="round"></path>
+                <path d="M 100 78 L 32.04 106.21 A 84 48 0 0 1 32.04 49.79 Z" style="fill:var(--cat3); stroke:var(--surface);" stroke-width="1.5" stroke-linejoin="round"></path>
+                <path d="M 100 78 L 32.04 49.79 A 84 48 0 0 1 74.04 32.35 Z" style="fill:var(--cat4); stroke:var(--surface);" stroke-width="1.5" stroke-linejoin="round"></path>
+                <path d="M 100 78 L 74.04 32.35 A 84 48 0 0 1 100 30 Z" style="fill:var(--cat5); stroke:var(--surface);" stroke-width="1.5" stroke-linejoin="round"></path>
+                <text x="136" y="72" text-anchor="middle" fill="#FFFFFF" font-size="12" font-weight="500" font-family="Roboto,sans-serif">45%</text>
+                <text x="84" y="104" text-anchor="middle" fill="#FFFFFF" font-size="10.5" font-weight="500" font-family="Roboto,sans-serif">20%</text>
+                <text x="48" y="78" text-anchor="middle" fill="#FFFFFF" font-size="10.5" font-weight="500" font-family="Roboto,sans-serif">20%</text>
+              </svg>
+            </div>
+            <div class="ws-alloc-legend">
+              <div class="ws-alloc-row"><div class="ws-alloc-name"><div class="ws-swatch" style="background:var(--primary);"></div>US Stocks</div><div class="ws-alloc-vals"><span class="ws-alloc-dollar">$981K</span><span class="ws-alloc-pct">45%</span></div></div>
+              <div class="ws-alloc-row"><div class="ws-alloc-name"><div class="ws-swatch" style="background:var(--cat2);"></div>Intl Stocks</div><div class="ws-alloc-vals"><span class="ws-alloc-dollar">$436K</span><span class="ws-alloc-pct">20%</span></div></div>
+              <div class="ws-alloc-row"><div class="ws-alloc-name"><div class="ws-swatch" style="background:var(--cat3);"></div>Bonds</div><div class="ws-alloc-vals"><span class="ws-alloc-dollar">$436K</span><span class="ws-alloc-pct">20%</span></div></div>
+              <div class="ws-alloc-row"><div class="ws-alloc-name"><div class="ws-swatch" style="background:var(--cat4);"></div>Real Estate</div><div class="ws-alloc-vals"><span class="ws-alloc-dollar">$218K</span><span class="ws-alloc-pct">10%</span></div></div>
+              <div class="ws-alloc-row"><div class="ws-alloc-name"><div class="ws-swatch" style="background:var(--cat5);"></div>Cash &amp; Other</div><div class="ws-alloc-vals"><span class="ws-alloc-dollar">$109K</span><span class="ws-alloc-pct">5%</span></div></div>
+            </div>
+            <div style="margin-top:16px; padding-top:14px; border-top:1px solid var(--border);" class="ws-crosslinks">
+              <a class="ws-chip" href="portfolio_review.html">Portfolio Review</a>
+              <a class="ws-chip" href="golden_ratio_portfolio_dashboard.html">Golden φ</a>
+            </div>
+          </div>
+
         </div>
 
-        <div class="suite-section-head" id="suite-compact-head">
-          <h3 class="suite-section-title">Quick entry</h3>
-          <!-- toggle button filled by assets/dashboard.js -->
+        <!-- ═══ PERFORMANCE TABLE ═══ -->
+        <div class="ws-card ws-cardpad" data-ws-metric="performance">
+          <div class="ws-cardhead">
+            <div>
+              <div class="ws-cardtitle">Performance</div>
+              <div class="ws-cardsub">Annualized return &amp; growth vs benchmarks · on <span id="ws-perf-basis">$2.18M</span> invested</div>
+            </div>
+            <div style="display:flex; align-items:center; gap:7px; padding:5px 11px; background:var(--pos-weak); border-radius:20px; flex-shrink:0;">
+              <div style="width:8px; height:8px; border-radius:2px; background:var(--pos);"></div>
+              <span style="font-size:10.5px; color:var(--text-2);">Top per period</span>
+            </div>
+          </div>
+          <div class="ws-perf-head">
+            <div class="ws-perf-h">Benchmark</div>
+            <div class="ws-perf-h ws-perf-h--r">1Y</div>
+            <div class="ws-perf-h ws-perf-h--r">3Y</div>
+            <div class="ws-perf-h ws-perf-h--r">5Y</div>
+            <div class="ws-perf-h ws-perf-h--r">10Y</div>
+            <div class="ws-perf-h ws-perf-h--r">All</div>
+          </div>
+          <div id="ws-perf-body"><!-- rows injected by inline script --></div>
+          <div style="margin-top:14px;">
+            <span style="font-size:10.5px; color:var(--text-3);">Top figure = annualized return · bottom = total growth on <span class="ws-perf-basis2">$2.18M</span> over the period. "All" = 15-yr blended.</span>
+          </div>
         </div>
-        <div id="suite-compact-panel" hidden class="suite-compact-panel">
-          <!-- filled by assets/dashboard.js -->
+
+        <!-- ═══ PLANNING ROW ═══ -->
+        <div class="ws-row ws-planning">
+
+          <!-- Retirement / Monte Carlo -->
+          <div class="ws-card ws-cardpad" data-ws-metric="retirementPlanning">
+            <div class="ws-cardhead">
+              <div>
+                <div class="ws-cardtitle">Retirement Planning</div>
+                <div class="ws-cardsub">Monte Carlo · 1,000 simulations · retire 2031</div>
+              </div>
+              <div style="padding:5px 11px; background:var(--pos-weak); border-radius:20px; font-size:11px; font-weight:500; color:var(--pos); flex-shrink:0;">On Track</div>
+            </div>
+            <svg viewBox="0 0 420 110" style="width:100%; height:100px; display:block; margin-bottom:16px;">
+              <path d="M 20,90 Q 120,62 210,28 Q 300,4 400,2 L 400,28 Q 300,40 210,68 Q 120,90 20,102 Z" style="fill:var(--primary-weak);"></path>
+              <path d="M 20,102 Q 120,90 210,68 Q 300,40 400,28 L 400,56 Q 300,68 210,92 Q 120,108 20,110 Z" style="fill:var(--primary-weak); opacity:0.55;"></path>
+              <path d="M 20,90 Q 120,62 210,28 Q 300,4 400,2" fill="none" style="stroke:var(--primary);" stroke-width="2.5" stroke-dasharray="5 3" opacity="0.9"></path>
+              <path d="M 20,102 Q 120,90 210,68 Q 300,40 400,28" fill="none" style="stroke:var(--text-3);" stroke-width="1" stroke-dasharray="3 4" opacity="0.6"></path>
+              <line x1="288" y1="4" x2="288" y2="110" style="stroke:var(--warn);" stroke-width="1.5" stroke-dasharray="4 3" opacity="0.6"></line>
+              <rect x="290" y="6" width="48" height="14" rx="4" style="fill:var(--warn-weak);"></rect>
+              <text x="314" y="16" font-size="8.5" style="fill:var(--warn);" font-family="Roboto,sans-serif" text-anchor="middle" font-weight="500">Retire @65</text>
+              <text x="24" y="10" font-size="8" style="fill:var(--text-3);" font-family="Roboto,sans-serif">p90</text>
+              <text x="24" y="100" font-size="8" style="fill:var(--text-3);" font-family="Roboto,sans-serif">p50</text>
+              <text x="24" y="108" font-size="8" style="fill:var(--text-3);" font-family="Roboto,sans-serif">p10</text>
+            </svg>
+            <div class="ws-statgrid" style="margin-bottom:16px;">
+              <div class="ws-stat" style="background:var(--pos-weak);"><div class="ws-stat__big" style="color:var(--pos);">89%</div><div class="ws-stat__label">Success rate</div></div>
+              <div class="ws-stat" style="background:var(--primary-weak);"><div class="ws-stat__big" style="color:var(--primary-text);">$8.4M</div><div class="ws-stat__label">Median at 85</div></div>
+              <div class="ws-stat" style="background:var(--warn-weak);"><div class="ws-stat__big" style="color:var(--warn);">2031</div><div class="ws-stat__label">Target retire</div></div>
+            </div>
+            <div style="padding-top:14px; border-top:1px solid var(--border);" class="ws-crosslinks">
+              <span class="ws-hint">Related:</span>
+              <a class="ws-chip" href="retirement_master_plan_2.html">Retirement Plan</a>
+              <a class="ws-chip" href="social_security.html">Social Security</a>
+              <a class="ws-chip" href="roth_conversion.html">Roth Conversion</a>
+            </div>
+          </div>
+
+          <!-- Spending vs Budget -->
+          <div class="ws-card ws-cardpad" data-ws-metric="spending">
+            <div class="ws-cardhead">
+              <div>
+                <div class="ws-cardtitle">Spending vs Budget</div>
+                <div class="ws-cardsub">This month · Auto-categorized</div>
+              </div>
+              <div style="padding:5px 11px; background:var(--pos-weak); border-radius:20px; font-size:11px; font-weight:500; color:var(--pos); flex-shrink:0;">$11,580 left</div>
+            </div>
+            <div style="margin-bottom:16px;">
+              <div class="ws-budget-row">
+                <div class="ws-budget-top"><span class="ws-budget-name">Housing</span><div class="ws-budget-vals"><span class="ws-budget-spent">$2,800</span><span class="ws-budget-cap">/ $2,800</span></div></div>
+                <div class="ws-meter" style="margin-bottom:0;"><i style="width:100%; background:var(--primary);"></i></div>
+              </div>
+              <div class="ws-budget-row">
+                <div class="ws-budget-top"><span class="ws-budget-name">Groceries &amp; Food</span><div class="ws-budget-vals"><span class="ws-budget-spent">$1,240</span><span class="ws-budget-cap">/ $1,500</span></div></div>
+                <div class="ws-meter" style="margin-bottom:0;"><i style="width:82.7%;"></i></div>
+              </div>
+              <div class="ws-budget-row">
+                <div class="ws-budget-top"><span class="ws-budget-name">Healthcare</span><div class="ws-budget-vals"><span class="ws-budget-spent" style="color:var(--neg);">$1,820</span><span class="ws-budget-cap">/ $1,600</span><span style="font-size:9.5px;color:var(--neg);font-weight:500;">↑14%</span></div></div>
+                <div class="ws-meter" style="margin-bottom:0;"><i style="width:100%; background:linear-gradient(90deg,var(--warn) 87%,var(--neg) 87%);"></i></div>
+              </div>
+              <div class="ws-budget-row">
+                <div class="ws-budget-top"><span class="ws-budget-name">Transport</span><div class="ws-budget-vals"><span class="ws-budget-spent">$680</span><span class="ws-budget-cap">/ $800</span></div></div>
+                <div class="ws-meter" style="margin-bottom:0;"><i style="width:85%; background:var(--cat2);"></i></div>
+              </div>
+              <div class="ws-budget-row" style="margin-bottom:0;">
+                <div class="ws-budget-top"><span class="ws-budget-name">Entertainment</span><div class="ws-budget-vals"><span class="ws-budget-spent" style="color:var(--warn);">$880</span><span class="ws-budget-cap">/ $800</span><span style="font-size:9.5px;color:var(--warn);font-weight:500;">↑10%</span></div></div>
+                <div class="ws-meter" style="margin-bottom:0;"><i style="width:100%; background:linear-gradient(90deg,var(--warn) 91%,var(--neg) 91%);"></i></div>
+              </div>
+            </div>
+            <div style="padding:12px 14px; background:var(--surface-2); border-radius:12px; margin-bottom:14px;">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:7px;">
+                <span style="font-size:12.5px; font-weight:500; color:var(--text);">Total</span>
+                <div style="display:flex; gap:6px; align-items:center;"><span style="font-size:13px; font-family:'Roboto Mono',monospace; font-weight:500; color:var(--text);">$8,420</span><span style="font-size:11.5px; color:var(--text-3);">/ $20,000</span></div>
+              </div>
+              <div class="ws-meter" style="height:8px; border-radius:4px; margin-bottom:0;"><i style="width:42.1%; background:var(--primary); border-radius:4px;"></i></div>
+            </div>
+            <div style="padding-top:12px; border-top:1px solid var(--border);" class="ws-crosslinks">
+              <span class="ws-hint">Related:</span>
+              <a class="ws-chip" href="expenses.html">Expense Tracker</a>
+              <a class="ws-chip" href="TaxEstimatorV5.html">Tax Estimator</a>
+            </div>
+          </div>
+
         </div>
 
-        <h3 class="suite-section-title">Modules</h3>
-        <section class="suite-grid" aria-label="Modules">
+        <!-- ═══ TAX ALERT BANNER ═══ -->
+        <div class="ws-alert" id="ws-tax-alert">
+          <div class="ws-alert__icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--warn)" stroke-width="2" stroke-linecap="round"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+          </div>
+          <div style="flex:1; min-width:0;">
+            <div class="ws-alert__title">Q2 Estimated Tax Payment Due — June 15</div>
+            <div class="ws-alert__desc">Estimated federal payment: <strong>$12,400</strong> · WA state: none · NIIT may apply to portfolio gains</div>
+          </div>
+          <div class="ws-alert__actions">
+            <a class="ws-alert__cta" href="TaxEstimatorV5.html">Open Tax Estimator →</a>
+            <button class="ws-alert__dismiss" type="button" id="ws-tax-dismiss">Dismiss</button>
+          </div>
+        </div>
 
-          <a class="suite-card" href="TaxEstimatorV5.html" data-accent="primary">
-            <span class="suite-card__icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24" fill="currentColor"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm-1 7V3.5L18.5 9H13zM8 13h8v2H8v-2zm0 4h5v2H8v-2zm0-8h3v2H8V9z"/></svg>
-            </span>
-            <h4 class="suite-card__title">Tax Estimator</h4>
-            <p class="suite-card__desc">Federal &amp; WA tax, brackets, AMT, LTCG/NIIT, supplemental gap, quarterly payments. 2024–2041.</p>
-            <div class="suite-card__tags">
-              <span class="suite-card__tag">Federal</span>
-              <span class="suite-card__tag">WA State</span>
-              <span class="suite-card__tag">React</span>
-            </div>
-          </a>
+      </div>
 
-          <a class="suite-card" href="TaxAssetCalcv4.html" data-accent="secondary">
-            <span class="suite-card__icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 13h2v8H3v-8zm4-4h2v12H7V9zm4-4h2v16h-2V5zm4 2h2v14h-2V7zm4 4h2v10h-2V11z"/></svg>
-            </span>
-            <h4 class="suite-card__title">Asset &amp; Cap-Gains Calculator</h4>
-            <p class="suite-card__desc">Capital gains scenarios with D3 visualizations — short vs. long-term, lot selection, tax-loss harvesting.</p>
-            <div class="suite-card__tags">
-              <span class="suite-card__tag">D3</span>
-              <span class="suite-card__tag">Scenarios</span>
-            </div>
-          </a>
-
-          <a class="suite-card" href="retirement_master_plan_2.html" data-accent="success">
-            <span class="suite-card__icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm1 17.93V18a1 1 0 0 0-2 0v1.93A8 8 0 0 1 4.07 13H6a1 1 0 0 0 0-2H4.07A8 8 0 0 1 11 4.07V6a1 1 0 0 0 2 0V4.07A8 8 0 0 1 19.93 11H18a1 1 0 0 0 0 2h1.93A8 8 0 0 1 13 19.93zM12 8a4 4 0 1 0 4 4 4 4 0 0 0-4-4z"/></svg>
-            </span>
-            <h4 class="suite-card__title">Retirement Master Plan</h4>
-            <p class="suite-card__desc">Long-horizon projections for a married couple — contributions, growth assumptions, withdrawal phasing.</p>
-            <div class="suite-card__tags">
-              <span class="suite-card__tag">Projections</span>
-              <span class="suite-card__tag">WA Couple</span>
-            </div>
-          </a>
-
-          <a class="suite-card" href="portfolio_review.html" data-accent="tertiary">
-            <span class="suite-card__icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24" fill="currentColor"><path d="M21 3H3a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h18a1 1 0 0 0 1-1V4a1 1 0 0 0-1-1zM9 18H5v-4h4v4zm0-6H5V8h4v4zm10 6h-8v-4h8v4zm0-6h-8V8h8v4z"/></svg>
-            </span>
-            <h4 class="suite-card__title">Portfolio Review</h4>
-            <p class="suite-card__desc">Diversification analysis, concentration risk, sector &amp; geography breakdowns with rebalancing prompts.</p>
-            <div class="suite-card__tags">
-              <span class="suite-card__tag">Allocation</span>
-              <span class="suite-card__tag">Risk</span>
-            </div>
-          </a>
-
-          <a class="suite-card" href="golden_ratio_portfolio_dashboard.html" data-accent="tertiary">
-            <span class="suite-card__icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 3a9 9 0 1 0 9 9 9 9 0 0 0-9-9zm0 16a7 7 0 1 1 7-7 7 7 0 0 1-7 7zm3.5-7a3.5 3.5 0 1 1-3.5-3.5 3.5 3.5 0 0 1 3.5 3.5z"/></svg>
-            </span>
-            <h4 class="suite-card__title">Golden φ Portfolio</h4>
-            <p class="suite-card__desc">Phi-derived allocation, 15-year projection, sequence-of-returns stress test on $100K with 5% withdrawal.</p>
-            <div class="suite-card__tags">
-              <span class="suite-card__tag">Allocation</span>
-              <span class="suite-card__tag">SRR</span>
-            </div>
-          </a>
-
-          <a class="suite-card" href="roth_conversion.html" data-accent="success">
-            <span class="suite-card__icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24" fill="currentColor"><path d="M17 8C8 10 5.9 16.17 3.82 21.34L5.71 22l1-2.3A4.49 4.49 0 0 0 8 20C19 20 22 3 22 3c-1 2-8 2-14 7 .73-1.15 1.69-2.31 3-3z"/></svg>
-            </span>
-            <h4 class="suite-card__title">Roth Conversion Planner</h4>
-            <p class="suite-card__desc">Optimal annual conversion schedule to fill lower tax brackets before retirement, with RMD comparison and D3 projection.</p>
-            <div class="suite-card__tags">
-              <span class="suite-card__tag">Roth</span>
-              <span class="suite-card__tag">Tax Planning</span>
-              <span class="suite-card__tag">RMD</span>
-            </div>
-          </a>
-
-          <a class="suite-card" href="portfolio_tracker.html" data-accent="tertiary">
-            <span class="suite-card__icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24" fill="currentColor"><path d="M16 6l2.29 2.29-4.88 4.88-4-4L2 16.59 3.41 18l6-6 4 4 6.3-6.29L22 12V6z"/></svg>
-            </span>
-            <h4 class="suite-card__title">Portfolio Tracker</h4>
-            <p class="suite-card__desc">Live prices via Yahoo Finance, CSV import for Fidelity/Schwab/Vanguard, asset-class allocation donut, and 1–15 year projection chart.</p>
-            <div class="suite-card__tags">
-              <span class="suite-card__tag">Live Prices</span>
-              <span class="suite-card__tag">CSV Import</span>
-              <span class="suite-card__tag">Projections</span>
-            </div>
-          </a>
-
-          <a class="suite-card" href="social_security.html" data-accent="success">
-            <span class="suite-card__icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24" fill="currentColor"><path d="M11.5 2C6.81 2 3 5.81 3 10.5S6.81 19 11.5 19h.5v3c4.86-2.34 8-7 8-11.5C20 5.81 16.19 2 11.5 2zm1 14.5h-2v-2h2v2zm0-4h-2c0-3.25 3-3 3-5 0-1.1-.9-2-2-2s-2 .9-2 2h-2c0-2.21 1.79-4 4-4s4 1.79 4 4c0 2.5-3 2.75-3 5z"/></svg>
-            </span>
-            <h4 class="suite-card__title">Social Security Estimator</h4>
-            <p class="suite-card__desc">Break-even analysis by claiming age (62–70), cumulative lifetime benefit curves, and spouse comparison with COLA.</p>
-            <div class="suite-card__tags">
-              <span class="suite-card__tag">Break-even</span>
-              <span class="suite-card__tag">COLA</span>
-              <span class="suite-card__tag">Ages 62–70</span>
-            </div>
-          </a>
-
-          <a class="suite-card" href="net_worth.html" data-accent="primary">
-            <span class="suite-card__icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24" fill="currentColor"><path d="M11.8 10.9c-2.27-.59-3-1.2-3-2.15 0-1.09 1.01-1.85 2.7-1.85 1.78 0 2.44.85 2.5 2.1h2.21c-.07-1.72-1.12-3.3-3.21-3.81V3h-3v2.16c-1.94.42-3.5 1.68-3.5 3.61 0 2.31 1.91 3.46 4.7 4.13 2.5.6 3 1.48 3 2.41 0 .69-.49 1.79-2.7 1.79-2.06 0-2.87-.92-2.98-2.1h-2.2c.12 2.19 1.76 3.42 3.68 3.83V21h3v-2.15c1.95-.37 3.5-1.5 3.5-3.55 0-2.84-2.43-3.81-4.7-4.4z"/></svg>
-            </span>
-            <h4 class="suite-card__title">Net Worth Tracker</h4>
-            <p class="suite-card__desc">Portfolio + retirement + manual assets minus liabilities. Stacked bar chart, debt-to-asset ratio, monthly obligations.</p>
-            <div class="suite-card__tags">
-              <span class="suite-card__tag">Liabilities</span>
-              <span class="suite-card__tag">Net Worth</span>
-              <span class="suite-card__tag">Debt Ratio</span>
-            </div>
-          </a>
-
-          <a class="suite-card" href="expenses.html" data-accent="primary">
-            <span class="suite-card__icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2zm-7 14H7v-2h5v2zm5-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg>
-            </span>
-            <h4 class="suite-card__title">Expense Tracker</h4>
-            <p class="suite-card__desc">Bank CSV import (Chase, Amex, Citi), auto-categorisation, monthly budgets, calendar heat map, and 12-month spend trend.</p>
-            <div class="suite-card__tags">
-              <span class="suite-card__tag">CSV Import</span>
-              <span class="suite-card__tag">Budgets</span>
-              <span class="suite-card__tag">Trends</span>
-            </div>
-          </a>
-
-          <a class="suite-card" href="monte_carlo.html" data-accent="secondary">
-            <span class="suite-card__icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24" fill="currentColor"><path d="M22 12a10 10 0 1 1-10-10 1 1 0 0 1 0 2 8 8 0 1 0 8 8 1 1 0 0 1 2 0zm-10-6a1 1 0 0 1 1 1v5.586l3.707 3.707a1 1 0 0 1-1.414 1.414l-4-4A1 1 0 0 1 11 13V7a1 1 0 0 1 1-1z"/></svg>
-            </span>
-            <h4 class="suite-card__title">Monte Carlo Projections</h4>
-            <p class="suite-card__desc">1,000-simulation fan chart showing p10/p50/p90 portfolio outcomes, probability of success, and worst-case survival age.</p>
-            <div class="suite-card__tags">
-              <span class="suite-card__tag">Probability</span>
-              <span class="suite-card__tag">Fan Chart</span>
-              <span class="suite-card__tag">Risk</span>
-            </div>
-          </a>
-
-        </section>
-
-        <h3 class="suite-section-title">Reference data</h3>
-        <section class="suite-grid" aria-label="Reference">
-          <a class="suite-card" href="irs-rates.json" data-accent="secondary">
-            <span class="suite-card__icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2zm-7 14H7v-2h5v2zm0-4H7v-2h5v2zm0-4H7V7h5v2zm5 8h-3v-2h3v2zm0-4h-3v-2h3v2zm0-4h-3V7h3v2z"/></svg>
-            </span>
-            <h4 class="suite-card__title">IRS Rates Data</h4>
-            <p class="suite-card__desc">Auto-synced tax brackets, standard deductions, contribution limits. Tax Estimator pulls from this on startup.</p>
-            <div class="suite-card__tags">
-              <span class="suite-card__tag">2024–2041</span>
-              <span class="suite-card__tag">JSON</span>
-            </div>
-          </a>
-        </section>
-
-      </main>
-
-      <footer class="suite-footer">
+      <footer class="suite-footer" style="max-width:1180px; margin-top:28px;">
         <span>Wealth Suite — runs entirely in your browser. No tracking, no upload.</span>
-        <span>Personal finance hub · Responsive · GitHub Pages ready</span>
+        <span>Sample figures shown · live data arrives with the Data Hub</span>
       </footer>
     </div>
   </div>
 </div>
 
-<!-- Shell runtime: sidebar collapse, theme cycle, profile/date. index.html
-     owns its own shell so suite.js (topnav injector) is intentionally NOT
-     loaded here — tool pages still load it. -->
+<!-- Shell runtime: sidebar collapse, theme cycle, greeting/date, profile,
+     performance table, tax-alert dismiss. index.html owns its own shell so
+     suite.js (topnav injector) is intentionally NOT loaded here. -->
 <script>
   (function () {
     'use strict';
@@ -499,14 +649,10 @@
     // ---- Sidebar collapse (persisted in ws-shell-nav) ----
     var hb = document.getElementById('ws-hamburger');
     function readNav() { try { return JSON.parse(localStorage.getItem('ws-shell-nav') || '{}'); } catch (e) { return {}; } }
-    function writeNav(patch) {
-      var n = readNav(); Object.assign(n, patch);
-      try { localStorage.setItem('ws-shell-nav', JSON.stringify(n)); } catch (e) {}
-    }
+    function writeNav(patch) { var n = readNav(); Object.assign(n, patch); try { localStorage.setItem('ws-shell-nav', JSON.stringify(n)); } catch (e) {} }
     if (hb) hb.addEventListener('click', function () {
       var collapsed = root.getAttribute('data-ws-collapsed') === '1';
-      if (collapsed) root.removeAttribute('data-ws-collapsed');
-      else root.setAttribute('data-ws-collapsed', '1');
+      if (collapsed) root.removeAttribute('data-ws-collapsed'); else root.setAttribute('data-ws-collapsed', '1');
       writeNav({ collapsed: !collapsed });
     });
 
@@ -524,7 +670,7 @@
     function resolve(p) { return p === 'system' ? (mql.matches ? 'dark' : 'light') : p; }
     var iconEl = document.getElementById('ws-theme-icon');
     var labelEl = document.getElementById('ws-theme-label');
-    function apply() {
+    function applyTheme() {
       var p = readPref();
       root.setAttribute('data-theme', resolve(p));
       root.setAttribute('data-theme-pref', p);
@@ -535,10 +681,10 @@
     if (themeBtn) themeBtn.addEventListener('click', function () {
       var next = ORDER[(ORDER.indexOf(readPref()) + 1) % ORDER.length];
       try { localStorage.setItem(TKEY, next); } catch (e) {}
-      apply();
+      applyTheme();
     });
-    mql.addEventListener('change', function () { if (readPref() === 'system') apply(); });
-    apply();
+    mql.addEventListener('change', function () { if (readPref() === 'system') applyTheme(); });
+    applyTheme();
 
     // ---- Greeting + date ----
     var now = new Date();
@@ -549,7 +695,64 @@
     var dEl = document.getElementById('ws-date');
     if (dEl) dEl.textContent = now.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 
-    // ---- Profile / avatar from store (best-effort, non-blocking) ----
+    // ---- Tax alert dismiss ----
+    var dismiss = document.getElementById('ws-tax-dismiss');
+    if (dismiss) dismiss.addEventListener('click', function () {
+      var a = document.getElementById('ws-tax-alert');
+      if (a) a.style.display = 'none';
+    });
+
+    // ---- Performance table (mirrors Dashboard.dc.html renderVals) ----
+    // PLACEHOLDER: comparison basis + benchmark rates are sample data;
+    // the computed layer (step 4) will feed real portfolio returns here.
+    var basis = 2180000;
+    var periods = [
+      { label: '1Y', years: 1 }, { label: '3Y', years: 3 }, { label: '5Y', years: 5 },
+      { label: '10Y', years: 10 }, { label: 'All', years: 15 }
+    ];
+    var series = [
+      { name: 'Your Portfolio',    color: 'var(--primary)', you: true,  rates: [8.3, 9.1, 10.4, 9.7, 9.2] },
+      { name: 'S&P 500',           color: 'var(--pos)',     you: false, rates: [12.1, 11.8, 14.2, 12.6, 10.5] },
+      { name: 'Total US Market',   color: 'var(--cat2)',    you: false, rates: [11.4, 10.9, 13.1, 11.8, 9.9] },
+      { name: 'Total Intl Market', color: 'var(--warn)',    you: false, rates: [6.2, 4.8, 6.9, 5.4, 5.1] }
+    ];
+    function fmtMoney(n) {
+      var a = Math.abs(n);
+      if (a >= 1e6) return '$' + (n / 1e6).toFixed(2) + 'M';
+      if (a >= 1e3) return '$' + Math.round(n / 1e3) + 'K';
+      return '$' + Math.round(n);
+    }
+    var leaderIdx = periods.map(function (p, ci) {
+      var best = -Infinity, bi = 0;
+      series.forEach(function (s, si) { if (s.rates[ci] > best) { best = s.rates[ci]; bi = si; } });
+      return bi;
+    });
+    var body = document.getElementById('ws-perf-body');
+    if (body) {
+      series.forEach(function (s, si) {
+        var row = document.createElement('div');
+        row.className = 'ws-perf-row';
+        var name = document.createElement('div');
+        name.className = 'ws-perf-name';
+        name.innerHTML = '<div style="width:9px;height:9px;border-radius:2px;flex-shrink:0;background:' + s.color + ';"></div><span>' + s.name + '</span>' + (s.you ? '<span class="ws-perf-you">You</span>' : '');
+        row.appendChild(name);
+        periods.forEach(function (p, ci) {
+          var r = s.rates[ci] / 100;
+          var gain = basis * (Math.pow(1 + r, p.years) - 1);
+          var isLeader = leaderIdx[ci] === si;
+          var cell = document.createElement('div');
+          cell.className = 'ws-perf-cell';
+          cell.innerHTML = '<div class="ws-perf-pct' + (isLeader ? ' is-leader' : '') + '">+' + s.rates[ci].toFixed(1) + '%</div><div class="ws-perf-dollar">' + fmtMoney(gain) + '</div>';
+          row.appendChild(cell);
+        });
+        body.appendChild(row);
+      });
+    }
+    var basisStr = fmtMoney(basis);
+    var pb = document.getElementById('ws-perf-basis'); if (pb) pb.textContent = basisStr;
+    Array.prototype.forEach.call(document.querySelectorAll('.ws-perf-basis2'), function (el) { el.textContent = basisStr; });
+
+    // ---- Profile / household from store (best-effort) ----
     function initials(names) {
       var parts = names.filter(Boolean);
       if (!parts.length) return 'WC';
@@ -566,15 +769,13 @@
         var filing = hh.filingStatus === 'single' ? 'Single' : 'MFJ';
         var st = (hh.location && hh.location.state) || 'WA';
         var yr = (s && s.preferences && s.preferences.taxYear) || now.getFullYear();
-        var nEl = document.getElementById('ws-profile-name');
-        var subEl = document.getElementById('ws-profile-sub');
-        var avEl = document.getElementById('ws-profile-avatar');
-        var av2 = document.getElementById('ws-avatar');
-        if (nEl) nEl.textContent = name;
-        if (subEl) subEl.textContent = filing + ' · ' + st + ' · ' + yr;
         var ini = initials(spouses);
-        if (avEl) avEl.textContent = ini;
-        if (av2) av2.textContent = ini;
+        var set = function (id, val) { var el = document.getElementById(id); if (el) el.textContent = val; };
+        set('ws-profile-name', name);
+        set('ws-profile-sub', filing + ' · ' + st + ' · ' + yr);
+        set('ws-hh', name);
+        set('ws-profile-avatar', ini);
+        set('ws-avatar', ini);
       } catch (e) {}
     }
     if (window.WealthSuite && window.WealthSuite.store) {
@@ -587,7 +788,5 @@
 </script>
 
 <script src="assets/suite-state.js?v=7" defer></script>
-<script src="assets/dashboard.js?v=13" defer></script>
-<script src="assets/ai/chat.js?v=2" defer></script>
 </body>
 </html>
