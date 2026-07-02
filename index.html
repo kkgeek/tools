@@ -875,19 +875,13 @@
       if (a) a.style.display = 'none';
     });
 
-    // ---- Performance table (mirrors Dashboard.dc.html renderVals) ----
-    // PLACEHOLDER: comparison basis + benchmark rates are sample data;
-    // the computed layer (step 4) will feed real portfolio returns here.
-    var basis = 2180000;
-    var periods = [
+    // ---- Performance table ----
+    // Renders the sample immediately; refreshPerformance() (called from
+    // refreshKPIs when holdings exist) replaces it with real annualized
+    // returns computed from monthly adj-close history via the quote worker.
+    var PERF_PERIODS = [
       { label: '1Y', years: 1 }, { label: '3Y', years: 3 }, { label: '5Y', years: 5 },
       { label: '10Y', years: 10 }, { label: 'All', years: 15 }
-    ];
-    var series = [
-      { name: 'Your Portfolio',    color: 'var(--primary)', you: true,  rates: [8.3, 9.1, 10.4, 9.7, 9.2] },
-      { name: 'S&P 500',           color: 'var(--pos)',     you: false, rates: [12.1, 11.8, 14.2, 12.6, 10.5] },
-      { name: 'Total US Market',   color: 'var(--cat2)',    you: false, rates: [11.4, 10.9, 13.1, 11.8, 9.9] },
-      { name: 'Total Intl Market', color: 'var(--warn)',    you: false, rates: [6.2, 4.8, 6.9, 5.4, 5.1] }
     ];
     function fmtMoney(n) {
       var a = Math.abs(n);
@@ -895,35 +889,171 @@
       if (a >= 1e3) return '$' + Math.round(n / 1e3) + 'K';
       return '$' + Math.round(n);
     }
-    var leaderIdx = periods.map(function (p, ci) {
-      var best = -Infinity, bi = 0;
-      series.forEach(function (s, si) { if (s.rates[ci] > best) { best = s.rates[ci]; bi = si; } });
-      return bi;
-    });
-    var body = document.getElementById('ws-perf-body');
-    if (body) {
-      series.forEach(function (s, si) {
+    // rows: [{name,color,you,cells:[{ann,factor}|null] }]
+    function renderPerfTable(rows, basis) {
+      var leader = PERF_PERIODS.map(function (_, ci) {
+        var best = -Infinity, bi = -1;
+        rows.forEach(function (r, si) { var c = r.cells[ci]; if (c && c.ann > best) { best = c.ann; bi = si; } });
+        return bi;
+      });
+      var body = document.getElementById('ws-perf-body');
+      if (!body) return;
+      body.innerHTML = '';
+      rows.forEach(function (r, si) {
         var row = document.createElement('div');
         row.className = 'ws-perf-row';
         var name = document.createElement('div');
         name.className = 'ws-perf-name';
-        name.innerHTML = '<div style="width:9px;height:9px;border-radius:2px;flex-shrink:0;background:' + s.color + ';"></div><span>' + s.name + '</span>' + (s.you ? '<span class="ws-perf-you">You</span>' : '');
+        name.innerHTML = '<div style="width:9px;height:9px;border-radius:2px;flex-shrink:0;background:' + r.color + ';"></div><span>' + r.name + '</span>' + (r.you ? '<span class="ws-perf-you">You</span>' : '');
         row.appendChild(name);
-        periods.forEach(function (p, ci) {
-          var r = s.rates[ci] / 100;
-          var gain = basis * (Math.pow(1 + r, p.years) - 1);
-          var isLeader = leaderIdx[ci] === si;
+        PERF_PERIODS.forEach(function (p, ci) {
+          var c = r.cells[ci];
           var cell = document.createElement('div');
           cell.className = 'ws-perf-cell';
-          cell.innerHTML = '<div class="ws-perf-pct' + (isLeader ? ' is-leader' : '') + '">+' + s.rates[ci].toFixed(1) + '%</div><div class="ws-perf-dollar">' + fmtMoney(gain) + '</div>';
+          if (!c) {
+            cell.innerHTML = '<div class="ws-perf-pct" style="color:var(--text-3);">—</div><div class="ws-perf-dollar">—</div>';
+          } else {
+            var gain = basis * (c.factor - 1);
+            var pctStr = (c.ann >= 0 ? '+' : '−') + Math.abs(c.ann * 100).toFixed(1) + '%';
+            var dStr = (gain < 0 ? '−' : '') + fmtMoney(Math.abs(gain));
+            cell.innerHTML = '<div class="ws-perf-pct' + (leader[ci] === si ? ' is-leader' : '') + (c.ann < 0 ? '" style="color:var(--neg);' : '') + '">' + pctStr + '</div><div class="ws-perf-dollar">' + dStr + '</div>';
+          }
           row.appendChild(cell);
         });
         body.appendChild(row);
       });
+      var basisStr = fmtMoney(basis);
+      var pb = document.getElementById('ws-perf-basis'); if (pb) pb.textContent = basisStr;
+      Array.prototype.forEach.call(document.querySelectorAll('.ws-perf-basis2'), function (el) { el.textContent = basisStr; });
     }
-    var basisStr = fmtMoney(basis);
-    var pb = document.getElementById('ws-perf-basis'); if (pb) pb.textContent = basisStr;
-    Array.prototype.forEach.call(document.querySelectorAll('.ws-perf-basis2'), function (el) { el.textContent = basisStr; });
+    // initial sample (mockup rates)
+    (function () {
+      function cellsFromRates(rates) {
+        return PERF_PERIODS.map(function (p, i) { var ann = rates[i] / 100; return { ann: ann, factor: Math.pow(1 + ann, p.years) }; });
+      }
+      renderPerfTable([
+        { name: 'Your Portfolio',    color: 'var(--primary)', you: true,  cells: cellsFromRates([8.3, 9.1, 10.4, 9.7, 9.2]) },
+        { name: 'S&P 500',           color: 'var(--pos)',     you: false, cells: cellsFromRates([12.1, 11.8, 14.2, 12.6, 10.5]) },
+        { name: 'Total US Market',   color: 'var(--cat2)',    you: false, cells: cellsFromRates([11.4, 10.9, 13.1, 11.8, 9.9]) },
+        { name: 'Total Intl Market', color: 'var(--warn)',    you: false, cells: cellsFromRates([6.2, 4.8, 6.9, 5.4, 5.1]) }
+      ], 2180000);
+    })();
+
+    // ---- Live performance: monthly adj-close series via the quote worker
+    // (same candidate chain as the Portfolio Tracker; only public ticker
+    // symbols leave the browser). Cached 15 min in sessionStorage + a
+    // same-day fallback in localStorage['wealthSuite.perfSeries'].
+    var QUOTE_WORKER = 'https://wealth-suite-quotes.kn2v.workers.dev';
+    var PERF_TTL = 15 * 60 * 1000;
+    var PERF_BENCH = [
+      { t: '^GSPC', name: 'S&P 500',           color: 'var(--pos)' },
+      { t: 'VTI',   name: 'Total US Market',   color: 'var(--cat2)' },
+      { t: 'VXUS',  name: 'Total Intl Market', color: 'var(--warn)' }
+    ];
+    function perfDayStore() {
+      try {
+        var raw = JSON.parse(localStorage.getItem('wealthSuite.perfSeries') || 'null');
+        if (raw && raw.d === new Date().toISOString().slice(0, 10)) return raw;
+      } catch (e) {}
+      return { d: new Date().toISOString().slice(0, 10), data: {} };
+    }
+    function saveDaySeries(t, series) {
+      try {
+        var st = perfDayStore(); st.data[t] = series;
+        localStorage.setItem('wealthSuite.perfSeries', JSON.stringify(st));
+      } catch (e) {}
+    }
+    async function fetchSeries(t) {
+      var key = 'wsPerf_' + t;
+      try {
+        var c = JSON.parse(sessionStorage.getItem(key) || 'null');
+        if (c && Date.now() - c.ts < PERF_TTL) return c.data;
+      } catch (e) {}
+      var day = perfDayStore();
+      if (day.data[t]) return day.data[t];
+      var path = 'v8/finance/chart/' + encodeURIComponent(t) + '?interval=1mo&range=max&includeAdjustedClose=true';
+      var candidates = [QUOTE_WORKER + '/' + path,
+        'https://query2.finance.yahoo.com/' + path,
+        'https://query1.finance.yahoo.com/' + path];
+      for (var i = 0; i < candidates.length; i++) {
+        try {
+          var res = await fetch(candidates[i], { signal: AbortSignal.timeout(8000) });
+          if (!res.ok) continue;
+          var json = await res.json();
+          var r0 = json.chart && json.chart.result && json.chart.result[0];
+          if (!r0 || !r0.timestamp) continue;
+          var px = (r0.indicators.adjclose && r0.indicators.adjclose[0].adjclose) ||
+                   (r0.indicators.quote && r0.indicators.quote[0].close) || [];
+          var ts = [], p = [];
+          for (var j = 0; j < r0.timestamp.length; j++) {
+            if (px[j] != null && isFinite(px[j])) { ts.push(r0.timestamp[j] * 1000); p.push(px[j]); }
+          }
+          if (p.length < 2) continue;
+          var series = { ts: ts, px: p };
+          try { sessionStorage.setItem(key, JSON.stringify({ ts: Date.now(), data: series })); } catch (e) {}
+          saveDaySeries(t, series);
+          return series;
+        } catch (e) { /* next candidate */ }
+      }
+      return null;
+    }
+    // Growth from the price at (now − years) to the latest price. Monthly
+    // data won't land exactly on the target date, so annualize over the
+    // ACTUAL elapsed span of the chosen start point, then re-derive the
+    // period factor from that rate — avoids a ~0.5–1pp bias.
+    // Returns {ann, factor} or null if the series doesn't reach back.
+    function growthFor(series, years) {
+      if (!series) return null;
+      var YEAR = 365.25 * 86400000;
+      var target = Date.now() - years * YEAR;
+      var idx = -1;
+      for (var i = 0; i < series.ts.length; i++) { if (series.ts[i] <= target + 45 * 86400000) idx = i; else break; }
+      if (idx < 0) return null;
+      var start = series.px[idx], last = series.px[series.px.length - 1];
+      var lastTs = series.ts[series.ts.length - 1];
+      var spanYrs = (lastTs - series.ts[idx]) / YEAR;
+      if (!(start > 0) || !(spanYrs > 0.1)) return null;
+      var ann = Math.pow(last / start, 1 / spanYrs) - 1;
+      return { ann: ann, factor: Math.pow(1 + ann, years) };
+    }
+    var perfBusy = false, perfLive = false;
+    async function refreshPerformance(holdings, basis) {
+      if (perfBusy || perfLive || !holdings.length || !(basis > 0)) return;
+      perfBusy = true;
+      try {
+        function hv(h) { var per = Number(h.currentPrice) > 0 ? Number(h.currentPrice) : (Number(h.costBasis) || 0); return per * (Number(h.shares) || 0); }
+        // top 8 tickers by current value (weights renormalized per period)
+        var byTicker = {};
+        holdings.forEach(function (h) { if (h.ticker) byTicker[h.ticker] = (byTicker[h.ticker] || 0) + hv(h); });
+        var top = Object.keys(byTicker).sort(function (a, b) { return byTicker[b] - byTicker[a]; }).slice(0, 8)
+          .filter(function (t) { return byTicker[t] > 0; });
+        if (!top.length) return;
+        var all = top.concat(PERF_BENCH.map(function (b) { return b.t; }));
+        var series = {};
+        await Promise.all(all.map(function (t) { return fetchSeries(t).then(function (s) { series[t] = s; }); }));
+        if (!PERF_BENCH.some(function (b) { return series[b.t]; }) && !top.some(function (t) { return series[t]; })) return; // total outage → keep sample
+        var youCells = PERF_PERIODS.map(function (p) {
+          var usable = top.filter(function (t) { return growthFor(series[t], p.years) != null; });
+          if (!usable.length) return null;
+          var wTot = usable.reduce(function (s2, t) { return s2 + byTicker[t]; }, 0);
+          var factor = usable.reduce(function (s2, t) { return s2 + (byTicker[t] / wTot) * growthFor(series[t], p.years).factor; }, 0);
+          return { ann: Math.pow(factor, 1 / p.years) - 1, factor: factor };
+        });
+        if (!youCells.some(Boolean)) return;
+        var rows = [{ name: 'Your Portfolio', color: 'var(--primary)', you: true, cells: youCells }];
+        PERF_BENCH.forEach(function (b) {
+          rows.push({
+            name: b.name, color: b.color, you: false,
+            cells: PERF_PERIODS.map(function (p) { return growthFor(series[b.t], p.years); })
+          });
+        });
+        renderPerfTable(rows, basis);
+        var note = document.querySelector('[data-ws-metric="performance"] .ws-cardsub');
+        if (note) note.innerHTML = 'Annualized return of your current holdings mix vs benchmarks · on <span id="ws-perf-basis">' + fmtMoney(basis) + '</span> invested · dividends included';
+        perfLive = true;
+      } catch (e) { /* keep sample */ }
+      finally { perfBusy = false; }
+    }
 
     // ---- Profile / household from store (best-effort) ----
     function initials(names) {
@@ -1021,6 +1151,7 @@
         renderAllocation(holdings, portfolioVal);
         renderRetirement(s, portfolioVal, retire, budget);
         renderSpending(s, tx, ym, monthSpend, budget);
+        refreshPerformance(holdings, portfolioVal); // async; keeps sample on outage
       } catch (e) {}
     }
 

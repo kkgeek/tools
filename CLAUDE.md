@@ -415,6 +415,37 @@ Phase 13i (step 4 slice 4 — Spending vs Budget card):
   via the quote worker), scenario/fedBracket/currencyFormat consumption
   in tools, Data Hub polish (mapping editor, in-hub price refresh).
 
+Phase 13j (step 4 slice 5 — live Performance table):
+- The dashboard Performance table now computes real annualized returns
+  from monthly adj-close history fetched via the quote worker
+  (`v8/finance/chart/{t}?interval=1mo&range=max&includeAdjustedClose=true`
+  — the worker's `/v[678]/finance/` allowlist already permits this, no
+  worker change). Candidate chain worker → query2 → query1, same
+  privacy stance as the tracker (only public ticker symbols leave the
+  browser). Caching: sessionStorage 15-min TTL per ticker + same-day
+  fallback in `localStorage['wealthSuite.perfSeries']` (also the test
+  seam — seed it to render without network).
+- "Your Portfolio" = buy-and-hold of the CURRENT holdings mix: top 8
+  tickers by value; per period, weights renormalized over tickers whose
+  history reaches back; benchmarks ^GSPC / VTI / VXUS. Cells render "—"
+  when a series doesn't reach the period (e.g. VXUS pre-2011).
+- **Annualization is over the ACTUAL elapsed span** of the chosen
+  monthly start point (`growthFor()`), not the nominal period — naive
+  nominal-year division showed a ~0.7pp bias in verification (true 8%
+  CAGR rendered +7.3% at 1Y); actual-span recovers CAGRs exactly. The
+  period factor for the $-growth column is re-derived from that rate.
+- Sample table (mockup rates) renders immediately via the shared
+  `renderPerfTable()`; the live pass replaces it only on success (total
+  quote outage keeps the sample). Subtitle switches to "your current
+  holdings mix … dividends included". Gated on holdings + basis.
+- Verified: seeded synthetic series (VTI 8%/16y, ^GSPC 10%/16y, VXUS
+  5%/4y) render +8.0/+10.0/+5.0 exactly in every reachable column with
+  "—" beyond VXUS's history; live worker probe returned ^GSPC monthly
+  adj-close to 1984.
+- With this, EVERY dashboard panel is live-or-gated-sample. Step 4
+  remaining: scenario/fedBracket/currencyFormat consumption in tools;
+  Data Hub polish.
+
 ## Constraints to preserve
 
 - **Zero build step.** No Vite/Webpack until scope demands it.
