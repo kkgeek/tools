@@ -277,6 +277,42 @@ Phase 13d (Data Hub — handoff step 2):
   in-hub expense CSV parsing (still done in the Expense Tracker), and
   live price refresh from the hub.
 
+Phase 13e (Settings — handoff step 3):
+- `settings.html` (NEW) — the Settings page from Settings.dc.html,
+  rendered in the shell (route `#settings.html`; sidebar Settings item
+  no longer "Soon"). Store-backed:
+  - **Household Profile** — per-spouse name / birth year / target
+    retirement age → `household.spouses[i]` (adds `birthYear`, derives
+    `age = currentYear − birthYear`, `targetRetireAge`); the primary's
+    target mirrors into `retirement.plan.targetRetireAge`.
+  - **Scenarios** (moved off the sidebar) — `preferences.scenarios[]` +
+    `preferences.activeScenarioId`; New Scenario / Set active / delete.
+    "Set active" applies the scenario's `targetRetireAge` to the plan.
+    With none stored a synthetic "Base case" ACTIVE row shows — visiting
+    Settings does NOT mutate the store (keeps the dashboard empty-state).
+  - **Tax Profile** — `household.filingStatus`, `preferences.fedBracket`,
+    `preferences.waCapGainsExcise` (WA state fixed).
+  - **Appearance** — Theme segmented (Light/Dark/Auto → `WealthSuite.setPreference`,
+    global), **Accent** swatches (green/blue/purple/teal), currency
+    format (`preferences.currencyFormat`), sidebar default (`ws-shell-nav.collapsed`).
+  - **Alerts** — `preferences.alerts.{quarterlyTax,staleData,rebalanceDrift,staleDays}`.
+  - **Data Controls** — Export JSON download, Price source (Yahoo), and
+    a two-click-to-confirm Reset (`store.reset()`; no blocking dialog).
+- **Accent is global via JS, not a stylesheet edit**: `assets/suite.js?v=13`
+  (v=12 → v=13, ALL tool pages + data_hub) gained `applyAccent()` — it
+  overrides the `--primary*` tokens inline (theme-aware, beats theme.css)
+  from `localStorage['wealthSuite.accent']`, re-applied on theme change
+  and on `storage` events; `WealthSuite.getAccent/setAccent` added.
+  index.html + data_hub.html + settings.html carry a matching pre-paint
+  accent snippet (index has no suite.js) and re-apply on cross-document
+  `storage` changes, so picking an accent in Settings repaints the shell
+  and every embedded tool live. New `preferences.*` keys
+  (fedBracket / waCapGainsExcise / currencyFormat / alerts / scenarios)
+  are additive — no schema bump needed (they survive migrate()).
+- Consumption follow-ups (step 4): tools reading `currencyFormat`,
+  `fedBracket`, active-scenario assumptions, and the alert thresholds;
+  and surfacing the active scenario name in the top-bar profile chip.
+
 ## Constraints to preserve
 
 - **Zero build step.** No Vite/Webpack until scope demands it.

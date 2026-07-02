@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Settings — Wealth Suite</title>
+  <meta name="description" content="Profile and preferences for the Wealth Suite. Data lives in the Data Hub.">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="assets/suite.css?v=15">
+  <link rel="stylesheet" href="assets/theme.css?v=1">
+  <script>
+    (function () {
+      var A = {
+        blue:   { l: ['#1A73E8','#1667C9','#E8F0FE','#FFFFFF','#1666C9'], d: ['#8AB4F8','#AECBFA','rgba(138,180,248,.16)','#0B1B34','#AECBFA'] },
+        purple: { l: ['#7B1FA2','#641A86','#F3E5F5','#FFFFFF','#6A1B8F'], d: ['#E1A9F0','#ECC3F5','rgba(225,169,240,.16)','#2A0B34','#ECC3F5'] },
+        teal:   { l: ['#00695C','#004D40','#E0F2F1','#FFFFFF','#00594E'], d: ['#5FC9BC','#86D8CD','rgba(95,201,188,.16)','#052B27','#86D8CD'] }
+      };
+      var V = ['--primary','--primary-strong','--primary-weak','--on-primary','--primary-text'];
+      try {
+        var p = localStorage.getItem('wealthSuite.themePreference');
+        if (!['system','light','dark'].includes(p)) p = 'system';
+        var resolved = p === 'system'
+          ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
+          : p;
+        document.documentElement.setAttribute('data-theme', resolved);
+        document.documentElement.setAttribute('data-theme-pref', p);
+        var a = localStorage.getItem('wealthSuite.accent') || 'green';
+        var set = A[a] && A[a][resolved === 'dark' ? 'd' : 'l'];
+        if (set) V.forEach(function (v, i) { document.documentElement.style.setProperty(v, set[i]); });
+      } catch (e) {}
+    })();
+  </script>
+
+  <style>
+    body.suite-body { background: var(--bg); }
+    .st-wrap { max-width: 980px; margin: 0 auto; padding: 28px 32px 56px; display: flex; flex-direction: column; gap: 20px; font-family: 'Roboto', sans-serif; color: var(--text); }
+    .st-mono { font-family: 'Roboto Mono', monospace; }
+
+    .st-head__title { display: flex; align-items: center; gap: 10px; }
+    .st-logo { width: 34px; height: 34px; background: var(--primary); border-radius: 10px; display: flex; align-items: center; justify-content: center; color: var(--on-primary); }
+    .st-h1 { font-size: 22px; font-weight: 500; }
+    .st-sub { font-size: 13px; color: var(--text-2); margin-top: 7px; }
+
+    .st-card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; box-shadow: var(--shadow); padding: 20px 24px; }
+    .st-cardtitle { font-size: 16px; font-weight: 500; margin-bottom: 4px; }
+    .st-carddesc { font-size: 12px; color: var(--text-2); margin-bottom: 16px; }
+    .st-2col { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+    .st-feeds { padding: 2px 8px; background: var(--cat2-weak); border-radius: 20px; font-size: 9px; font-weight: 700; color: var(--cat2); }
+
+    /* household */
+    .st-people { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .st-person { border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; }
+    .st-person__hd { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+    .st-av { width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; flex-shrink: 0; }
+    .st-av--p { background: var(--primary-weak); color: var(--primary-text); }
+    .st-av--s { background: var(--cat2-weak); color: var(--cat2); }
+    .st-role { font-size: 11px; color: var(--text-3); }
+    .st-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .st-flabel { font-size: 10.5px; color: var(--text-2); margin-bottom: 4px; }
+    .st-input { width: 100%; padding: 8px 12px; background: var(--surface-2); border: 1px solid transparent; border-radius: 8px; font-size: 13px; color: var(--text); font-family: inherit; }
+    .st-input.st-mono { font-family: 'Roboto Mono', monospace; }
+    .st-input:focus { outline: none; border-color: var(--primary); background: var(--surface); }
+    .st-name { border: none; background: transparent; font-size: 13.5px; font-weight: 500; color: var(--text); font-family: inherit; padding: 0; width: 100%; }
+    .st-name:focus { outline: none; }
+
+    /* scenarios */
+    .st-sechead { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 4px; flex-wrap: wrap; }
+    .st-addbtn { display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; background: var(--primary-weak); border: none; border-radius: 20px; color: var(--primary-text); font-size: 11.5px; font-weight: 500; cursor: pointer; font-family: inherit; }
+    .st-addbtn:hover { filter: brightness(0.96); }
+    .st-scn { display: flex; align-items: center; gap: 14px; padding: 13px 16px; border: 1px solid var(--border); border-radius: 12px; }
+    .st-scn.is-active { border: 2px solid var(--primary); background: var(--primary-weak); }
+    .st-scn__dot { width: 9px; height: 9px; border-radius: 50%; background: var(--track); flex-shrink: 0; }
+    .st-scn.is-active .st-scn__dot { background: var(--primary); }
+    .st-scn__body { flex: 1; min-width: 0; }
+    .st-scn__name { font-size: 13.5px; font-weight: 500; }
+    .st-scn__desc { font-size: 11px; color: var(--text-2); margin-top: 2px; }
+    .st-scn__badge { padding: 3px 10px; background: var(--primary); border-radius: 20px; font-size: 9.5px; font-weight: 700; color: var(--on-primary); }
+    .st-scn__set { font-size: 11px; color: var(--text-3); cursor: pointer; background: none; border: none; font-family: inherit; }
+    .st-scn__set:hover { color: var(--primary-text); }
+
+    /* generic rows */
+    .st-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 10px 14px; background: var(--surface-2); border-radius: 10px; }
+    .st-rlabel { font-size: 12.5px; color: var(--text-2); }
+    .st-rval { font-size: 12.5px; font-weight: 500; }
+    .st-rsub { font-size: 10.5px; color: var(--text-3); margin-top: 2px; }
+    .st-select { padding: 7px 10px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; font-size: 12.5px; color: var(--text); font-family: inherit; }
+    .st-select:focus { outline: none; border-color: var(--primary); }
+    .st-inline-in { width: 64px; padding: 6px 8px; text-align: right; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; font-size: 12.5px; color: var(--text); font-family: 'Roboto Mono', monospace; }
+    .st-inline-in:focus { outline: none; border-color: var(--primary); }
+
+    /* segmented + swatches */
+    .st-seg { display: flex; gap: 4px; background: var(--surface); border: 1px solid var(--border); border-radius: 20px; padding: 3px; }
+    .st-seg button { padding: 4px 14px; border-radius: 16px; font-size: 11px; font-weight: 500; color: var(--text-2); cursor: pointer; border: none; background: transparent; font-family: inherit; }
+    .st-seg button.is-active { background: var(--primary); color: var(--on-primary); }
+    .st-swatches { display: flex; gap: 8px; }
+    .st-swatch { width: 22px; height: 22px; border-radius: 50%; border: 2px solid transparent; cursor: pointer; padding: 0; }
+    .st-swatch.is-active { border-color: var(--text); }
+
+    /* toggle */
+    .st-toggle { width: 36px; height: 20px; background: var(--track); border-radius: 20px; position: relative; cursor: pointer; border: none; flex-shrink: 0; padding: 0; transition: background .15s ease; }
+    .st-toggle.is-on { background: var(--primary); }
+    .st-toggle::after { content: ''; width: 16px; height: 16px; background: #fff; border-radius: 50%; position: absolute; top: 2px; left: 2px; transition: left .15s ease; }
+    .st-toggle.is-on::after { left: 18px; }
+
+    .st-btn-outline { padding: 6px 14px; background: transparent; border: 1px solid var(--border); border-radius: 18px; color: var(--text-2); font-size: 11px; font-weight: 500; cursor: pointer; font-family: inherit; }
+    .st-btn-outline:hover { border-color: var(--primary); color: var(--text); }
+    .st-row--danger { background: var(--neg-weak); }
+    .st-danger-label { color: var(--neg); }
+    .st-btn-danger { padding: 6px 14px; background: transparent; border: 1px solid var(--neg); border-radius: 18px; color: var(--neg); font-size: 11px; font-weight: 500; cursor: pointer; font-family: inherit; }
+    .st-btn-danger.is-armed { background: var(--neg); color: #fff; }
+
+    .st-status { font-size: 12px; color: var(--pos); padding: 8px 14px; background: var(--pos-weak); border-radius: 10px; }
+    .st-status[hidden] { display: none; }
+
+    .st-form { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 12px 0 0; padding-top: 12px; border-top: 1px dashed var(--border); }
+    .st-form[hidden] { display: none; }
+    .st-form input { font-size: 12px; color: var(--text); background: var(--surface-2); border: 1px solid var(--border); border-radius: 8px; padding: 7px 9px; font-family: inherit; }
+    .st-form input:focus { outline: none; border-color: var(--primary); }
+    .st-form .st-addbtn[type="submit"] { background: var(--primary); color: var(--on-primary); }
+
+    @media (max-width: 820px) { .st-2col, .st-people { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body class="suite-body">
+
+<div class="st-wrap">
+
+  <div>
+    <div class="st-head__title">
+      <div class="st-logo"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg></div>
+      <span class="st-h1">Settings</span>
+    </div>
+    <div class="st-sub">Profile and preferences. Data lives in the Data Hub — nothing here changes your numbers.</div>
+  </div>
+
+  <div class="st-status" id="st-status" hidden></div>
+
+  <!-- Household Profile -->
+  <div class="st-card">
+    <div class="st-cardtitle">Household Profile</div>
+    <div class="st-carddesc">Drives retirement timelines, RMD ages, and Social Security projections.</div>
+    <div class="st-people" id="st-people"></div>
+  </div>
+
+  <!-- Scenarios -->
+  <div class="st-card">
+    <div class="st-sechead">
+      <div style="display:flex; align-items:center; gap:9px;">
+        <span class="st-cardtitle" style="margin:0;">Scenarios</span>
+        <span class="st-feeds">MOVED FROM SIDEBAR</span>
+      </div>
+      <button class="st-addbtn" id="st-scn-add" type="button">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+        New Scenario
+      </button>
+    </div>
+    <div class="st-carddesc" style="margin-bottom:16px;">The active scenario applies across every tool. Switch it here or from the profile chip in the top bar.</div>
+    <div style="display:flex; flex-direction:column; gap:9px;" id="st-scn-list"></div>
+    <form class="st-form" id="st-scn-form" hidden autocomplete="off">
+      <input name="name" placeholder="Scenario name" style="min-width:170px;" required>
+      <input name="description" placeholder="Description" style="min-width:200px;">
+      <input name="targetRetireAge" placeholder="Retire age" style="width:90px;" inputmode="numeric">
+      <input name="withdrawalRate" placeholder="Withdraw %" style="width:96px;" inputmode="decimal">
+      <button class="st-addbtn" type="submit">Add</button>
+      <button class="st-btn-outline" type="button" data-cancel>Cancel</button>
+    </form>
+  </div>
+
+  <!-- Tax Profile + Appearance -->
+  <div class="st-2col">
+    <div class="st-card">
+      <div class="st-cardtitle">Tax Profile</div>
+      <div class="st-carddesc">Used by Tax Plan, Roth Conversion, and Asset &amp; Cap-Gains.</div>
+      <div style="display:flex; flex-direction:column; gap:11px;">
+        <div class="st-row">
+          <span class="st-rlabel">Filing status</span>
+          <select class="st-select" id="st-filing"><option value="mfj">Married filing jointly</option><option value="single">Single</option></select>
+        </div>
+        <div class="st-row">
+          <span class="st-rlabel">State</span><span class="st-rval">Washington · no income tax</span>
+        </div>
+        <div class="st-row">
+          <span class="st-rlabel">Est. federal bracket</span>
+          <span style="display:flex; align-items:center; gap:4px;"><input class="st-inline-in" id="st-bracket" inputmode="numeric" placeholder="24"><span class="st-rval">%</span></span>
+        </div>
+        <div class="st-row">
+          <div><div class="st-rval" style="color:var(--text);">WA cap-gains excise</div><div class="st-rsub">7% on LTCG &gt; ~$270K</div></div>
+          <button class="st-toggle" id="st-excise" type="button" role="switch" aria-label="WA cap-gains excise tracking"></button>
+        </div>
+      </div>
+    </div>
+
+    <div class="st-card">
+      <div class="st-cardtitle">Appearance</div>
+      <div class="st-carddesc">Applies to the shell and all suite pages.</div>
+      <div style="display:flex; flex-direction:column; gap:11px;">
+        <div class="st-row">
+          <span class="st-rlabel">Theme</span>
+          <div class="st-seg" id="st-theme">
+            <button type="button" data-theme-val="light">Light</button>
+            <button type="button" data-theme-val="dark">Dark</button>
+            <button type="button" data-theme-val="system">Auto</button>
+          </div>
+        </div>
+        <div class="st-row">
+          <span class="st-rlabel">Accent</span>
+          <div class="st-swatches" id="st-accent">
+            <button class="st-swatch" type="button" data-accent="green"  style="background:#2E7D32;" aria-label="Green"></button>
+            <button class="st-swatch" type="button" data-accent="blue"   style="background:#1A73E8;" aria-label="Blue"></button>
+            <button class="st-swatch" type="button" data-accent="purple" style="background:#7B1FA2;" aria-label="Purple"></button>
+            <button class="st-swatch" type="button" data-accent="teal"   style="background:#00695C;" aria-label="Teal"></button>
+          </div>
+        </div>
+        <div class="st-row">
+          <span class="st-rlabel">Currency display</span>
+          <select class="st-select" id="st-currency"><option value="compact">$1.2M compact</option><option value="full">$1,200,000 full</option></select>
+        </div>
+        <div class="st-row">
+          <span class="st-rlabel">Sidebar default</span>
+          <select class="st-select" id="st-sidebar"><option value="expanded">Expanded</option><option value="collapsed">Collapsed</option></select>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Alerts + Data Controls -->
+  <div class="st-2col">
+    <div class="st-card">
+      <div class="st-cardtitle">Alerts</div>
+      <div class="st-carddesc">Shown as badges on the dashboard and sidebar.</div>
+      <div style="display:flex; flex-direction:column; gap:11px;">
+        <div class="st-row">
+          <div><div class="st-rval">Quarterly tax deadlines</div><div class="st-rsub">Q2 estimate due Jun 15</div></div>
+          <button class="st-toggle" data-alert="quarterlyTax" type="button" role="switch" aria-label="Quarterly tax deadlines"></button>
+        </div>
+        <div class="st-row">
+          <div><div class="st-rval">Stale data warnings</div><div class="st-rsub">Flag imports older than <span id="st-stale-days">30</span> days</div></div>
+          <button class="st-toggle" data-alert="staleData" type="button" role="switch" aria-label="Stale data warnings"></button>
+        </div>
+        <div class="st-row">
+          <div><div class="st-rval">Rebalance drift</div><div class="st-rsub">Alert when allocation drifts &gt; 5%</div></div>
+          <button class="st-toggle" data-alert="rebalanceDrift" type="button" role="switch" aria-label="Rebalance drift"></button>
+        </div>
+      </div>
+    </div>
+
+    <div class="st-card">
+      <div class="st-cardtitle">Data Controls</div>
+      <div class="st-carddesc">Everything is stored locally in your browser.</div>
+      <div style="display:flex; flex-direction:column; gap:11px;">
+        <div class="st-row">
+          <div><div class="st-rval">Export all data</div><div class="st-rsub">Full store as JSON</div></div>
+          <button class="st-btn-outline" id="st-export" type="button">Download</button>
+        </div>
+        <div class="st-row">
+          <div><div class="st-rval">Price source</div><div class="st-rsub">Yahoo Finance · free tier</div></div>
+          <select class="st-select" id="st-pricesrc"><option value="yahoo">Yahoo Finance</option></select>
+        </div>
+        <div class="st-row st-row--danger">
+          <div><div class="st-rval st-danger-label">Reset all data</div><div class="st-rsub">Clears holdings, accounts, scenarios</div></div>
+          <button class="st-btn-danger" id="st-reset" type="button">Reset…</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script src="assets/suite.js?v=13" defer></script>
+<script src="assets/suite-state.js?v=8" defer></script>
+<script>
+(function () {
+  'use strict';
+  function init() {
+    var store = window.WealthSuite && window.WealthSuite.store;
+    if (!store) { setTimeout(init, 50); return; }
+    var WS = window.WealthSuite;
+    var EDIT = { editedBy: 'settings' };
+    var $ = function (id) { return document.getElementById(id); };
+    var THIS_YEAR = new Date().getFullYear();
+    function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]; }); }
+    function num(v) { var n = parseFloat(String(v == null ? '' : v).replace(/[^0-9.\-]/g, '')); return isFinite(n) ? n : null; }
+    function uid() { return 'sc-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 6); }
+    function prefs() { return store.get('preferences') || {}; }
+    function setPref(k, v) { var p = prefs(); p[k] = v; store.set('preferences', p, EDIT); }
+
+    var flashTimer = null;
+    function flash(msg) {
+      var el = $('st-status'); el.textContent = msg; el.hidden = false;
+      clearTimeout(flashTimer); flashTimer = setTimeout(function () { el.hidden = true; }, 3500);
+    }
+
+    // ---------- Household ----------
+    var ROLES = [{ role: 'Primary', suffix: ' (you)', cls: 'st-av--p' }, { role: 'Partner', suffix: '', cls: 'st-av--s' }];
+    function renderPeople() {
+      var spouses = store.get('household.spouses') || [{ name: '', age: null }, { name: '', age: null }];
+      $('st-people').innerHTML = spouses.map(function (s, i) {
+        var r = ROLES[i] || ROLES[1];
+        var initial = (s.name || '').trim().charAt(0).toUpperCase() || (i === 0 ? 'Y' : 'S');
+        var birthYear = s.birthYear || (s.age ? (THIS_YEAR - s.age) : '');
+        var target = s.targetRetireAge || (i === 0 ? (store.get('retirement.plan.targetRetireAge') || '') : '');
+        return '<div class="st-person">' +
+          '<div class="st-person__hd"><div class="st-av ' + r.cls + '">' + esc(initial) + '</div>' +
+          '<div style="flex:1;min-width:0;"><input class="st-name" data-sp="' + i + '" data-f="name" value="' + esc(s.name || '') + '" placeholder="' + (i === 0 ? 'Your name' : 'Spouse name') + '">' +
+          '<div class="st-role">' + r.role + '</div></div></div>' +
+          '<div class="st-fields">' +
+          '<div><div class="st-flabel">Birth year</div><input class="st-input st-mono" data-sp="' + i + '" data-f="birthYear" inputmode="numeric" value="' + esc(birthYear) + '" placeholder="1972"></div>' +
+          '<div><div class="st-flabel">Target retirement age</div><input class="st-input st-mono" data-sp="' + i + '" data-f="targetRetireAge" inputmode="numeric" value="' + esc(target) + '" placeholder="60"></div>' +
+          '</div></div>';
+      }).join('');
+    }
+    $('st-people').addEventListener('change', function (e) {
+      var el = e.target.closest('[data-sp]'); if (!el) return;
+      var i = +el.getAttribute('data-sp'), f = el.getAttribute('data-f'), v = el.value.trim();
+      var spouses = store.get('household.spouses') || [{ name: '', age: null }, { name: '', age: null }];
+      while (spouses.length <= i) spouses.push({ name: '', age: null });
+      if (f === 'name') spouses[i].name = v;
+      else if (f === 'birthYear') { var y = num(v); spouses[i].birthYear = y; spouses[i].age = y ? (THIS_YEAR - y) : null; }
+      else if (f === 'targetRetireAge') { spouses[i].targetRetireAge = num(v); }
+      store.set('household.spouses', spouses, EDIT);
+      // Mirror primary spouse's target into the plan the tools read.
+      if (f === 'targetRetireAge' && i === 0 && num(v)) store.set('retirement.plan.targetRetireAge', num(v), EDIT);
+      flash('Household updated.');
+    });
+
+    // ---------- Scenarios ----------
+    function scenarios() { return prefs().scenarios || []; }
+    function activeId() { return prefs().activeScenarioId || null; }
+    function renderScenarios() {
+      var list = scenarios();
+      // No scenarios stored yet → show a synthetic, non-persisted default
+      // so visiting Settings doesn't mutate the store / dashboard state.
+      if (!list.length) {
+        $('st-scn-list').innerHTML =
+          '<div class="st-scn is-active"><span class="st-scn__dot"></span>' +
+          '<div class="st-scn__body"><div class="st-scn__name">Base case</div>' +
+          '<div class="st-scn__desc">Default · both retire at target ages. Add a scenario to compare alternatives.</div></div>' +
+          '<span class="st-scn__badge">ACTIVE</span></div>';
+        return;
+      }
+      var act = activeId() || list[0].id;
+      $('st-scn-list').innerHTML = list.map(function (s) {
+        var on = s.id === act;
+        return '<div class="st-scn' + (on ? ' is-active' : '') + '">' +
+          '<span class="st-scn__dot"></span>' +
+          '<div class="st-scn__body"><div class="st-scn__name">' + esc(s.name) + '</div>' +
+          (s.description ? '<div class="st-scn__desc">' + esc(s.description) + '</div>' : '') + '</div>' +
+          (on ? '<span class="st-scn__badge">ACTIVE</span>'
+              : '<button class="st-scn__set" data-set="' + esc(s.id) + '" type="button">Set active</button>' +
+                '<button class="st-scn__set" data-del-scn="' + esc(s.id) + '" type="button" title="Delete" style="color:var(--neg);">×</button>') +
+          '</div>';
+      }).join('');
+    }
+    $('st-scn-list').addEventListener('click', function (e) {
+      var setBtn = e.target.closest('[data-set]'), delBtn = e.target.closest('[data-del-scn]');
+      if (setBtn) {
+        var id = setBtn.getAttribute('data-set');
+        var s = scenarios().filter(function (x) { return x.id === id; })[0];
+        setPref('activeScenarioId', id);
+        if (s && s.targetRetireAge) store.set('retirement.plan.targetRetireAge', s.targetRetireAge, EDIT);
+        renderScenarios(); flash('Switched to “' + (s ? s.name : 'scenario') + '”.');
+      } else if (delBtn) {
+        var did = delBtn.getAttribute('data-del-scn');
+        setPref('scenarios', scenarios().filter(function (x) { return x.id !== did; }));
+        renderScenarios();
+      }
+    });
+    var scnForm = $('st-scn-form');
+    $('st-scn-add').addEventListener('click', function () { scnForm.hidden = !scnForm.hidden; if (!scnForm.hidden) scnForm.querySelector('input').focus(); });
+    scnForm.querySelector('[data-cancel]').addEventListener('click', function () { scnForm.hidden = true; scnForm.reset(); });
+    scnForm.addEventListener('submit', function (e) {
+      e.preventDefault();
+      var fd = new FormData(scnForm);
+      var p = prefs(); p.scenarios = scenarios();
+      p.scenarios.push({ id: uid(), name: (fd.get('name') || 'Scenario').trim(), description: (fd.get('description') || '').trim(), targetRetireAge: num(fd.get('targetRetireAge')), withdrawalRate: num(fd.get('withdrawalRate')) });
+      store.set('preferences', p, EDIT);
+      scnForm.reset(); scnForm.hidden = true; renderScenarios(); flash('Scenario added.');
+    });
+
+    // ---------- Tax profile ----------
+    function renderTax() {
+      $('st-filing').value = store.get('household.filingStatus') || 'mfj';
+      $('st-bracket').value = prefs().fedBracket != null ? prefs().fedBracket : '';
+      toggleState($('st-excise'), !!prefs().waCapGainsExcise);
+    }
+    $('st-filing').addEventListener('change', function () { store.set('household.filingStatus', this.value, EDIT); flash('Filing status updated.'); });
+    $('st-bracket').addEventListener('change', function () { setPref('fedBracket', num(this.value)); flash('Tax profile updated.'); });
+    $('st-excise').addEventListener('click', function () { var on = !prefs().waCapGainsExcise; setPref('waCapGainsExcise', on); toggleState(this, on); });
+
+    // ---------- Appearance ----------
+    function renderAppearance() {
+      var pref = WS.getPreference ? WS.getPreference() : (localStorage.getItem('wealthSuite.themePreference') || 'system');
+      Array.prototype.forEach.call($('st-theme').children, function (b) { b.classList.toggle('is-active', b.getAttribute('data-theme-val') === pref); });
+      var accent = WS.getAccent ? WS.getAccent() : (localStorage.getItem('wealthSuite.accent') || 'green');
+      Array.prototype.forEach.call($('st-accent').children, function (b) { b.classList.toggle('is-active', b.getAttribute('data-accent') === accent); });
+      $('st-currency').value = prefs().currencyFormat || 'compact';
+      var nav = {}; try { nav = JSON.parse(localStorage.getItem('ws-shell-nav') || '{}'); } catch (e) {}
+      $('st-sidebar').value = nav.collapsed ? 'collapsed' : 'expanded';
+    }
+    $('st-theme').addEventListener('click', function (e) {
+      var b = e.target.closest('[data-theme-val]'); if (!b) return;
+      if (WS.setPreference) WS.setPreference(b.getAttribute('data-theme-val'));
+      renderAppearance();
+    });
+    $('st-accent').addEventListener('click', function (e) {
+      var b = e.target.closest('[data-accent]'); if (!b) return;
+      if (WS.setAccent) WS.setAccent(b.getAttribute('data-accent'));
+      renderAppearance(); flash('Accent updated.');
+    });
+    $('st-currency').addEventListener('change', function () { setPref('currencyFormat', this.value); flash('Currency format saved.'); });
+    $('st-sidebar').addEventListener('change', function () {
+      var nav = {}; try { nav = JSON.parse(localStorage.getItem('ws-shell-nav') || '{}'); } catch (e) {}
+      nav.collapsed = this.value === 'collapsed';
+      try { localStorage.setItem('ws-shell-nav', JSON.stringify(nav)); } catch (e) {}
+      flash('Sidebar default saved (applies on next load).');
+    });
+
+    // ---------- Alerts ----------
+    function toggleState(btn, on) { btn.classList.toggle('is-on', !!on); btn.setAttribute('aria-checked', on ? 'true' : 'false'); }
+    function alerts() { return prefs().alerts || { quarterlyTax: true, staleData: true, rebalanceDrift: false, staleDays: 30 }; }
+    function renderAlerts() {
+      var a = alerts();
+      Array.prototype.forEach.call(document.querySelectorAll('[data-alert]'), function (btn) {
+        toggleState(btn, !!a[btn.getAttribute('data-alert')]);
+      });
+      $('st-stale-days').textContent = a.staleDays || 30;
+    }
+    document.addEventListener('click', function (e) {
+      var btn = e.target.closest('[data-alert]'); if (!btn) return;
+      var key = btn.getAttribute('data-alert'); var a = alerts(); a[key] = !a[key];
+      if (a.staleDays == null) a.staleDays = 30;
+      setPref('alerts', a); toggleState(btn, a[key]);
+    });
+
+    // ---------- Data controls ----------
+    $('st-export').addEventListener('click', function () {
+      var blob = new Blob([JSON.stringify(store.export(), null, 2)], { type: 'application/json' });
+      var a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+      a.download = 'wealth-suite-backup-' + new Date().toISOString().slice(0, 10) + '.json';
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(function () { URL.revokeObjectURL(a.href); }, 1000);
+      flash('Backup downloaded.');
+    });
+    var resetArmed = false, resetTimer = null;
+    $('st-reset').addEventListener('click', function () {
+      if (!resetArmed) {
+        resetArmed = true; this.classList.add('is-armed'); this.textContent = 'Click again to confirm';
+        resetTimer = setTimeout(function () { resetArmed = false; $('st-reset').classList.remove('is-armed'); $('st-reset').textContent = 'Reset…'; }, 3000);
+        return;
+      }
+      clearTimeout(resetTimer); resetArmed = false;
+      this.classList.remove('is-armed'); this.textContent = 'Reset…';
+      store.reset({ editedBy: 'reset' });
+      renderAll(); flash('All data cleared.');
+    });
+
+    // ---------- render ----------
+    function renderAll() { renderPeople(); renderScenarios(); renderTax(); renderAppearance(); renderAlerts(); }
+    renderAll();
+    store.subscribe('', function () { renderScenarios(); renderTax(); renderAlerts(); });
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
+  else init();
+})();
+</script>
+</body>
+</html>

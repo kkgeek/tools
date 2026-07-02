@@ -89,10 +89,40 @@
     return pref;
   }
 
+  // ---------- Accent ----------
+  // Settings lets users pick an accent; we override the --primary* tokens
+  // inline (beats theme.css :root) so it applies suite-wide without a
+  // stylesheet edit. Values are theme-aware. 'green' = theme.css default.
+  const ACCENT_KEY = 'wealthSuite.accent';
+  const ACCENT_VARS = ['--primary', '--primary-strong', '--primary-weak', '--on-primary', '--primary-text'];
+  const ACCENTS = {
+    blue: {
+      light: { '--primary': '#1A73E8', '--primary-strong': '#1667C9', '--primary-weak': '#E8F0FE', '--on-primary': '#FFFFFF', '--primary-text': '#1666C9' },
+      dark:  { '--primary': '#8AB4F8', '--primary-strong': '#AECBFA', '--primary-weak': 'rgba(138,180,248,.16)', '--on-primary': '#0B1B34', '--primary-text': '#AECBFA' },
+    },
+    purple: {
+      light: { '--primary': '#7B1FA2', '--primary-strong': '#641A86', '--primary-weak': '#F3E5F5', '--on-primary': '#FFFFFF', '--primary-text': '#6A1B8F' },
+      dark:  { '--primary': '#E1A9F0', '--primary-strong': '#ECC3F5', '--primary-weak': 'rgba(225,169,240,.16)', '--on-primary': '#2A0B34', '--primary-text': '#ECC3F5' },
+    },
+    teal: {
+      light: { '--primary': '#00695C', '--primary-strong': '#004D40', '--primary-weak': '#E0F2F1', '--on-primary': '#FFFFFF', '--primary-text': '#00594E' },
+      dark:  { '--primary': '#5FC9BC', '--primary-strong': '#86D8CD', '--primary-weak': 'rgba(95,201,188,.16)', '--on-primary': '#052B27', '--primary-text': '#86D8CD' },
+    },
+  };
+  function readAccent() { return localStorage.getItem(ACCENT_KEY) || 'green'; }
+  function applyAccent(theme) {
+    const s = document.documentElement.style;
+    ACCENT_VARS.forEach((v) => s.removeProperty(v));
+    const set = ACCENTS[readAccent()] && ACCENTS[readAccent()][theme === 'dark' ? 'dark' : 'light'];
+    if (set) ACCENT_VARS.forEach((v) => s.setProperty(v, set[v]));
+  }
+
   function applyTheme() {
     const pref = readPreference();
-    document.documentElement.setAttribute('data-theme', resolveTheme(pref));
+    const resolved = resolveTheme(pref);
+    document.documentElement.setAttribute('data-theme', resolved);
     document.documentElement.setAttribute('data-theme-pref', pref);
+    applyAccent(resolved);
     // Update toggle button state if mounted
     document.querySelectorAll('[data-theme-cycle]').forEach((btn) => {
       btn.setAttribute('aria-label', `Theme: ${pref} (click to change)`);
@@ -116,7 +146,7 @@
   // embeds this page in an iframe, or another tab) changes the
   // preference. `storage` fires in every OTHER same-origin document.
   window.addEventListener('storage', (e) => {
-    if (e.key === STORAGE_KEY) applyTheme();
+    if (e.key === STORAGE_KEY || e.key === ACCENT_KEY) applyTheme();
   });
 
   // Apply ASAP — before paint where possible
@@ -389,6 +419,8 @@
       applyTheme();
     },
     cycle: cycleTheme,
+    getAccent: readAccent,
+    setAccent: (a) => { localStorage.setItem(ACCENT_KEY, a || 'green'); applyTheme(); },
     modules: MODULES.slice(),
     clusters: CLUSTERS.map(c => ({ id: c.id, label: c.label, tools: c.tools.slice() })),
     renderHouseholdBanner,

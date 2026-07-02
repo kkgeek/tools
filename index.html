@@ -15,6 +15,23 @@
        index.html owns its own app-shell (sidebar + top bar), so it does
        NOT load suite.js's injected topnav — the tool pages still do. -->
   <script>
+    // Shared accent applier (Settings → Appearance). Overrides --primary*
+    // inline (beats theme.css) so the chosen accent applies suite-wide.
+    (function () {
+      var A = {
+        blue:   { l: ['#1A73E8','#1667C9','#E8F0FE','#FFFFFF','#1666C9'], d: ['#8AB4F8','#AECBFA','rgba(138,180,248,.16)','#0B1B34','#AECBFA'] },
+        purple: { l: ['#7B1FA2','#641A86','#F3E5F5','#FFFFFF','#6A1B8F'], d: ['#E1A9F0','#ECC3F5','rgba(225,169,240,.16)','#2A0B34','#ECC3F5'] },
+        teal:   { l: ['#00695C','#004D40','#E0F2F1','#FFFFFF','#00594E'], d: ['#5FC9BC','#86D8CD','rgba(95,201,188,.16)','#052B27','#86D8CD'] }
+      };
+      var V = ['--primary','--primary-strong','--primary-weak','--on-primary','--primary-text'];
+      window.__wsAccent = function (theme) {
+        var a = localStorage.getItem('wealthSuite.accent') || 'green';
+        var s = document.documentElement.style;
+        V.forEach(function (v) { s.removeProperty(v); });
+        var set = A[a] && A[a][theme === 'dark' ? 'd' : 'l'];
+        if (set) V.forEach(function (v, i) { s.setProperty(v, set[i]); });
+      };
+    })();
     (function () {
       try {
         var p = localStorage.getItem('wealthSuite.themePreference');
@@ -24,6 +41,7 @@
           : p;
         document.documentElement.setAttribute('data-theme', resolved);
         document.documentElement.setAttribute('data-theme-pref', p);
+        window.__wsAccent(resolved);
       } catch (e) {}
       try {
         var nav = JSON.parse(localStorage.getItem('ws-shell-nav') || '{}');
@@ -309,10 +327,10 @@
         <span class="ws-datahub__desc sb-x">Single source · CSV, live prices, manual</span>
       </a>
       <div class="ws-sidefoot__row">
-        <span class="ws-navitem is-soon" title="Settings — coming soon" style="padding:7px 10px;">
+        <a class="ws-navitem" href="settings.html" title="Settings" style="padding:7px 10px;">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
           <span class="sb-x">Settings</span>
-        </span>
+        </a>
         <div class="ws-avatar" id="ws-avatar" title="Household">WC</div>
       </div>
     </div>
@@ -695,7 +713,8 @@
       'portfolio_review.html': 'Portfolio Review',
       'golden_ratio_portfolio_dashboard.html': 'Golden φ Portfolio',
       'monte_carlo.html': 'Monte Carlo',
-      'data_hub.html': 'Data Hub'
+      'data_hub.html': 'Data Hub',
+      'settings.html': 'Settings'
     };
     var frame = document.getElementById('ws-frame');
     var dashView = document.getElementById('ws-dash-view');
@@ -786,8 +805,10 @@
     var labelEl = document.getElementById('ws-theme-label');
     function applyTheme() {
       var p = readPref();
-      root.setAttribute('data-theme', resolve(p));
+      var resolved = resolve(p);
+      root.setAttribute('data-theme', resolved);
       root.setAttribute('data-theme-pref', p);
+      if (window.__wsAccent) window.__wsAccent(resolved);
       if (iconEl) iconEl.innerHTML = ICONS[p];
       if (labelEl) labelEl.textContent = LABELS[p];
     }
@@ -798,6 +819,11 @@
       applyTheme();
     });
     mql.addEventListener('change', function () { if (readPref() === 'system') applyTheme(); });
+    // Theme/accent changed in another document (e.g. the Settings page
+    // running in the shell iframe) → re-apply to the shell.
+    window.addEventListener('storage', function (e) {
+      if (e.key === TKEY || e.key === 'wealthSuite.accent') applyTheme();
+    });
     applyTheme();
 
     // ---- Greeting + date ----
