@@ -397,6 +397,24 @@ Phase 13h (step 4 slice 3 — dashboard charts + retirement readiness):
   prefers stored `portfolio.totalValue` — tracker/hub recompute keeps
   those consistent in real flows.
 
+Phase 13i (step 4 slice 4 — Spending vs Budget card):
+- The dashboard's Spending-vs-Budget card now renders live: this month's
+  `expenses.transactions` grouped by `category` vs each category's
+  `budgetMonthly`. Top 5 categories by spend; per-row states: at/under
+  budget (pos/primary bar), over budget (red spent + ↑N% chip +
+  warn→neg gradient bar at the budget cut point), no budget (spend
+  shown with a relative-width cat2 bar). Total row + header badge
+  ("$N left" green / "$N over" red) recompute; subtitle shows the
+  month. Gated on monthSpend > 0, else the sample stays.
+- Sign convention (matches the Expense Tracker): negative amount =
+  spend, positive = refund/credit — refunds are NETTED per category
+  AND in the month total (the KPI tile's monthSpend was fixed to net
+  refunds too; legacy `type:'expense'` positive rows still count as
+  spend).
+- Step 4 still open: Performance table (needs benchmark quote history
+  via the quote worker), scenario/fedBracket/currencyFormat consumption
+  in tools, Data Hub polish (mapping editor, in-hub price refresh).
+
 ## Constraints to preserve
 
 - **Zero build step.** No Vite/Webpack until scope demands it.
