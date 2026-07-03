@@ -8,6 +8,12 @@ CDN where used. Deploys to GitHub Pages on every push to `main` via
 End-user docs: [`docs/GETTING_STARTED.md`](docs/GETTING_STARTED.md) —
 read first if unfamiliar with the suite.
 
+**Backlog / resume point: [`docs/BACKLOG.md`](docs/BACKLOG.md)** — the
+ordered list of what's next plus known issues. When resuming work with
+no specific instruction, start there. Release-level feature log:
+[`docs/releases/release-5.md`](docs/releases/release-5.md) summarizes
+the Phase 13 design-handoff arc recorded in detail below.
+
 ## Tools (11 modules)
 
 | File | Stack | Adapter |
