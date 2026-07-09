@@ -49,6 +49,7 @@
     .dh-btn-outline:hover { border-color: var(--primary); color: var(--text); }
     .dh-btn-primary { display: inline-flex; align-items: center; gap: 7px; padding: 9px 18px; background: var(--primary); border: none; border-radius: 24px; color: var(--on-primary); font-size: 12.5px; font-weight: 500; cursor: pointer; font-family: inherit; box-shadow: var(--shadow); }
     .dh-btn-primary:hover { background: var(--primary-strong); }
+    .dh-btn-primary:disabled { opacity: .6; cursor: default; }
 
     .dh-status { font-size: 12px; color: var(--text-2); min-height: 0; }
     .dh-status.is-on { padding: 8px 14px; background: var(--pos-weak); color: var(--pos); border-radius: 10px; }
@@ -100,6 +101,15 @@
     .dh-preview__foot { padding: 12px 16px; display: flex; align-items: center; justify-content: space-between; gap: 10px; background: var(--surface-2); flex-wrap: wrap; }
     .dh-empty { padding: 26px 16px; text-align: center; color: var(--text-3); font-size: 12.5px; }
 
+    /* column-mapping editor */
+    .dh-map { padding: 11px 16px; background: var(--surface-2); border-bottom: 1px solid var(--border); display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; }
+    .dh-map label { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text-2); font-weight: 500; }
+    .dh-map select { font-size: 12px; color: var(--text); background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 5px 7px; font-family: inherit; max-width: 150px; }
+    .dh-map select:focus { outline: none; border-color: var(--primary); }
+    .dh-map input[type="checkbox"] { accent-color: var(--primary); }
+    .dh-maplink { background: none; border: none; padding: 0; color: var(--primary-text); font-size: 11px; font-weight: 600; cursor: pointer; font-family: inherit; }
+    .dh-maplink:hover { text-decoration: underline; }
+
     /* generic table */
     .dh-thead, .dh-trow { display: grid; align-items: center; }
     .dh-thead { padding: 8px 12px; border-bottom: 1px solid var(--border); }
@@ -132,7 +142,8 @@
 
     /* expense import + sync */
     .dh-4col { display: grid; grid-template-columns: 1fr 1.4fr; gap: 18px; }
-    .dh-expdrop { display: block; border: 2px dashed var(--border); border-radius: 12px; padding: 18px; text-align: center; background: var(--surface-2); cursor: pointer; text-decoration: none; }
+    .dh-expdrop { display: block; border: 2px dashed var(--border); border-radius: 12px; padding: 18px; text-align: center; background: var(--surface-2); cursor: pointer; text-decoration: none; transition: border-color .15s ease; }
+    .dh-expdrop:hover, .dh-expdrop.is-drag { border-color: var(--primary); }
     .dh-expdrop.is-stale { border-color: var(--warn); background: var(--warn-weak); }
     .dh-syncrow { display: grid; grid-template-columns: 1.3fr 1.6fr 1fr; align-items: center; padding: 9px 12px; background: var(--surface-2); border-radius: 10px; }
     .dh-syncname { font-size: 12.5px; font-weight: 500; }
@@ -166,7 +177,7 @@
       </button>
       <button class="dh-btn-primary" id="dh-refresh" type="button">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M3 12a9 9 0 009 9 9.75 9.75 0 006.74-2.74L21 16"></path><path d="M21 12a9 9 0 00-9-9 9.75 9.75 0 00-6.74 2.74L3 8"></path><path d="M21 4v4h-4M3 20v-4h4"></path></svg>
-        Refresh Prices
+        <span id="dh-refresh-label">Refresh Prices</span>
       </button>
     </div>
   </div>
@@ -284,11 +295,12 @@ AAPL,50,142.80,Schwab 401(k)"></textarea>
         <span class="dh-secname">Expense Import</span>
         <span class="dh-feeds">FEEDS EXPENSES</span>
       </div>
-      <div style="font-size:12px; color:var(--text-2); margin-bottom:14px;">Bank / credit-card CSV, auto-categorized. Imports run in the Expense Tracker.</div>
-      <a class="dh-expdrop" id="dh-expdrop" href="expenses.html#transactions">
-        <div id="dh-exp-note" style="font-size:12.5px; font-weight:500;">Open the Expense Tracker to import</div>
-        <div style="font-size:11px; color:var(--text-2); margin-top:4px;">Chase · Amex · Citi statement CSVs</div>
-      </a>
+      <div style="font-size:12px; color:var(--text-2); margin-bottom:14px;">Bank / credit-card CSV, auto-categorized on import. Review &amp; recategorize in the <a href="expenses.html#transactions" style="color:var(--primary-text);">Expense Tracker</a>.</div>
+      <div class="dh-expdrop" id="dh-expdrop" role="button" tabindex="0">
+        <div id="dh-exp-note" style="font-size:12.5px; font-weight:500;">Drop a bank / card CSV here</div>
+        <div style="font-size:11px; color:var(--text-2); margin-top:4px;">Chase · Amex · Citi · generic CSVs — or click to browse</div>
+      </div>
+      <input type="file" id="dh-exp-file" accept=".csv,text/csv" hidden>
       <div class="dh-hint" id="dh-exp-recent" style="margin-top:12px; line-height:1.6;"></div>
     </div>
     <div class="dh-card">
@@ -376,7 +388,7 @@ AAPL,50,142.80,Schwab 401(k)"></textarea>
       var oa = otherAssets(), liab = liabilities();
       var exp = store.get('expenses') || {};
       var hist = (exp.importHistory || []);
-      var lastExp = hist.reduce(function (m, r) { return Math.max(m, (r && (r.at || r.date)) || 0); }, 0);
+      var lastExp = hist.reduce(function (m, r) { return Math.max(m, (r && (r.importedAt || r.at || r.date)) || 0); }, 0);
       var expAge = daysSince(lastExp);
       var priceHtml = lastPrice
         ? '<div style="display:flex;align-items:center;gap:7px;"><span class="dh-dot" style="background:var(--pos);"></span><span style="font-size:15px;font-weight:500;">Live</span></div><div class="dh-hnote">updated ' + (priceAge <= 0 ? 'today' : priceAge + 'd ago') + '</div>'
@@ -456,12 +468,14 @@ AAPL,50,142.80,Schwab 401(k)"></textarea>
     function renderExpenses() {
       var exp = store.get('expenses') || {};
       var hist = exp.importHistory || [];
-      var lastExp = hist.reduce(function (m, r) { return Math.max(m, (r && (r.at || r.date)) || 0); }, 0);
+      var lastExp = hist.reduce(function (m, r) { return Math.max(m, (r && (r.importedAt || r.at || r.date)) || 0); }, 0);
       var age = daysSince(lastExp);
       var drop = $('dh-expdrop'), note = $('dh-exp-note');
-      if (age != null && age > 30) { drop.classList.add('is-stale'); note.textContent = '⚠ ' + age + ' days since last import'; note.style.color = 'var(--warn)'; }
-      else if (age != null) { note.textContent = 'Last import ' + (age <= 0 ? 'today' : age + 'd ago') + ' — open to add more'; }
-      var recent = hist.slice(-2).map(function (r) { return (r.name || r.file || 'import') + (r.count ? ' (' + r.count + ' rows)' : ''); });
+      drop.classList.remove('is-stale'); note.style.color = '';
+      if (age != null && age > 30) { drop.classList.add('is-stale'); note.textContent = '⚠ ' + age + ' days since last import — drop a CSV to update'; note.style.color = 'var(--warn)'; }
+      else if (age != null) { note.textContent = 'Last import ' + (age <= 0 ? 'today' : age + 'd ago') + ' — drop a CSV to add more'; }
+      else { note.textContent = 'Drop a bank / card CSV here'; }
+      var recent = hist.slice(-2).map(function (r) { return (r.fileName || r.name || r.file || 'import') + (r.count ? ' (' + r.count + ' rows)' : ''); });
       $('dh-exp-recent').textContent = recent.length ? 'Recent: ' + recent.join(' · ') : 'No imports recorded yet.';
     }
 
@@ -470,7 +484,7 @@ AAPL,50,142.80,Schwab 401(k)"></textarea>
       var lastAge = daysSince(meta.lastUpdated);
       var exp = store.get('expenses') || {};
       var hist = exp.importHistory || [];
-      var expAge = daysSince(hist.reduce(function (m, r) { return Math.max(m, (r && (r.at || r.date)) || 0); }, 0));
+      var expAge = daysSince(hist.reduce(function (m, r) { return Math.max(m, (r && (r.importedAt || r.at || r.date)) || 0); }, 0));
       function dot(stale, label) {
         var col = stale ? 'var(--warn)' : 'var(--pos)';
         return '<span class="dh-syncstatus" style="color:' + col + ';">● ' + label + '</span>';
@@ -509,10 +523,10 @@ AAPL,50,142.80,Schwab 401(k)"></textarea>
       return -1;
     }
     var parsed = [];
-    function parseCSV(text) {
-      var lines = text.replace(/\r\n?/g, '\n').split('\n').filter(function (l) { return l.trim() !== ''; });
-      if (lines.length < 2) return [];
-      var headers = splitLine(lines[0]);
+    var rawImport = null;   // { headers: [], rows: [[cells]] } — kept so mapping edits re-parse
+    var mapping = null;     // { tk, sh, cb, ac, costIsTotal, custom }
+    var mapOpen = false;
+    function detectMapping(headers) {
       var tk = findCol(headers, ['ticker', 'symbol']);
       var sh = findCol(headers, ['shares', 'quantity', 'qty']);
       var cb = findCol(headers, ['cost basis total', 'average cost basis', 'cost basis', 'cost_basis', 'cost']);
@@ -523,44 +537,82 @@ AAPL,50,142.80,Schwab 401(k)"></textarea>
       // Vanguard-style "... total" headers carry lot totals → divide by
       // shares; "average"/generic cost headers are already per-share.
       var costIsTotal = cb >= 0 && headers[cb] != null && /total/i.test(headers[cb]);
+      return { tk: tk, sh: sh, cb: cb, ac: ac, costIsTotal: costIsTotal, custom: false };
+    }
+    function buildParsed() {
+      if (!rawImport || !mapping || mapping.tk < 0) { parsed = []; return; }
       var existing = holdings();
       var acctNames = accounts().map(function (a) { return a.name; });
-      return lines.slice(1).map(function (line) {
-        var c = splitLine(line);
-        var ticker = (tk >= 0 ? c[tk] : '').toUpperCase();
+      parsed = rawImport.rows.map(function (c) {
+        var ticker = String(c[mapping.tk] || '').toUpperCase();
         if (!ticker) return null;
-        var account = ac >= 0 ? c[ac] : '';
+        var account = mapping.ac >= 0 ? (c[mapping.ac] || '') : '';
         var already = existing.some(function (h) { return h.ticker === ticker && (!account || h.account === account); });
         var status = already ? 'update' : 'new';
         if (account && acctNames.length && acctNames.indexOf(account) < 0) status = 'warn';
-        var shares = num(c[sh]);
-        var rawCost = num(c[cb]);
-        var costPerShare = (costIsTotal && rawCost && shares) ? rawCost / shares : rawCost;
+        var shares = mapping.sh >= 0 ? num(c[mapping.sh]) : 0;
+        var rawCost = mapping.cb >= 0 ? num(c[mapping.cb]) : 0;
+        var costPerShare = (mapping.costIsTotal && rawCost && shares) ? rawCost / shares : rawCost;
         return { ticker: ticker, shares: shares, costBasis: costPerShare, account: account, status: status };
       }).filter(Boolean);
     }
+    function mapSelect(field, label) {
+      var opts = '<option value="-1"' + (mapping[field] < 0 ? ' selected' : '') + '>— none —</option>';
+      rawImport.headers.forEach(function (h, i) {
+        opts += '<option value="' + i + '"' + (mapping[field] === i ? ' selected' : '') + '>' + esc(h || ('col ' + (i + 1))) + '</option>';
+      });
+      return '<label>' + label + ' <select data-map="' + field + '">' + opts + '</select></label>';
+    }
     function renderPreview() {
       var host = $('dh-preview');
-      if (!parsed.length) { host.innerHTML = '<div class="dh-empty">Drop or paste a CSV to preview holdings before committing.</div>'; return; }
+      if (!rawImport) { host.innerHTML = '<div class="dh-empty">Drop or paste a CSV to preview holdings before committing.</div>'; return; }
       var shown = parsed.slice(0, 6);
       var counts = parsed.reduce(function (a, r) { a[r.status]++; return a; }, { new: 0, update: 0, warn: 0 });
       var stLabel = { new: '✓ New', update: '↻ Update', warn: '⚠ Check acct' };
       var stClass = { new: 'dh-st-new', update: 'dh-st-upd', warn: 'dh-st-warn' };
+      var mapBadge = mapping.custom
+        ? '<span class="dh-ok">Custom mapping</span>'
+        : '<span class="dh-ok"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"></polyline></svg>Columns mapped automatically</span>';
+      var mapPanel = mapOpen
+        ? '<div class="dh-map">' + mapSelect('tk', 'Ticker') + mapSelect('sh', 'Shares') + mapSelect('cb', 'Cost basis') + mapSelect('ac', 'Account') +
+          '<label><input type="checkbox" id="dh-map-total"' + (mapping.costIsTotal ? ' checked' : '') + '> Cost column is a lot total (÷ shares)</label></div>'
+        : '';
+      var rowsHtml = parsed.length
+        ? '<div class="dh-prow dh-prow--head"><span class="dh-ph">Ticker</span><span class="dh-ph dh-cell--r">Shares</span><span class="dh-ph dh-cell--r">Cost Basis</span><span class="dh-ph" style="padding-left:12px;">Account</span><span class="dh-ph dh-cell--r">Status</span></div>' +
+          shown.map(function (r) {
+            var costTotal = (r.costBasis && r.shares) ? r.costBasis * r.shares : r.costBasis;
+            return '<div class="dh-prow"><span class="dh-cell--tk">' + esc(r.ticker) + '</span>' +
+              '<span class="dh-cell dh-cell--r dh-mono">' + (r.shares ? r.shares.toLocaleString('en-US') : '—') + '</span>' +
+              '<span class="dh-cell dh-cell--r dh-mono">' + (costTotal ? fmtFull(costTotal) : '—') + '</span>' +
+              '<span class="dh-cell" style="padding-left:12px;">' + (esc(r.account) || '—') + '</span>' +
+              '<span class="dh-cell--r ' + stClass[r.status] + '">' + stLabel[r.status] + '</span></div>';
+          }).join('') +
+          '<div class="dh-preview__foot"><span class="dh-cell">' + (parsed.length > 6 ? (parsed.length - 6) + ' more rows · ' : '') + counts.new + ' new, ' + counts.update + ' updates' + (counts.warn ? ', ' + counts.warn + ' need review' : '') + '</span>' +
+          '<button class="dh-btn-primary" id="dh-commit" type="button" style="padding:7px 16px;">Commit ' + parsed.length + ' rows</button></div>'
+        : '<div class="dh-empty">No rows with this mapping — pick the ticker column under "Edit mapping".</div>';
       host.innerHTML =
         '<div class="dh-preview__head"><span class="dh-preview__name">Preview · ' + parsed.length + ' rows</span>' +
-        '<span class="dh-ok"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"></polyline></svg>Columns mapped automatically</span></div>' +
-        '<div class="dh-prow dh-prow--head"><span class="dh-ph">Ticker</span><span class="dh-ph dh-cell--r">Shares</span><span class="dh-ph dh-cell--r">Cost Basis</span><span class="dh-ph" style="padding-left:12px;">Account</span><span class="dh-ph dh-cell--r">Status</span></div>' +
-        shown.map(function (r) {
-          var costTotal = (r.costBasis && r.shares) ? r.costBasis * r.shares : r.costBasis;
-          return '<div class="dh-prow"><span class="dh-cell--tk">' + esc(r.ticker) + '</span>' +
-            '<span class="dh-cell dh-cell--r dh-mono">' + (r.shares ? r.shares.toLocaleString('en-US') : '—') + '</span>' +
-            '<span class="dh-cell dh-cell--r dh-mono">' + (costTotal ? fmtFull(costTotal) : '—') + '</span>' +
-            '<span class="dh-cell" style="padding-left:12px;">' + (esc(r.account) || '—') + '</span>' +
-            '<span class="dh-cell--r ' + stClass[r.status] + '">' + stLabel[r.status] + '</span></div>';
-        }).join('') +
-        '<div class="dh-preview__foot"><span class="dh-cell">' + (parsed.length > 6 ? (parsed.length - 6) + ' more rows · ' : '') + counts.new + ' new, ' + counts.update + ' updates' + (counts.warn ? ', ' + counts.warn + ' need review' : '') + '</span>' +
-        '<button class="dh-btn-primary" id="dh-commit" type="button" style="padding:7px 16px;">Commit ' + parsed.length + ' rows</button></div>';
-      $('dh-commit').addEventListener('click', commit);
+        '<span style="display:inline-flex;align-items:center;gap:12px;">' + mapBadge +
+        '<button class="dh-maplink" id="dh-map-toggle" type="button">' + (mapOpen ? 'Hide mapping' : 'Edit mapping') + '</button></span></div>' +
+        mapPanel + rowsHtml;
+      $('dh-map-toggle').addEventListener('click', function () { mapOpen = !mapOpen; renderPreview(); });
+      Array.prototype.forEach.call(host.querySelectorAll('select[data-map]'), function (sel) {
+        sel.addEventListener('change', function () {
+          var field = sel.getAttribute('data-map');
+          mapping[field] = parseInt(sel.value, 10);
+          // re-derive the lot-total heuristic when the cost column moves
+          if (field === 'cb') mapping.costIsTotal = mapping.cb >= 0 && /total/i.test(rawImport.headers[mapping.cb] || '');
+          mapping.custom = true;
+          buildParsed(); renderPreview();
+        });
+      });
+      var totalChk = $('dh-map-total');
+      if (totalChk) totalChk.addEventListener('change', function () {
+        mapping.costIsTotal = totalChk.checked; mapping.custom = true;
+        buildParsed(); renderPreview();
+      });
+      var commitBtn = $('dh-commit');
+      if (commitBtn) commitBtn.addEventListener('click', commit);
     }
     function commit() {
       if (!parsed.length) return;
@@ -582,14 +634,186 @@ AAPL,50,142.80,Schwab 401(k)"></textarea>
       store.set('accounts', accts, EDIT);
       recompute();
       var n = parsed.length;
-      parsed = [];
+      parsed = []; rawImport = null; mapping = null; mapOpen = false;
       $('dh-paste-area').value = '';
       renderPreview();
       renderAll();
       flash('Committed ' + n + ' holding' + (n === 1 ? '' : 's') + ' to the store.');
     }
 
-    function ingestText(text) { parsed = parseCSV(text); renderPreview(); if (!parsed.length) flash('No rows found — expected a header row with Ticker / Shares / Cost Basis.'); }
+    function ingestText(text) {
+      var lines = String(text || '').replace(/\r\n?/g, '\n').split('\n').filter(function (l) { return l.trim() !== ''; });
+      if (lines.length < 2) {
+        rawImport = null; mapping = null; parsed = [];
+        renderPreview();
+        flash('No rows found — expected a header row plus at least one data row.');
+        return;
+      }
+      rawImport = { headers: splitLine(lines[0]), rows: lines.slice(1).map(function (l) { return splitLine(l); }) };
+      mapping = detectMapping(rawImport.headers);
+      mapOpen = false;
+      buildParsed();
+      renderPreview();
+      if (!parsed.length) flash('No holdings recognized — open "Edit mapping" in the preview to pick columns.');
+    }
+
+    // ---------- expense CSV import (mirrors expenses.html's parser) ----------
+    // Sign convention (owned by the Expense Tracker): negative = spend,
+    // positive = refund/credit. Chase/generic CSVs are already signed that
+    // way; Amex charges are positive (flip); Citi has Debit/Credit columns.
+    var EXP_CATEGORIES = [
+      { id: 'groceries',     label: 'Groceries',     color: '#059669', budgetMonthly: null },
+      { id: 'dining',        label: 'Dining',        color: '#D97706', budgetMonthly: null },
+      { id: 'housing',       label: 'Housing',       color: '#2563EB', budgetMonthly: null },
+      { id: 'utilities',     label: 'Utilities',     color: '#0891B2', budgetMonthly: null },
+      { id: 'transport',     label: 'Transport',     color: '#7C3AED', budgetMonthly: null },
+      { id: 'healthcare',    label: 'Healthcare',    color: '#DC2626', budgetMonthly: null },
+      { id: 'entertainment', label: 'Entertainment', color: '#DB2777', budgetMonthly: null },
+      { id: 'travel',        label: 'Travel',        color: '#65A30D', budgetMonthly: null },
+      { id: 'other',         label: 'Other',         color: '#64748B', budgetMonthly: null },
+    ];
+    var EXP_CATEGORY_IDS = EXP_CATEGORIES.map(function (c) { return c.id; });
+    var EXP_RULES = [
+      [/whole foods|safeway|kroger|trader joe|costco|qfc|aldi|fred meyer|wegmans|publix|heb |grocery|market basket|sprouts/i, 'groceries'],
+      [/restaurant|doordash|uber\s*eats|grubhub|chipotle|starbucks|coffee|cafe|mcdonald|wendy|burger|pizza|sushi|thai|taco|panera|subway|dunkin|bakery|deli|bbq|grill|kitchen|noodle|pho|ramen/i, 'dining'],
+      [/mortgage|rent\b|hoa\b|home depot|lowe'?s|ikea|property tax|homeowner/i, 'housing'],
+      [/electric|water bill|sewer|utility|comcast|xfinity|verizon|t-?mobile|at&t|centurylink|internet|pse\b|city light|natural gas|waste mgmt|recology/i, 'utilities'],
+      [/chevron|shell|exxon|arco|76\b|texaco|costco gas|uber(?!\s*eats)|lyft|parking|toll|car wash|jiffy lube|les schwab|autozone|o'reilly|discount tire|wsdot|metro|transit/i, 'transport'],
+      [/pharmacy|cvs|walgreens|rite aid|clinic|dental|vision|medical|doctor|hospital|kaiser|labcorp|quest diag|urgent care|optum/i, 'healthcare'],
+      [/netflix|spotify|hulu|disney|hbo|paramount|peacock|cinema|amc\b|regal|theater|steam|playstation|xbox|nintendo|ticketmaster|stubhub|concert/i, 'entertainment'],
+      [/airline|alaska air|delta air|united air|southwest|american air|jetblue|hotel|marriott|hilton|hyatt|airbnb|vrbo|expedia|booking\.com|rental car|hertz|avis|enterprise rent/i, 'travel'],
+    ];
+    function normMerchant(desc) {
+      return String(desc || '').toUpperCase().replace(/[#*0-9]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 28);
+    }
+    function autoCategory(desc, merchantMap) {
+      var norm = normMerchant(desc);
+      if (norm && merchantMap && merchantMap[norm]) return merchantMap[norm];
+      for (var i = 0; i < EXP_RULES.length; i++) { if (EXP_RULES[i][0].test(desc || '')) return EXP_RULES[i][1]; }
+      return 'other';
+    }
+    function mapBankCategory(label) {
+      if (!label) return null;
+      var t = String(label).toLowerCase();
+      if (EXP_CATEGORY_IDS.indexOf(t) >= 0) return t;
+      if (/grocer|food & drug|supermarket/.test(t)) return 'groceries';
+      if (/dining|restaurant|food/.test(t)) return 'dining';
+      if (/home|rent|mortgage/.test(t)) return 'housing';
+      if (/utilit|bills|phone|internet|cable/.test(t)) return 'utilities';
+      if (/gas|fuel|auto|travel.?transport|transport/.test(t)) return 'transport';
+      if (/health|medical|pharma/.test(t)) return 'healthcare';
+      if (/entertain|recreation/.test(t)) return 'entertainment';
+      if (/travel|airfare|lodging|hotel/.test(t)) return 'travel';
+      return null;
+    }
+    function parseMoneySigned(s) {
+      if (s == null || s === '') return null;
+      var neg = /^\(.*\)$/.test(String(s).trim());
+      var n = Number(String(s).replace(/[$,()'"\s]/g, ''));
+      if (!isFinite(n)) return null;
+      return neg ? -n : n;
+    }
+    function parseDateAny(s) {
+      if (!s) return null;
+      var t = String(s).trim();
+      var m = t.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+      if (m) return m[1] + '-' + ('0' + m[2]).slice(-2) + '-' + ('0' + m[3]).slice(-2);
+      m = t.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})/);
+      if (m) {
+        var y = m[3].length === 2 ? '20' + m[3] : m[3];
+        return y + '-' + ('0' + m[1]).slice(-2) + '-' + ('0' + m[2]).slice(-2);
+      }
+      return null;
+    }
+    function parseTransactionsCSV(text, merchantMap) {
+      var lines = String(text || '').replace(/\r\n?/g, '\n').split('\n').filter(function (l) { return l.trim(); });
+      if (lines.length < 2) throw new Error('no data rows found');
+      var headers = splitLine(lines[0]);
+      var hLow = headers.map(function (h) { return h.toLowerCase(); });
+      function col() {
+        for (var n = 0; n < arguments.length; n++) {
+          var name = arguments[n].toLowerCase();
+          for (var i = 0; i < hLow.length; i++) { if (hLow[i] === name) return i; }
+          for (var j = 0; j < hLow.length; j++) { if (hLow[j].indexOf(name) >= 0) return j; }
+        }
+        return -1;
+      }
+      var source = 'generic-csv';
+      if (hLow.some(function (h) { return h.indexOf('transaction date') >= 0; })) source = 'chase-csv';
+      else if (col('debit') >= 0 && col('credit') >= 0) source = 'citi-csv';
+      else if (col('date') >= 0 && col('description') >= 0 && col('amount') >= 0 && col('category') < 0) source = 'amex-csv';
+      var dateCol = col('transaction date', 'date');
+      var descCol = col('description', 'merchant', 'payee');
+      var amtCol = col('amount');
+      var catCol = col('category');
+      var debitCol = col('debit');
+      var creditCol = col('credit');
+      if (dateCol < 0 || descCol < 0) throw new Error('could not find date/description columns');
+      if (source !== 'citi-csv' && amtCol < 0) throw new Error('could not find an amount column');
+      var txns = [];
+      for (var i = 1; i < lines.length; i++) {
+        var cells = splitLine(lines[i]);
+        var date = parseDateAny(cells[dateCol]);
+        var desc = cells[descCol];
+        if (!date || !desc) continue;
+        var amount = null;
+        if (source === 'citi-csv') {
+          var debit = parseMoneySigned(cells[debitCol]);
+          var credit = parseMoneySigned(cells[creditCol]);
+          if (debit != null && debit !== 0) amount = -Math.abs(debit);
+          else if (credit != null && credit !== 0) amount = Math.abs(credit);
+        } else if (source === 'amex-csv') {
+          // Amex: positive = charge
+          var a = parseMoneySigned(cells[amtCol]);
+          if (a != null) amount = -a;
+        } else {
+          // Chase + generic: negative = purchase already
+          amount = parseMoneySigned(cells[amtCol]);
+        }
+        if (amount == null || amount === 0) continue;
+        var bankCat = catCol >= 0 ? mapBankCategory(cells[catCol]) : null;
+        txns.push({
+          id: 'tx_' + Math.random().toString(36).slice(2, 10) + Date.now().toString(36),
+          date: date,
+          amount: Math.round(amount * 100) / 100,
+          category: bankCat || autoCategory(desc, merchantMap),
+          merchant: desc,
+          account: '',
+          note: '',
+          source: 'csv-import',
+        });
+      }
+      if (!txns.length) throw new Error('no transactions parsed — check the file format');
+      return { txns: txns, source: source };
+    }
+    function importExpenseCSV(text, fileName) {
+      var exp;
+      try { exp = JSON.parse(JSON.stringify(store.get('expenses') || {})); } catch (_) { exp = {}; }
+      if (!Array.isArray(exp.transactions)) exp.transactions = [];
+      if (!Array.isArray(exp.categories) || !exp.categories.length) exp.categories = EXP_CATEGORIES;
+      if (!Array.isArray(exp.importHistory)) exp.importHistory = [];
+      if (!exp.merchantMap || typeof exp.merchantMap !== 'object') exp.merchantMap = {};
+      var res;
+      try { res = parseTransactionsCSV(text, exp.merchantMap); }
+      catch (err) { flash('Expense import failed: ' + err.message + '.'); return; }
+      function txnKey(t) { return t.date + '|' + t.amount + '|' + normMerchant(t.merchant); }
+      var seen = {};
+      exp.transactions.forEach(function (t) { seen[txnKey(t)] = 1; });
+      var fresh = res.txns.filter(function (t) { return !seen[txnKey(t)]; });
+      exp.transactions = exp.transactions.concat(fresh);
+      exp.importHistory.push({
+        id: 'imp_' + Date.now().toString(36),
+        importedAt: Date.now(),
+        source: res.source,
+        count: fresh.length,
+        fileName: fileName || 'pasted rows',
+      });
+      store.set('expenses', exp, EDIT);
+      renderAll();
+      var skipped = res.txns.length - fresh.length;
+      flash('Imported ' + fresh.length + ' transaction' + (fresh.length === 1 ? '' : 's') + ' (' + res.source.replace('-csv', '').toUpperCase() + ')'
+        + (skipped ? ' · ' + skipped + ' duplicate' + (skipped === 1 ? '' : 's') + ' skipped' : '') + '.');
+    }
 
     // ---------- status flash ----------
     var flashTimer = null;
@@ -611,9 +835,87 @@ AAPL,50,142.80,Schwab 401(k)"></textarea>
       setTimeout(function () { URL.revokeObjectURL(a.href); }, 1000);
       flash('Backup downloaded.');
     });
-    // Refresh prices (v1 stub — live quotes live in the Portfolio Tracker)
-    $('dh-refresh').addEventListener('click', function () {
-      flash('Live price refresh runs in the Portfolio Tracker for now — open it to fetch quotes.');
+    // Refresh prices — same worker → query2 → query1 → proxy chain and
+    // sessionStorage cache keys (yf_<TICKER>, 15-min TTL) as the Portfolio
+    // Tracker, so the two share a cache. Only public ticker symbols leave
+    // the browser — never holdings data.
+    var PRICE_TTL_MS = 15 * 60 * 1000;
+    var QUOTE_WORKER = 'https://wealth-suite-quotes.kn2v.workers.dev';
+    async function fetchQuote(ticker) {
+      var key = 'yf_' + ticker.toUpperCase();
+      try {
+        var cached = sessionStorage.getItem(key);
+        if (cached) {
+          var hit = JSON.parse(cached);
+          if (Date.now() - hit.ts < PRICE_TTL_MS) return hit.data;
+        }
+      } catch (_) {}
+      var path = 'v8/finance/chart/' + encodeURIComponent(ticker.toUpperCase()) + '?interval=1d&range=2d';
+      var direct1 = 'https://query1.finance.yahoo.com/' + path;
+      var enc = encodeURIComponent(direct1);
+      var candidates = [
+        QUOTE_WORKER + '/' + path,
+        'https://query2.finance.yahoo.com/' + path,
+        direct1,
+        'https://api.allorigins.win/raw?url=' + enc,
+        'https://api.codetabs.com/v1/proxy/?quest=' + enc,
+      ];
+      for (var i = 0; i < candidates.length; i++) {
+        try {
+          var res = await fetch(candidates[i], { signal: AbortSignal.timeout(6000) });
+          if (!res.ok) continue;
+          var json = await res.json();
+          var qmeta = json && json.chart && json.chart.result && json.chart.result[0] && json.chart.result[0].meta;
+          if (!qmeta || !qmeta.regularMarketPrice) continue;
+          var prev = qmeta.previousClose || qmeta.chartPreviousClose || qmeta.regularMarketPrice;
+          var data = {
+            currentPrice: qmeta.regularMarketPrice,
+            prevClose: prev,
+            dayChange: qmeta.regularMarketPrice - prev,
+            dayChangePct: prev ? ((qmeta.regularMarketPrice - prev) / prev) * 100 : 0,
+            name: qmeta.longName || qmeta.shortName || ticker.toUpperCase(),
+          };
+          try { sessionStorage.setItem(key, JSON.stringify({ data: data, ts: Date.now() })); } catch (_) {}
+          return data;
+        } catch (_) { continue; }
+      }
+      throw new Error('unavailable');
+    }
+    var refreshBtn = $('dh-refresh');
+    refreshBtn.addEventListener('click', async function () {
+      if (refreshBtn.disabled) return;
+      var hs = holdings();
+      var tickers = [];
+      hs.forEach(function (h) {
+        var t = String(h.ticker || '').toUpperCase();
+        if (t && tickers.indexOf(t) < 0) tickers.push(t);
+      });
+      if (!tickers.length) { flash('No holdings to price yet — import or add stock rows first.'); return; }
+      refreshBtn.disabled = true;
+      var label = $('dh-refresh-label');
+      label.textContent = 'Refreshing…';
+      var results = await Promise.allSettled(tickers.map(function (t) { return fetchQuote(t); }));
+      var quotes = {};
+      results.forEach(function (r, i) { if (r.status === 'fulfilled') quotes[tickers[i]] = r.value; });
+      var got = Object.keys(quotes).length;
+      if (got) {
+        var now = Date.now();
+        hs.forEach(function (h) {
+          var q = quotes[String(h.ticker || '').toUpperCase()];
+          if (!q) return;
+          h.currentPrice = q.currentPrice;
+          h.priceUpdatedAt = now;
+          if (q.name && (!h.name || h.name === h.ticker)) h.name = q.name;
+        });
+        store.set('portfolio.holdings', hs, EDIT);
+        recompute();
+        renderAll();
+      }
+      refreshBtn.disabled = false;
+      label.textContent = 'Refresh Prices';
+      flash(got
+        ? 'Prices updated for ' + got + ' of ' + tickers.length + ' ticker' + (tickers.length === 1 ? '' : 's') + '.'
+        : 'Quote fetch failed — check your connection and try again.');
     });
 
     // CSV file + drag/drop + paste
@@ -629,6 +931,16 @@ AAPL,50,142.80,Schwab 401(k)"></textarea>
       if (!pasteArea.hidden) pasteArea.focus();
     });
     pasteArea.addEventListener('input', function () { if (pasteArea.value.trim()) ingestText(pasteArea.value); });
+
+    // expense CSV drop zone
+    var expDrop = $('dh-expdrop'), expFile = $('dh-exp-file');
+    function readExpenseFile(f) { if (f) f.text().then(function (t) { importExpenseCSV(t, f.name); }); }
+    expDrop.addEventListener('click', function () { expFile.click(); });
+    expDrop.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); expFile.click(); } });
+    expFile.addEventListener('change', function () { readExpenseFile(expFile.files[0]); expFile.value = ''; });
+    ['dragenter', 'dragover'].forEach(function (ev) { expDrop.addEventListener(ev, function (e) { e.preventDefault(); expDrop.classList.add('is-drag'); }); });
+    ['dragleave', 'drop'].forEach(function (ev) { expDrop.addEventListener(ev, function (e) { e.preventDefault(); expDrop.classList.remove('is-drag'); }); });
+    expDrop.addEventListener('drop', function (e) { readExpenseFile(e.dataTransfer && e.dataTransfer.files[0]); });
 
     // add-form toggles
     function bindForm(addBtnId, formId, onSubmit) {
