@@ -4,6 +4,11 @@
  * Read-only seed: pulls household data from the suite store and
  * calls window.__rothSeed (registered by the React component after
  * mount) to pre-fill the form. No writeback in v1.
+ *
+ * v2: consumes Settings preferences — the active scenario's
+ * targetRetireAge overrides the plan's, and preferences.fedBracket
+ * defaults the "fill through bracket" select (snapped to the tool's
+ * 12/22/24/32 options).
  * ============================================================= */
 (function () {
   'use strict';
@@ -37,12 +42,24 @@
 
     const filingStatus = hh.filingStatus === 'mfj' ? 'married' : 'single';
 
+    const prefs = state.preferences || {};
+    const scenarios = prefs.scenarios || [];
+    const scn = scenarios.length
+      ? (scenarios.find(s => s && s.id === prefs.activeScenarioId) || scenarios[0])
+      : null;
+
+    // Tool's select only offers 12/22/24/32 — snap to the highest option
+    // at or below the configured bracket (35%+ households still cap at 32).
+    const fed = Number(prefs.fedBracket) || 0;
+    const targetBracket = fed ? ([32, 24, 22, 12].find(b => b <= fed) || 12) : null;
+
     return {
       filingStatus,
       currentAge,
-      retireAge:    plan.targetRetireAge || null,
+      retireAge:    (scn && Number(scn.targetRetireAge)) || plan.targetRetireAge || null,
       tradBalance:  balances.total       || null,
       currentIncome: ordinaryIncome,
+      targetBracket,
     };
   }
 
