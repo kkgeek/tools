@@ -6,6 +6,20 @@
  *   2. Restores slider from store on load
  *   3. Injects household banner in header
  *
+ * Phase 13q additions:
+ *   9. Includes annual retirement contributions (compounded as an
+ *      ordinary annuity) in portAtRetire, matching the dashboard's
+ *      readiness model and the tool's own savings-roadmap card.
+ *  10. Patches window.runMC (and re-labels the MC chart axis) so the
+ *      Monte Carlo scenario uses store-derived inputs too.
+ *  11. Rewrites the tool's remaining hardcoded copy from the store:
+ *      header subtitle + document title, "Target at N" stat (25x spend,
+ *      4% SWR), buffer-ladder tiers + inflation schedule + age-70 SS
+ *      note, and the savings-roadmap card. Empty store keeps the sample.
+ *  12. SS base aligned to the tool's current baked estimate ($69.6k/yr
+ *      combined at 70, in at-retirement dollars) — the old $124,872
+ *      base came from a prior version of the tool.
+ *
  * Phase 3 additions:
  *   4. Reads portfolio.totalValue, retirement.plan.{targetRetireAge,
  *      annualExpenses, growthAssumption}, and household ages to derive
@@ -71,11 +85,31 @@
     return null;
   }
 
+  // Prefix match — labels like "Projected at age 62" carry a hardcoded
+  // age that this adapter rewrites, so exact matching would break on
+  // the second pass (and broke silently when the tool's sample age changed).
+  function findScByPrefix(prefix) {
+    for (const el of document.querySelectorAll('.sc')) {
+      const l = el.querySelector('.sc-l');
+      if (l && l.textContent.trim().indexOf(prefix) === 0) return el;
+    }
+    return null;
+  }
+
   // ---------- Projection state (closure vars shared with patched calcPortfolio) ----------
-  var _port      = 6520000;   // portAtRetire — default matches tool hardcode
-  var _spend     = 287000;    // spendAtRetire — default matches tool hardcode
-  var _retireAge = 55;        // default matches tool hardcode
-  var _curAge    = 51;        // default matches tool hardcode
+  var _port      = 2250000;   // portAtRetire — default matches tool hardcode
+  var _spend     = 90000;     // spendAtRetire — default matches tool hardcode
+  var _retireAge = 62;        // default matches tool hardcode
+  var _curAge    = 45;        // default matches tool hardcode
+
+  // Combined household SS at age 70, in at-retirement dollars — the
+  // tool's baked estimate ($5,800/mo × 2 spouses). No store field yet.
+  var SS_BASE = 69600;
+  function ssAt(age, ir) {
+    if (age < 70) return 0;
+    var ssAt70 = SS_BASE * Math.pow(1 + (ir || INFLATION), Math.max(0, 70 - _retireAge));
+    return ssAt70 * Math.pow(1.025, age - 70);
+  }
 
   // ---------- calcPortfolio patch ----------
   // Replaces the tool's hardcoded function with one that uses store-derived
@@ -90,18 +124,77 @@
         var age = startAge + yr;
         labels.push(age);
         vals.push(parseFloat((port / 1e6).toFixed(2)));
-        var ss = 0;
-        if (age >= 70) {
-          // Nominal SS at age 70, inflated from current age. The 124872 base
-          // is the combined household SS estimate baked into the tool.
-          var ssAt70 = 124872 * Math.pow(1 + ir, Math.max(0, 70 - _curAge));
-          ss = ssAt70 * Math.pow(1.025, age - 70);
-        }
+        var ss = ssAt(age, ir);
         port = Math.max(0, port * (1 + gr) - Math.max(0, spend - ss));
         spend *= (1 + ir);
       }
       return { labels: labels, vals: vals };
     };
+  }
+
+  // ---------- runMC / MC chart patch ----------
+  // Same treatment for the Monte Carlo path generator: the tool hardcodes
+  // $2.25M / $90k / age 62 inside runMC, and buildMCChart hardcodes the
+  // 62-based x-axis labels. The wrapper re-labels after the tool builds.
+  function patchMonteCarlo() {
+    window.runMC = function (N, mu, sigma, ir) {
+      var YEARS = Math.max(1, 90 - _retireAge), successes = 0, paths = [];
+      for (var s = 0; s < N; s++) {
+        var port = _port, spend = _spend;
+        var path = [+(port / 1e6).toFixed(2)];
+        for (var yr = 0; yr < YEARS; yr++) {
+          var age = _retireAge + yr;
+          var r = mu + sigma * window.randn();
+          var ss = ssAt(age, ir);
+          port = Math.max(0, port * (1 + r) - Math.max(0, spend - ss));
+          spend *= (1 + ir);
+          path.push(+(port / 1e6).toFixed(2));
+        }
+        if (port > 0) successes++;
+        paths.push(path);
+      }
+      return { paths: paths, successRate: successes / N };
+    };
+    window.mcCache = null;
+
+    var origMC = window.buildMCChart;
+    if (typeof origMC === 'function' && !origMC.__wsPatched) {
+      var wrappedMC = function () {
+        origMC();
+        var chart = window.projChart;
+        var cache = window.mcCache;
+        if (chart && cache && cache.paths && cache.paths[0]) {
+          var labels = [];
+          for (var i = 0; i < cache.paths[0].length; i++) labels.push(_retireAge + i);
+          chart.data.labels = labels;
+          chart.options.scales.x.ticks.callback = function (v, i) {
+            return (_retireAge + i) % 5 === 0 ? 'Age ' + (_retireAge + i) : '';
+          };
+          chart.update('none');
+        }
+      };
+      wrappedMC.__wsPatched = true;
+      window.buildMCChart = wrappedMC;
+    }
+
+    // The deterministic chart's tick callback also hardcodes 62+i even
+    // though its labels come from baseD — re-point ticks at the labels.
+    var origProj = window.buildProjChart;
+    if (typeof origProj === 'function' && !origProj.__wsPatched) {
+      var wrappedProj = function (scen) {
+        origProj(scen);
+        var chart = window.projChart;
+        if (chart) {
+          chart.options.scales.x.ticks.callback = function (v, i) {
+            var a = _retireAge + i;
+            return a % 5 === 0 ? 'Age ' + a : '';
+          };
+          chart.update('none');
+        }
+      };
+      wrappedProj.__wsPatched = true;
+      window.buildProjChart = wrappedProj;
+    }
   }
 
   // ---------- Projection seeding ----------
@@ -129,11 +222,25 @@
     const curAgeVal      = currentAge || 51;
     const yearsToRetire  = Math.max(0, retireAgeVal - curAgeVal);
 
-    // Update closure vars used by the patched calcPortfolio
+    // Annual retirement contributions (both spouses), compounded to the
+    // retirement date as an ordinary annuity — matches the dashboard's
+    // readiness model and the tool's own savings-roadmap card.
+    const c     = (state.retirement && state.retirement.contributions) || {};
+    const c401k = sumSpouse(c.traditional401k) + sumSpouse(c.roth401k)
+                + sumSpouse(c.afterTax401k) + sumSpouse(c.catchup);
+    const cIra  = sumSpouse(c.ira);
+    const cHsa  = (c.hsa != null && c.hsa !== '') ? (Number(c.hsa) || 0) : 0;
+    const annuityFV = (annual) => (annual > 0 && yearsToRetire > 0)
+      ? annual * (Math.pow(1 + growthRate, yearsToRetire) - 1) / growthRate
+      : 0;
+    const baseFV    = hasPortfolio ? currentPortfolio * Math.pow(1 + growthRate, yearsToRetire) : 0;
+    const contribFV = annuityFV(c401k) + annuityFV(cIra) + annuityFV(cHsa);
+
+    // Update closure vars used by the patched calcPortfolio / runMC
     _retireAge = retireAgeVal;
     _curAge    = curAgeVal;
     if (hasPortfolio) {
-      _port = currentPortfolio * Math.pow(1 + growthRate, yearsToRetire);
+      _port = baseFV + contribFV;
     }
     if (hasExpenses) {
       _spend = annualExpenses * Math.pow(1 + INFLATION, yearsToRetire);
@@ -141,6 +248,7 @@
 
     // Patch and recompute datasets (chart is lazy — runs before any tab click)
     patchCalcPortfolio();
+    patchMonteCarlo();
     window.bullD   = window.calcPortfolio(0.09, 0.035);
     window.baseD   = window.calcPortfolio(0.07, 0.035);
     window.stressD = window.calcPortfolio(0.05, 0.04);
@@ -162,14 +270,22 @@
       const portTile = findScTile('Current portfolio');
       if (portTile) portTile.textContent = fmtM(currentPortfolio);
 
-      const projTile = findScTile('Projected at age 55');
-      if (projTile) projTile.textContent = '~' + fmtM(_port);
+      const projSc = findScByPrefix('Projected at age');
+      if (projSc) {
+        projSc.querySelector('.sc-l').textContent = 'Projected at age ' + retireAgeVal;
+        const v = projSc.querySelector('.sc-v');
+        if (v) v.textContent = '~' + fmtM(_port);
+      }
 
       const hsVals = document.querySelectorAll('.hs-v');
       if (hsVals[0]) hsVals[0].textContent = fmtM(currentPortfolio);
 
-      const startTile = findScTile('Starting portfolio (age 55)');
-      if (startTile) startTile.textContent = fmtM(_port);
+      const startSc = findScByPrefix('Starting portfolio (age');
+      if (startSc) {
+        startSc.querySelector('.sc-l').textContent = 'Starting portfolio (age ' + retireAgeVal + ')';
+        const v = startSc.querySelector('.sc-v');
+        if (v) v.textContent = fmtM(_port);
+      }
     }
 
     if (hasExpenses) {
@@ -190,6 +306,164 @@
       try { window.projChart.destroy(); } catch (_) { /* ignore */ }
       window.projChart = null;
       window.projBuilt = false;
+    }
+
+    seedStaticContent({
+      filingStatus: state.household && state.household.filingStatus,
+      hasAge: currentAge != null,
+      curAge: curAgeVal,
+      retireAge: retireAgeVal,
+      growthRate: growthRate,
+      yearsToRetire: yearsToRetire,
+      hasPortfolio: hasPortfolio,
+      hasExpenses: hasExpenses,
+      currentPortfolio: currentPortfolio,
+      spendNow: annualExpenses,
+      spendR: _spend,
+      projPort: _port,
+      baseFV: baseFV,
+      c401k: c401k, c401kFV: annuityFV(c401k),
+      cIra: cIra, cIraFV: annuityFV(cIra),
+      cHsa: cHsa, cHsaFV: annuityFV(cHsa),
+    });
+  }
+
+  // ---------- static content seeding (Phase 13q) ----------
+  // Rewrites the tool's remaining hardcoded copy — header subtitle/title,
+  // target stat, buffer ladder, inflation schedule, savings roadmap —
+  // from store data. Only runs when seedProjections' gate passed, so an
+  // empty store keeps the illustrative sample untouched.
+  function seedStaticContent(ctx) {
+    const retireAge = ctx.retireAge;
+    const target = ctx.hasExpenses ? ctx.spendNow * 25 : null; // 4% SWR
+
+    // Header subtitle + document title
+    const filing = ctx.filingStatus === 'single' ? 'Single'
+                 : ctx.filingStatus === 'mfj' ? 'Married couple' : null;
+    const parts = [];
+    if (filing) parts.push(filing);
+    if (ctx.hasAge) parts.push('Age ' + ctx.curAge);
+    parts.push('WA State');
+    parts.push('Retiring at ' + retireAge);
+    if (ctx.hasExpenses) parts.push(fmtK(ctx.spendNow) + '/yr spending target');
+    const sub = document.querySelector('.hdr-l p');
+    if (sub) sub.textContent = parts.join(' · ');
+    if (ctx.hasAge) {
+      document.title = 'Retirement Master Plan — Age ' + ctx.curAge
+        + (filing ? ' | ' + filing : '') + ' | WA State';
+    }
+
+    // Header "Target at N" stat + overview target tile (25× spend)
+    if (target) {
+      const hs = document.querySelectorAll('.hdr-r .hs');
+      if (hs[1]) {
+        const tv = hs[1].querySelector('.hs-v');
+        const tl = hs[1].querySelector('.hs-l');
+        if (tv) tv.textContent = fmtM(target);
+        if (tl) tl.textContent = 'Target at ' + retireAge;
+      }
+      const tgtSc = findScByPrefix('Target at age');
+      if (tgtSc) {
+        tgtSc.querySelector('.sc-l').textContent = 'Target at age ' + retireAge;
+        const v = tgtSc.querySelector('.sc-v');
+        if (v) v.textContent = fmtM(target);
+      }
+    }
+
+    // Buffer tab — every figure derives from spend at retirement
+    if (ctx.hasExpenses) {
+      const spendR = ctx.spendR;
+      const bufCards = document.querySelectorAll('#buf .card');
+      if (bufCards[0]) {
+        const ct = bufCards[0].querySelector('.ct');
+        if (ct) ct.textContent = '3-tier SRR buffer ladder — funded at retirement (age ' + retireAge + ')';
+        const cs = bufCards[0].querySelector('.cs');
+        if (cs) cs.textContent = 'Total: ' + fmtK(spendR * 3)
+          + '  |  Average yield: ~4.8%  |  Annual interest: ~'
+          + fmtK(spendR * 3 * 0.048) + ' — meaningfully offsets yield drag';
+        bufCards[0].querySelectorAll('.tier-v').forEach(function (el) {
+          el.textContent = fmtK(spendR);
+        });
+      }
+      // Inflation schedule: retirement age +0 / +5 / +10 / +15
+      document.querySelectorAll('#buf .g4 .sc').forEach(function (tile, i) {
+        const k = i * 5;
+        const age = retireAge + k;
+        const spendAtAge = spendR * Math.pow(1 + INFLATION, k);
+        const l = tile.querySelector('.sc-l');
+        const v = tile.querySelector('.sc-v');
+        const note = tile.lastElementChild;
+        if (l) l.textContent = 'Age ' + age;
+        if (v) v.textContent = fmtK(spendAtAge) + '/yr';
+        if (note && note !== v && !note.classList.contains('sc-v')) {
+          note.textContent = (i === 3 && age >= 70)
+            ? 'Net after SS: ~' + fmtK(Math.max(0, spendAtAge - ssAt(age)))
+            : 'Buffer total: ' + fmtK(spendAtAge * 3);
+        }
+      });
+      // Age-70 SS note
+      const ib = document.querySelector('#buf .ib');
+      if (ib) {
+        const spend70 = spendR * Math.pow(1 + INFLATION, Math.max(0, 70 - retireAge));
+        const ss70 = ssAt(70);
+        const net70 = Math.max(0, spend70 - ss70);
+        const pct = spend70 > 0 ? Math.round((1 - net70 / spend70) * 100) : 0;
+        ib.textContent = 'At age 70, combined SS income for both spouses (~'
+          + fmtK(ss70) + ' nominal, assuming both claim at 70) reduces the net '
+          + 'annual portfolio draw from ' + fmtK(spend70) + ' to ~' + fmtK(net70)
+          + ' — a ' + pct + '% reduction that significantly extends longevity '
+          + 'and eases replenishment pressure.';
+      }
+    }
+
+    // Savings roadmap — needs both a portfolio and a spending target
+    if (ctx.hasPortfolio && ctx.hasExpenses && target) {
+      const road = document.querySelectorAll('#proj .card')[1];
+      if (!road) return;
+      const projected = ctx.projPort;
+      const gPct = Math.round(ctx.growthRate * 100);
+      const pace = projected >= target * 1.5 ? 'well ahead of pace'
+                 : projected >= target ? 'on pace' : 'behind pace';
+      const rc = road.querySelector('.ct');
+      if (rc) rc.textContent = 'Savings roadmap to ' + fmtM(target) + ' by age ' + retireAge + ' — ' + pace;
+      const rcs = road.querySelector('.cs');
+      if (rcs) rcs.textContent = projected >= target
+        ? 'At current savings pace you are on track — figures below compound at ' + gPct + '%/yr to age ' + retireAge
+        : 'At current savings pace you fall short of the minimum target — consider higher contributions or a later retirement date';
+      const kv = road.querySelector('.kv');
+      if (kv) {
+        const rows = [[
+          fmtM(ctx.currentPortfolio) + ' current at ' + gPct + '% for ' + ctx.yearsToRetire + ' years',
+          fmtM(ctx.baseFV),
+        ]];
+        if (ctx.c401kFV > 0) rows.push(['401k contributions (' + fmtK(ctx.c401k) + '/yr, compounded)', '+' + fmtK(ctx.c401kFV)]);
+        if (ctx.cIraFV > 0)  rows.push(['IRA contributions (' + fmtK(ctx.cIra) + '/yr, compounded)', '+' + fmtK(ctx.cIraFV)]);
+        if (ctx.cHsaFV > 0)  rows.push(['HSA contributions (' + fmtK(ctx.cHsa) + '/yr, compounded)', '+' + fmtK(ctx.cHsaFV)]);
+        let html = rows.map(function (r) {
+          return '<span class="kv-k">' + r[0] + '</span><span class="kv-v">' + r[1] + '</span>';
+        }).join('');
+        html += '<span class="kv-k kv-sep" style="font-weight:600;color:var(--text)">Projected at retirement (age '
+          + retireAge + ')</span><span class="kv-sep-g">' + fmtM(projected) + '</span>';
+        html += '<span class="kv-k">Minimum target needed (4% SWR on ' + fmtK(ctx.spendNow)
+          + '/yr spend)</span><span class="kv-v b">' + fmtM(target) + '</span>';
+        kv.innerHTML = html;
+      }
+      const note = road.querySelector('.ib');
+      if (note) {
+        if (projected >= target) {
+          note.className = 'ib ib-g';
+          note.textContent = 'On track. The ~' + fmtK(projected - target)
+            + ' surplus above the minimum target means you can retire earlier if you '
+            + 'choose, increase spending in early retirement, fund legacy goals, or '
+            + 'carry extra cushion as a margin of safety.';
+        } else {
+          note.className = 'ib ib-a';
+          note.textContent = 'Behind target by ~' + fmtK(target - projected)
+            + '. Options: increase contributions, extend the retirement date, or reduce '
+            + 'the spending target — small changes compound significantly over '
+            + ctx.yearsToRetire + ' years.';
+        }
+      }
     }
   }
 
