@@ -885,12 +885,22 @@
     var dEl = document.getElementById('ws-date');
     if (dEl) dEl.textContent = now.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 
-    // ---- Tax alert dismiss ----
+    // ---- Tax alert dismiss + Settings alert prefs ----
+    // preferences.alerts.quarterlyTax === false hides the banner entirely;
+    // Dismiss stays a this-visit-only hide on top of that.
+    var taxDismissed = false;
     var dismiss = document.getElementById('ws-tax-dismiss');
     if (dismiss) dismiss.addEventListener('click', function () {
+      taxDismissed = true;
       var a = document.getElementById('ws-tax-alert');
       if (a) a.style.display = 'none';
     });
+    function applyAlertPrefs(s) {
+      var el = document.getElementById('ws-tax-alert');
+      if (!el) return;
+      var a = (s && s.preferences && s.preferences.alerts) || {};
+      el.style.display = (a.quarterlyTax === false || taxDismissed) ? 'none' : '';
+    }
 
     // ---- Performance table ----
     // Renders the sample immediately; refreshPerformance() (called from
@@ -1090,9 +1100,21 @@
         var st = (hh.location && hh.location.state) || 'WA';
         var yr = (s && s.preferences && s.preferences.taxYear) || now.getFullYear();
         var ini = initials(spouses);
+        // Active scenario (Settings) leads the sub line; falls back to the
+        // implicit "Base case" when none is stored.
+        var prefs = (s && s.preferences) || {};
+        var scnList = prefs.scenarios || [];
+        var scn = null;
+        if (scnList.length) {
+          for (var si = 0; si < scnList.length; si++) { if (scnList[si] && scnList[si].id === prefs.activeScenarioId) scn = scnList[si]; }
+          scn = scn || scnList[0];
+        }
+        var scnName = (scn && scn.name) || 'Base case';
         var set = function (id, val) { var el = document.getElementById(id); if (el) el.textContent = val; };
         set('ws-profile-name', name);
-        set('ws-profile-sub', filing + ' · ' + st + ' · ' + yr);
+        set('ws-profile-sub', scnName + ' · ' + filing + ' · ' + yr);
+        var chipEl = document.querySelector('.ws-profile');
+        if (chipEl) chipEl.title = 'Active household · ' + scnName + ' · ' + st;
         set('ws-hh', name);
         set('ws-profile-avatar', ini);
         set('ws-avatar', ini);
@@ -1103,8 +1125,17 @@
     // in the Net Worth / Investment Portfolio / Monthly Spending tiles;
     // an empty store keeps the illustrative sample. (Retirement Readiness
     // and the charts stay illustrative until a later slice.) ----
-    function money(n) { n = Number(n) || 0; var a = Math.abs(n); if (a >= 1e6) return '$' + (n / 1e6).toFixed(2) + 'M'; if (a >= 1e3) return '$' + Math.round(n / 1e3) + 'K'; return '$' + Math.round(n); }
+    function moneyC(n) { n = Number(n) || 0; var a = Math.abs(n); if (a >= 1e6) return '$' + (n / 1e6).toFixed(2) + 'M'; if (a >= 1e3) return '$' + Math.round(n / 1e3) + 'K'; return '$' + Math.round(n); }
     function full(n) { return '$' + Math.round(Number(n) || 0).toLocaleString('en-US'); }
+    // Honours Settings → preferences.currencyFormat ('full' shows exact
+    // dollars). Chart axes keep moneyC — full figures don't fit there.
+    function money(n) {
+      try {
+        var st = window.WealthSuite && window.WealthSuite.store;
+        if (st && st.get('preferences.currencyFormat') === 'full') return full(n);
+      } catch (e) {}
+      return moneyC(n);
+    }
     function escHtml(x) { return String(x == null ? '' : x).replace(/[&<>"]/g, function (c) { return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]; }); }
     function metricEl(m) { return document.querySelector('[data-ws-metric="' + m + '"]'); }
     function refreshKPIs() {
@@ -1136,10 +1167,23 @@
         }, 0));
         var budget = ((s.expenses && s.expenses.categories) || []).reduce(function (t, c) { return t + (Number(c.budgetMonthly) || 0); }, 0);
 
+        applyAlertPrefs(s);
+
         var hasData = holdings.length > 0 || otherAssets > 0 || liab > 0 || portfolioVal > 0 || monthSpend > 0;
         var note = document.getElementById('ws-sample-note');
         if (!hasData) { if (note) { note.textContent = 'sample figures — connect accounts in the Data Hub'; note.style.color = 'var(--warn)'; } return; }
-        if (note) { note.textContent = 'live from your data'; note.style.color = 'var(--pos)'; }
+        if (note) {
+          // Stale-data alert (Settings): flag when the store hasn't been
+          // touched in preferences.alerts.staleDays (default 30).
+          var aPrefs = (s.preferences && s.preferences.alerts) || {};
+          var staleTxt = '';
+          if (aPrefs.staleData !== false && s.meta && s.meta.lastUpdated) {
+            var staleDays = Math.floor((Date.now() - new Date(s.meta.lastUpdated).getTime()) / 864e5);
+            if (staleDays >= (Number(aPrefs.staleDays) || 30)) staleTxt = ' · last updated ' + staleDays + ' days ago';
+          }
+          note.textContent = 'live from your data' + staleTxt;
+          note.style.color = staleTxt ? 'var(--warn)' : 'var(--pos)';
+        }
 
         var nw = metricEl('netWorth');
         if (nw) {
@@ -1216,7 +1260,7 @@
       for (var g = 0; g <= 3; g++) {
         var gv = maxV * g / 3, gy = Y(gv);
         grid += '<line x1="34" y1="' + gy.toFixed(1) + '" x2="648" y2="' + gy.toFixed(1) + '" style="stroke:var(--border);" stroke-width="1"></line>';
-        labels += '<text x="2" y="' + (gy - 4).toFixed(1) + '" font-size="14" style="fill:var(--text-3);" font-family="Roboto Mono,monospace">' + money(gv) + '</text>';
+        labels += '<text x="2" y="' + (gy - 4).toFixed(1) + '" font-size="14" style="fill:var(--text-3);" font-family="Roboto Mono,monospace">' + moneyC(gv) + '</text>';
       }
       var lastP = hist[hist.length - 1];
       var cx = X(hist.length - 1).toFixed(1), cy = Y(lastP.nw).toFixed(1);
@@ -1460,11 +1504,18 @@
     }
     function refreshAll() { refreshProfile(); refreshKPIs(); }
 
-    if (window.WealthSuite && window.WealthSuite.store) {
+    // suite-state.js is a defer script that runs after this inline one, so
+    // the store usually isn't attached yet — boot on DOMContentLoaded and
+    // subscribe there too (signature is (path, fn); '' = whole store).
+    function bootFromStore() {
       refreshAll();
-      try { window.WealthSuite.store.subscribe(refreshAll); } catch (e) {}
+      var st = window.WealthSuite && window.WealthSuite.store;
+      if (st) { try { st.subscribe('', refreshAll); } catch (e) {} }
+    }
+    if (window.WealthSuite && window.WealthSuite.store) {
+      bootFromStore();
     } else {
-      window.addEventListener('DOMContentLoaded', function () { setTimeout(refreshAll, 0); });
+      window.addEventListener('DOMContentLoaded', function () { setTimeout(bootFromStore, 0); });
     }
   })();
 </script>

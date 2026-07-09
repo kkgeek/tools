@@ -520,6 +520,42 @@ Phase 13m (Estate Plan extracted to a standalone page):
   millionaire tax, trust strategy, beneficiary audit) — candidates for
   store-driven figures later (estate size from net worth, etc.).
 
+Phase 13n (step 4 — Settings preferences consumed by shell + tools):
+- `assets/suite.js?v=15` (ALL tool pages + data_hub + settings): new
+  shared helpers `WealthSuite.fmtMoney(n)` (honours
+  `preferences.currencyFormat` — 'full' → exact dollars, else compact)
+  and `WealthSuite.activeScenario()` (activeScenarioId match, else
+  first stored — mirrors Settings' fallback; null = implicit "Base
+  case"). `renderHouseholdBanner` formats via fmtMoney, appends the
+  active scenario name, and "retire in N yrs" honours the scenario's
+  targetRetireAge override.
+- `index.html`: profile-chip sub line = active scenario name · filing
+  · taxYear ("Base case" when none stored). Alert prefs consumed:
+  `alerts.quarterlyTax === false` hides the Q2 tax banner (Dismiss is
+  a this-visit hide on top); `alerts.staleData`/`staleDays` turn the
+  "live from your data" note into "· last updated N days ago" (warn)
+  when `meta.lastUpdated` is older than the threshold. `money()`
+  honours currencyFormat 'full' in KPI tiles/legends/stat tiles; chart
+  axes stay compact via `moneyC()`. **Fixed a real re-render bug**:
+  the dashboard called `store.subscribe(refreshAll)` but the API is
+  `subscribe(path, fn)` (registration landed as key=fn, cb=undefined),
+  and the DOMContentLoaded boot path — the one that actually runs,
+  since suite-state.js is a defer script loaded after the inline shell
+  — never subscribed at all. Cross-document store edits now repaint
+  the dashboard live (verified headless via storage event).
+- `assets/adapters/roth.js?v=2`: retireAge prefers the active
+  scenario; `preferences.fedBracket` seeds the "fill through bracket"
+  select, snapped to the tool's 12/22/24/32 options (35%+ caps at 32).
+  `roth_conversion.html`'s `__rothSeed` hook accepts `targetBracket`.
+- `assets/adapters/mc.js?v=2`: retire age prefers the active scenario;
+  a scenario `withdrawalRate` > 0 overrides the withdrawal with
+  rate% × starting balance.
+- Asset & Cap-Gains deliberately unchanged: it has no bracket input
+  (it computes marginal rates progressively from income), so
+  fedBracket has nothing to default there.
+- currencyFormat coverage = dashboard + the household banner on every
+  tool page; tools' own internals keep their native formatters.
+
 ## Constraints to preserve
 
 - **Zero build step.** No Vite/Webpack until scope demands it.

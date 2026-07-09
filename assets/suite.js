@@ -326,6 +326,41 @@
     injectTopbarIfMissing();
   }
 
+  // ---------- Shared preference helpers ----------
+  // fmtMoney: money formatter that honours preferences.currencyFormat
+  // ('full' → "$1,234,567"; anything else → compact "$1.2M"/"$123K").
+  function fmtMoney(n) {
+    n = Number(n) || 0;
+    try {
+      var store = window.WealthSuite && window.WealthSuite.store;
+      if (store && store.get('preferences.currencyFormat') === 'full') {
+        return '$' + Math.round(n).toLocaleString('en-US');
+      }
+    } catch (e) {}
+    var a = Math.abs(n);
+    if (a >= 1e6) return '$' + (n / 1e6).toFixed(1) + 'M';
+    if (a >= 1e3) return '$' + Math.round(n / 1e3) + 'K';
+    return '$' + Math.round(n);
+  }
+
+  // activeScenario: the scenario Settings marked active (or the first
+  // stored one, matching Settings' own fallback). Null when none stored —
+  // callers treat that as the implicit "Base case" (= plan values as-is).
+  function activeScenario() {
+    try {
+      var store = window.WealthSuite && window.WealthSuite.store;
+      if (!store) return null;
+      var p = store.get('preferences') || {};
+      var list = p.scenarios || [];
+      if (!list.length) return null;
+      var hit = null;
+      for (var i = 0; i < list.length; i++) {
+        if (list[i] && list[i].id === p.activeScenarioId) hit = list[i];
+      }
+      return hit || list[0];
+    } catch (e) { return null; }
+  }
+
   // ---------- Shared household banner ----------
   // Adapters call WealthSuite.renderHouseholdBanner(opts) instead of
   // reimplementing the create/update logic themselves.
@@ -344,9 +379,7 @@
     function fmtM(n) {
       n = Number(n);
       if (!n || !isFinite(n)) return null;
-      if (n >= 1e6) return '$' + (n / 1e6).toFixed(1) + 'M';
-      if (n >= 1e3) return '$' + Math.round(n / 1e3) + 'K';
-      return '$' + Math.round(n);
+      return fmtMoney(n);
     }
     function sumSp(o) {
       return o ? (Number(o.s1) || 0) + (Number(o.s2) || 0) : 0;
@@ -364,7 +397,8 @@
                       + sumSp(c.catchup) + sumSp(c.ira) + (Number(c.hsa) || 0);
     var portVal       = state.portfolio && state.portfolio.totalValue;
     var expenses      = plan.annualExpenses;
-    var retireAge     = plan.targetRetireAge;
+    var scn           = activeScenario();
+    var retireAge     = (scn && Number(scn.targetRetireAge)) || plan.targetRetireAge;
     var ages          = spouses.map(function(s) {
       return (s && s.age != null && s.age !== '') ? String(s.age) : null;
     }).filter(Boolean);
@@ -387,6 +421,8 @@
     var fields = (opts && opts.fields) || [];
     var parts  = fields.map(function(f) { return COMPUTED[f]; }).filter(Boolean);
     if (!parts.length) return;
+
+    if (scn && scn.name) parts.push('scenario “' + scn.name + '”');
 
     var banner = document.getElementById('suite-household-banner');
     if (!banner) {
@@ -425,5 +461,7 @@
     modules: MODULES.slice(),
     clusters: CLUSTERS.map(c => ({ id: c.id, label: c.label, tools: c.tools.slice() })),
     renderHouseholdBanner,
+    fmtMoney,
+    activeScenario,
   });
 })();

@@ -15,8 +15,8 @@
     <link rel="stylesheet" href="assets/tw-reskin.css?v=1">
     <script>(function(){try{var p=localStorage.getItem('wealthSuite.themePreference');if(!['system','light','dark'].includes(p))p='system';var r=p==='system'?(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'):p;document.documentElement.setAttribute('data-theme',r);document.documentElement.setAttribute('data-theme-pref',p);}catch(e){}})();</script>
     <script src="assets/suite-state.js?v=8" defer></script>
-    <script src="assets/suite.js?v=14" defer></script>
-    <script src="assets/adapters/roth.js?v=1" defer></script>
+    <script src="assets/suite.js?v=15" defer></script>
+    <script src="assets/adapters/roth.js?v=2" defer></script>
 </head>
 <body class="bg-gray-100 min-h-screen">
     <div id="root"></div>
@@ -121,6 +121,7 @@
           if (d.retireAge    != null) setRetireAge(String(d.retireAge));
           if (d.tradBalance  != null) setTradBalance(String(d.tradBalance));
           if (d.currentIncome != null) setCurrentIncome(String(d.currentIncome));
+          if (d.targetBracket != null && ['12','22','24','32'].indexOf(String(d.targetBracket)) !== -1) setTargetBracket(String(d.targetBracket));
         };
         return () => { delete window.__rothSeed; };
       }, []);

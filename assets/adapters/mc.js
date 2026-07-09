@@ -5,10 +5,12 @@
  * store on load. No write-back — simulation results are ephemeral.
  *
  * Starting balance: portfolio.totalValue + retirement.balances.total
- * Withdrawal:       retirement.plan.annualExpenses
+ * Withdrawal:       retirement.plan.annualExpenses, overridden by the
+ *                   active scenario's withdrawalRate × starting balance
  * Mean return:      retirement.plan.growthAssumption
  * Current age:      min(household.spouses[*].age)
- * Retire age:       retirement.plan.targetRetireAge
+ * Retire age:       active scenario's targetRetireAge, else
+ *                   retirement.plan.targetRetireAge
  * ============================================================= */
 (function () {
   'use strict';
@@ -34,15 +36,29 @@
 
     const portVal    = Number((state.portfolio  && state.portfolio.totalValue)                       || 0);
     const retireBal  = Number((state.retirement && state.retirement.balances && state.retirement.balances.total) || 0);
-    const retireAge  = state.retirement && state.retirement.plan && state.retirement.plan.targetRetireAge;
     const expenses   = state.retirement && state.retirement.plan && state.retirement.plan.annualExpenses;
     const growthRate = state.retirement && state.retirement.plan && state.retirement.plan.growthAssumption;
 
+    // Active scenario (Settings) overrides plan retire age; its
+    // withdrawalRate (% of starting balance) overrides annualExpenses.
+    const prefs = state.preferences || {};
+    const scenarios = prefs.scenarios || [];
+    const scn = scenarios.length
+      ? (scenarios.find(s => s && s.id === prefs.activeScenarioId) || scenarios[0])
+      : null;
+    const retireAge = (scn && Number(scn.targetRetireAge))
+      || (state.retirement && state.retirement.plan && state.retirement.plan.targetRetireAge);
+
     const combined = portVal + retireBal;
+
+    let withdraw = expenses > 0 ? expenses : null;
+    if (scn && Number(scn.withdrawalRate) > 0 && combined > 0) {
+      withdraw = Math.round(combined * Number(scn.withdrawalRate) / 100);
+    }
 
     window._mcTool.setParams({
       balance:  combined  > 0 ? combined  : null,
-      withdraw: expenses  > 0 ? expenses  : null,
+      withdraw: withdraw,
       ret:      growthRate > 0 ? growthRate : null,
       cAge:     currentAge,
       rAge:     retireAge,
