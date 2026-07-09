@@ -4,13 +4,11 @@
 
 ## Up next (roughly by value)
 
-1. **Estate Plan live figures** — `estate_plan.html` is static analysis text; compute estate size / WA taxable excess / est. tax from Net Worth data in the store.
+1. **Site Map page** — sidebar "Review → Site Map" is a non-navigating "Soon" chip; build per `Site Map.dc.html` in the design handoff bundle.
 
-2. **Site Map page** — sidebar "Review → Site Map" is a non-navigating "Soon" chip; build per `Site Map.dc.html` in the design handoff bundle.
+2. **AI chat re-homing** — `assets/ai/chat.js` + `briefing.js` still exist but nothing loads them since the shell rebuild. Decide: chat panel inside the shell? Delete briefing?
 
-3. **AI chat re-homing** — `assets/ai/chat.js` + `briefing.js` still exist but nothing loads them since the shell rebuild. Decide: chat panel inside the shell? Delete briefing?
-
-4. **Retirement Master Plan hardcoded numbers** — the tool's banner/projections use hardcoded figures ($1.35M, age 45, $90k spend); its adapter seeds some, but a fuller store-driven pass is pending (handoff step 4 for tools).
+3. **Retirement Master Plan hardcoded numbers** — the tool's banner/projections use hardcoded figures ($1.35M, age 45, $90k spend); its adapter seeds some, but a fuller store-driven pass is pending (handoff step 4 for tools).
 
 ## Known issues / watchlist
 - **TaxAssetCalcv4 renders blank in *headless* Chrome** (Babel+D3 vs virtual-time). Fine in real browsers since the 7.29.7 pin. Don't chase it in headless tests.
@@ -24,6 +22,11 @@
 - Cloudflare Pages + Access privacy migration (see memory: quote-infra-and-privacy-plan)
 
 ## Done recently (context for resuming)
+- Phase 13p: Estate Plan live figures — `estate_plan.html` computes
+  estate size (dashboard net-worth formula), WA taxable excess + est.
+  tax (graduated 10–20% table over the $3M exclusion), federal tax vs
+  $30M MFJ / $15M single, repositions the "← you" tier row, live ILIT
+  ages. Gated: empty store keeps the illustrative sample.
 - Phase 13o: Data Hub polish — column-mapping editor in the import preview
   (Edit mapping: per-field column selects + lot-total checkbox, re-parses
   live), in-hub Refresh Prices (same worker→query2→query1 chain and
