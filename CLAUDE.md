@@ -593,6 +593,29 @@ Phase 13o (Data Hub polish — backlog item 1):
   Chrome (`--virtual-time-budget`), synthetic DataTransfer drops, store
   assertions.
 
+Phase 13p (Estate Plan live figures — backlog item 1):
+- `estate_plan.html` only: hardcoded sample figures now compute from the
+  store, gated exactly like the dashboard (empty store keeps the sample;
+  subtitle flips to "live from your data"). `data-est="…"` hooks + an
+  inline script (no adapter file; page stays self-contained).
+- **Estate size mirrors the dashboard net-worth formula** (index.html
+  `refreshKPIs`): portfolio.totalValue (fallback per-share holdings sum)
+  + otherAssets + retirement.balances.total − liabilities. Gate:
+  any asset component > 0.
+- **WA estate tax**: graduated pre-2025 table on the excess over the $3M
+  exclusion (10/14/15/16/18/19/19.5/20% over 1/1/1/1/2/1/2M/∞ slices —
+  $500k excess ≈ $50k, matching the old sample). **Federal**: 40% over
+  $30M MFJ / $15M single (`household.filingStatus`); OBBBA card + header
+  + narrative note re-render (below vs ABOVE wording).
+- **WA-vs-NV table**: tier rows carry `data-tier-max`; the highlighted
+  "← you" row is repositioned under the matching tier and its label/
+  strategy/delta/recommendation cells re-render from per-tier templates
+  with the computed WA tax. ILIT "both spouses at 51" → live ages.
+- Verified via the verify-skill harness: empty store keeps sample;
+  $3.6M MFJ → ~$600k/~$60k under <$5M tier; $12M → ~$1.5M, 10–20M tier;
+  $18M single → fed ~$1.2M ABOVE wording + $15M header; persists across
+  reload.
+
 ## Constraints to preserve
 
 - **Zero build step.** No Vite/Webpack until scope demands it.
