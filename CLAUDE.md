@@ -556,6 +556,43 @@ Phase 13n (step 4 — Settings preferences consumed by shell + tools):
 - currencyFormat coverage = dashboard + the household banner on every
   tool page; tools' own internals keep their native formatters.
 
+Phase 13o (Data Hub polish — backlog item 1):
+- All three sub-items land in `data_hub.html` only (no shared-asset
+  cache-buster bumps):
+  - **Column-mapping editor** — the import preview gained an
+    "Edit mapping" toggle: per-field selects (Ticker/Shares/Cost basis/
+    Account over the CSV's headers) + a "Cost column is a lot total
+    (÷ shares)" checkbox. Raw parsed cells are kept (`rawImport`) so
+    mapping edits re-parse instantly; moving the cost-basis column
+    re-derives the lot-total heuristic from the new header; any manual
+    edit flips the badge to "Custom mapping". Zero-row mappings keep
+    the editor open instead of falling back to the empty state.
+  - **In-hub Refresh Prices** (stub removed) — same candidate chain as
+    the tracker (worker → query2 → query1 → public proxies) AND the same
+    `yf_<TICKER>` sessionStorage 15-min cache, so hub and tracker share
+    quotes. Updates `holdings[].currentPrice/priceUpdatedAt/name`,
+    recomputes `portfolio.totalValue`, disables the button while
+    in-flight, reports "updated N of M tickers".
+  - **In-hub expense CSV import** — the Expense Import card is now a
+    real drop/browse zone (link-out demoted to a "review in the Expense
+    Tracker" link). Parser mirrors expenses.html exactly (Chase/Amex/
+    Citi/generic detection, sign conventions, bank-category mapping,
+    keyword auto-categorization incl. learned `merchantMap`), dedupes on
+    `date|amount|normMerchant` against existing transactions, appends an
+    `importHistory` entry (`importedAt`/`source`/`count`/`fileName`).
+- **Bug fixed**: the hub read `importHistory` freshness via `r.at||r.date`
+  and labels via `r.name||r.file`, but the Expense Tracker writes
+  `importedAt`/`fileName` — so expense staleness NEVER registered in the
+  health strip / sync table. Now reads `importedAt` first.
+- Known parity quirks (inherited from expenses.html, deliberately kept):
+  a category-less generic CSV is detected as Amex and gets its amounts
+  sign-flipped; "COSTCO GAS" hits the groceries keyword rule before
+  transport.
+- `.claude/skills/verify/SKILL.md` (NEW) — repo verify recipe: serve
+  root + same-origin harness page driving the iframe'd tool in headless
+  Chrome (`--virtual-time-budget`), synthetic DataTransfer drops, store
+  assertions.
+
 ## Constraints to preserve
 
 - **Zero build step.** No Vite/Webpack until scope demands it.
