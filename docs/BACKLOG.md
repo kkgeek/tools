@@ -4,11 +4,9 @@
 
 ## Up next (roughly by value)
 
-1. **Site Map page** — sidebar "Review → Site Map" is a non-navigating "Soon" chip; build per `Site Map.dc.html` in the design handoff bundle.
+1. **AI chat re-homing** — `assets/ai/chat.js` + `briefing.js` still exist but nothing loads them since the shell rebuild. Decide: chat panel inside the shell? Delete briefing?
 
-2. **AI chat re-homing** — `assets/ai/chat.js` + `briefing.js` still exist but nothing loads them since the shell rebuild. Decide: chat panel inside the shell? Delete briefing?
-
-3. **Retirement Master Plan hardcoded numbers** — the tool's banner/projections use hardcoded figures ($1.35M, age 45, $90k spend); its adapter seeds some, but a fuller store-driven pass is pending (handoff step 4 for tools).
+2. **Retirement Master Plan hardcoded numbers** — the tool's banner/projections use hardcoded figures ($1.35M, age 45, $90k spend); its adapter seeds some, but a fuller store-driven pass is pending (handoff step 4 for tools).
 
 ## Known issues / watchlist
 - **TaxAssetCalcv4 renders blank in *headless* Chrome** (Babel+D3 vs virtual-time). Fine in real browsers since the 7.29.7 pin. Don't chase it in headless tests.
@@ -18,6 +16,7 @@
 - Tracker doesn't live-subscribe to store changes while open (iframe remount covers the shell case).
 
 ## Deferred indefinitely
+- Site Map page (sidebar "Review → Site Map" stays a "Soon" chip; spec: `Site Map.dc.html` in the design handoff bundle) — deferred by user 2026-07-08
 - Vite migration (only if scope demands it)
 - Cloudflare Pages + Access privacy migration (see memory: quote-infra-and-privacy-plan)
 
