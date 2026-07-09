@@ -1,12 +1,10 @@
 # Wealth Suite — Backlog
 
-*Updated 2026-07-08, after Phase 13n (Settings preferences consumed — see CLAUDE.md Phase 13 log). This file is the resume point: pick the top unchecked item unless directed otherwise.*
+*Updated 2026-07-09, after Phase 13q (Retirement Master Plan live figures — see CLAUDE.md Phase 13 log). This file is the resume point: pick the top unchecked item unless directed otherwise.*
 
 ## Up next (roughly by value)
 
-1. **AI chat re-homing** — `assets/ai/chat.js` + `briefing.js` still exist but nothing loads them since the shell rebuild. Decide: chat panel inside the shell? Delete briefing?
-
-2. **Retirement Master Plan hardcoded numbers** — the tool's banner/projections use hardcoded figures ($1.35M, age 45, $90k spend); its adapter seeds some, but a fuller store-driven pass is pending (handoff step 4 for tools).
+1. **AI chat re-homing** — `assets/ai/chat.js` + `briefing.js` still exist but nothing loads them since the shell rebuild. Decide: chat panel inside the shell? Delete briefing? (Needs a user product decision.)
 
 ## Known issues / watchlist
 - **TaxAssetCalcv4 renders blank in *headless* Chrome** (Babel+D3 vs virtual-time). Fine in real browsers since the 7.29.7 pin. Don't chase it in headless tests.
@@ -21,6 +19,14 @@
 - Cloudflare Pages + Access privacy migration (see memory: quote-infra-and-privacy-plan)
 
 ## Done recently (context for resuming)
+- Phase 13q: Retirement Master Plan live figures — adapter v7 seeds the
+  remaining hardcoded copy from the store (subtitle/title, 25×-spend
+  target stat + tile, buffer tiers + inflation schedule + SS note,
+  savings roadmap from store contributions), patches `runMC` + re-labels
+  the MC/projection x-axes, includes contribution FV in portAtRetire,
+  fixes two stale `findScTile` labels that silently no-oped, and aligns
+  the SS base with the current tool ($69.6k at-retirement dollars).
+  Empty store keeps the sample.
 - Phase 13p: Estate Plan live figures — `estate_plan.html` computes
   estate size (dashboard net-worth formula), WA taxable excess + est.
   tax (graduated 10–20% table over the $3M exclusion), federal tax vs

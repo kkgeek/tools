@@ -616,6 +616,42 @@ Phase 13p (Estate Plan live figures — backlog item 1):
   $18M single → fed ~$1.2M ABOVE wording + $15M header; persists across
   reload.
 
+Phase 13q (Retirement Master Plan live figures — backlog item 2):
+- `assets/adapters/retirement.js?v=7` (retirement_master_plan_2.html
+  only). The tool's remaining hardcoded copy is now store-driven, same
+  gate as everything else (empty store keeps the age-45/$90k sample):
+  header subtitle + document title, "Target at N" header stat + overview
+  tile (25× annualExpenses, 4% SWR), buffer-ladder card (tier amounts,
+  Total/interest subtitle, title age), inflation-schedule tiles
+  (retireAge +0/+5/+10/+15, last tile nets SS when ≥70), the age-70 SS
+  note, and the savings-roadmap card (kv rows rebuilt from store
+  contributions — 401k-family/IRA/HSA rows, zero rows omitted, taxable
+  row dropped since the store has no such field; on/behind-pace title +
+  surplus/shortfall note).
+- **portAtRetire now includes contributions**: `_port` = portfolio
+  compounded + ordinary-annuity FV of summed `retirement.contributions`
+  — matches the dashboard readiness model and the roadmap card, so the
+  "Projected at age N" tile, projection chart, and roadmap total agree.
+- **`window.runMC` is now patched** (it kept hardcoded $2.25M/$90k/62
+  even when everything else was live) with the same closure inputs;
+  `buildMCChart`/`buildProjChart` are wrapped to re-label the hardcoded
+  62-based x-axis from `_retireAge` (MC path length = retire→90, so the
+  "success (age 90)" tile label stays truthful at any retire age).
+- **Fixed two silently-dead tile updates**: the adapter looked up
+  'Projected at age 55' / 'Starting portfolio (age 55)' but the tool's
+  labels say age 62 — new `findScByPrefix()` matches the label prefix
+  and rewrites the age in the label too.
+- **SS base aligned to the current tool**: patch used $124,872 (the
+  pre-rewrite tool's estimate, inflated from current age); tool bakes
+  $69,600 in at-retirement dollars (both spouses at 70). Shared `ssAt()`
+  now feeds calcPortfolio, runMC, and the buffer figures consistently.
+- Verified via the verify-skill harness: empty store keeps sample
+  (subtitle Age 45, $2.5M target, $90k tiers, tool's own runMC);
+  $2M/65/$120k/mfj + 23k 401k + 8.3k HSA → subtitle/title Age 48,
+  target $3.00M, projected $7.28M (= 2M·1.07¹⁷ + $709k + $256k — the
+  $709k matches the tool's own sample math), tiers $215k, buffer note
+  $256k→$173k, MC paths 26 pts starting 7.28 at ages 65..90, rate 97%.
+
 ## Constraints to preserve
 
 - **Zero build step.** No Vite/Webpack until scope demands it.
