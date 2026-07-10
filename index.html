@@ -1043,13 +1043,28 @@
       var ann = Math.pow(last / start, 1 / spanYrs) - 1;
       return { ann: ann, factor: Math.pow(1 + ann, years) };
     }
+    // Growth anchored at an explicit start timestamp (used to clip a
+    // benchmark to the same window as the portfolio's purchase-dated
+    // return, so each column compares like-for-like).
+    function growthFrom(series, startTs) {
+      if (!series) return null;
+      var YEAR = 365.25 * 86400000;
+      var idx = -1;
+      for (var i = 0; i < series.ts.length; i++) { if (series.ts[i] <= startTs + 45 * 86400000) idx = i; else break; }
+      if (idx < 0) return null;
+      var start = series.px[idx], last = series.px[series.px.length - 1];
+      var spanYrs = (series.ts[series.ts.length - 1] - series.ts[idx]) / YEAR;
+      if (!(start > 0) || !(spanYrs > 0.1)) return null;
+      var ann = Math.pow(last / start, 1 / spanYrs) - 1;
+      return { ann: ann, factor: last / start };
+    }
     var perfBusy = false, perfLive = false;
     async function refreshPerformance(holdings, basis) {
       if (perfBusy || perfLive || !holdings.length || !(basis > 0)) return;
       perfBusy = true;
       try {
         function hv(h) { var per = Number(h.currentPrice) > 0 ? Number(h.currentPrice) : (Number(h.costBasis) || 0); return per * (Number(h.shares) || 0); }
-        // top 8 tickers by current value (weights renormalized per period)
+        // top 8 tickers by current value (bounds the quote fetches)
         var byTicker = {};
         holdings.forEach(function (h) { if (h.ticker) byTicker[h.ticker] = (byTicker[h.ticker] || 0) + hv(h); });
         var top = Object.keys(byTicker).sort(function (a, b) { return byTicker[b] - byTicker[a]; }).slice(0, 8)
@@ -1059,24 +1074,84 @@
         var series = {};
         await Promise.all(all.map(function (t) { return fetchSeries(t).then(function (s) { series[t] = s; }); }));
         if (!PERF_BENCH.some(function (b) { return series[b.t]; }) && !top.some(function (t) { return series[t]; })) return; // total outage → keep sample
-        var youCells = PERF_PERIODS.map(function (p) {
-          var usable = top.filter(function (t) { return growthFor(series[t], p.years) != null; });
-          if (!usable.length) return null;
-          var wTot = usable.reduce(function (s2, t) { return s2 + byTicker[t]; }, 0);
-          var factor = usable.reduce(function (s2, t) { return s2 + (byTicker[t] / wTot) * growthFor(series[t], p.years).factor; }, 0);
-          return { ann: Math.pow(factor, 1 / p.years) - 1, factor: factor };
+
+        // Per-lot view: each holding contributes only from its purchaseDate
+        // (no date = held for the whole period — the pre-purchase-date
+        // behavior). Shares are today's counts; a lot enters the chain at
+        // the first month boundary on/after its purchase date.
+        var lots = holdings.filter(function (h) { return h.ticker && top.indexOf(h.ticker) >= 0 && Number(h.shares) > 0; })
+          .map(function (h) {
+            var pd = null;
+            if (h.purchaseDate) { var d = new Date(String(h.purchaseDate).slice(0, 10) + 'T00:00:00'); if (!isNaN(d)) pd = d.getTime(); }
+            return { t: h.ticker, sh: Number(h.shares), pd: pd };
+          });
+        var anyDates = lots.some(function (l) { return l.pd != null; });
+        // month-keyed price maps ('YYYY-MM' → adj close) tolerate small
+        // timestamp misalignment between tickers
+        function monthKey(ts) { return new Date(ts).toISOString().slice(0, 7); }
+        var pxMap = {};
+        top.forEach(function (t) {
+          var s = series[t]; if (!s) return;
+          var m = {};
+          for (var i = 0; i < s.ts.length; i++) m[monthKey(s.ts[i])] = s.px[i];
+          pxMap[t] = m;
         });
+        var YEAR = 365.25 * 86400000;
+        // Chain-linked monthly time-weighted return for one period. A lot
+        // purchased mid-period enters at the next month boundary, so the
+        // buy-in itself never counts as return. Annualized over the ACTUAL
+        // span the portfolio existed within the period.
+        function twrCell(p) {
+          var periodStart = Date.now() - p.years * YEAR;
+          var bounds = {};
+          top.forEach(function (t) {
+            var s = series[t]; if (!s) return;
+            s.ts.forEach(function (ts) { if (ts >= periodStart - 45 * 86400000) bounds[monthKey(ts)] = ts; });
+          });
+          var keys = Object.keys(bounds).sort();
+          if (keys.length < 2) return null;
+          var factor = 1, firstTs = null, lastTs = null;
+          for (var i = 0; i < keys.length - 1; i++) {
+            var k0 = keys[i], k1 = keys[i + 1], t0 = bounds[k0];
+            var wSum = 0, gain = 0;
+            lots.forEach(function (l) {
+              var m = pxMap[l.t];
+              if (!m || m[k0] == null || m[k1] == null) return;
+              if (l.pd != null && l.pd > t0) return; // not yet purchased
+              var v0 = l.sh * m[k0];
+              wSum += v0;
+              gain += v0 * (m[k1] / m[k0] - 1);
+            });
+            if (wSum > 0) {
+              factor *= 1 + gain / wSum;
+              if (firstTs == null) firstTs = t0;
+              lastTs = bounds[k1];
+            }
+          }
+          if (firstTs == null) return null;
+          var span = (lastTs - firstTs) / YEAR;
+          if (span < 0.1) return null;
+          return { ann: Math.pow(factor, 1 / span) - 1, factor: factor, windowStart: firstTs };
+        }
+        var youCells = PERF_PERIODS.map(twrCell);
         if (!youCells.some(Boolean)) return;
         var rows = [{ name: 'Your Portfolio', color: 'var(--primary)', you: true, cells: youCells }];
         PERF_BENCH.forEach(function (b) {
           rows.push({
             name: b.name, color: b.color, you: false,
-            cells: PERF_PERIODS.map(function (p) { return growthFor(series[b.t], p.years); })
+            // benchmark over the SAME window as your portfolio's cell
+            // (purchase-clipped); full period when your cell is absent
+            cells: PERF_PERIODS.map(function (p, ci) {
+              var you = youCells[ci];
+              return you ? growthFrom(series[b.t], you.windowStart) : growthFor(series[b.t], p.years);
+            })
           });
         });
         renderPerfTable(rows, basis);
         var note = document.querySelector('[data-ws-metric="performance"] .ws-cardsub');
-        if (note) note.innerHTML = 'Annualized return of your current holdings mix vs benchmarks · on <span id="ws-perf-basis">' + fmtMoney(basis) + '</span> invested · dividends included';
+        if (note) note.innerHTML = (anyDates
+          ? 'Annualized return since purchase — holdings enter at their purchase date, benchmarks over the same window · on <span id="ws-perf-basis">' + fmtMoney(basis) + '</span> invested · dividends included'
+          : 'Annualized return of your current holdings mix vs benchmarks · on <span id="ws-perf-basis">' + fmtMoney(basis) + '</span> invested · dividends included · add purchase dates in the Data Hub or Tracker for since-purchase returns');
         perfLive = true;
       } catch (e) { /* keep sample */ }
       finally { perfBusy = false; }
