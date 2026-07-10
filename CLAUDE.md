@@ -691,6 +691,21 @@ Phase 13r (purchase dates + since-purchase Performance table):
   → tracker mounts with populated date inputs → tracker CSV re-import
   updates dates → store round-trip intact.
 
+Phase 13s (dashboard shell UI cleanup — per user screenshot):
+- index.html only. Removed from the topbar: the "← Dashboard" back
+  chip + "New tab" chip (tool navigation is the sidebar now — the
+  router's showTool/showDashboard no longer toggle them), the theme
+  cycle button (theme is set in Settings → Appearance; the shell still
+  APPLIES the preference — `applyTheme` kept, along with the mql and
+  cross-document `storage` listeners), and the "Import Data" button
+  (duplicated the Data Hub promo). Removed from the sidebar: the whole
+  REVIEW section (its only item was the deferred Site Map "Soon" chip).
+- Dead CSS pruned (.ws-back/.ws-newtab/.ws-themebtn/.ws-importbtn/
+  .is-soon/.ws-badge--soon); `.ws-badge`/`--q2` kept (Tax Plan chip).
+- Verified headless: elements gone, hamburger/bell/profile/Data Hub/
+  Settings intact, theme still applied from the stored preference,
+  sidebar→tool→Dashboard routing works, KPI sample renders.
+
 ## Constraints to preserve
 
 - **Zero build step.** No Vite/Webpack until scope demands it.
