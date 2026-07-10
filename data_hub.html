@@ -89,7 +89,7 @@
     .dh-preview__head { padding: 11px 16px; background: var(--surface-2); display: flex; align-items: center; justify-content: space-between; gap: 10px; }
     .dh-preview__name { font-size: 12px; font-weight: 500; }
     .dh-ok { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; color: var(--pos); font-weight: 500; }
-    .dh-prow { display: grid; grid-template-columns: 1fr .8fr 1fr 1.4fr 1fr; padding: 9px 16px; border-bottom: 1px solid var(--border); align-items: center; }
+    .dh-prow { display: grid; grid-template-columns: 1fr .8fr 1fr 1fr 1.2fr 1fr; padding: 9px 16px; border-bottom: 1px solid var(--border); align-items: center; }
     .dh-prow--head { padding: 8px 16px; background: var(--surface); }
     .dh-ph { font-size: 10px; color: var(--text-2); font-weight: 700; text-transform: uppercase; letter-spacing: .5px; }
     .dh-cell { font-size: 12px; color: var(--text-2); }
@@ -209,7 +209,7 @@
         <textarea class="dh-textarea" id="dh-paste-area" hidden placeholder="Ticker,Shares,Cost Basis,Account
 VTI,120,165.34,Fidelity Brokerage
 AAPL,50,142.80,Schwab 401(k)"></textarea>
-        <div class="dh-hint" style="line-height:1.5;">Accepted columns: Ticker, Shares, Cost Basis (per share; "…Total" headers auto-divide), Account, Date. Fidelity / Schwab / Vanguard headers auto-map; extra columns are ignored.</div>
+        <div class="dh-hint" style="line-height:1.5;">Accepted columns: Ticker, Shares, Cost Basis (per share; "…Total" headers auto-divide), Account, Purchase Date ("Acquisition Date" / "Date Acquired" / "Trade Date" auto-map — feeds the dashboard Performance table). Fidelity / Schwab / Vanguard headers auto-map; extra columns are ignored.</div>
       </div>
       <div class="dh-preview" id="dh-preview">
         <div class="dh-empty">Drop or paste a CSV to preview holdings before committing.</div>
@@ -524,20 +524,36 @@ AAPL,50,142.80,Schwab 401(k)"></textarea>
     }
     var parsed = [];
     var rawImport = null;   // { headers: [], rows: [[cells]] } — kept so mapping edits re-parse
-    var mapping = null;     // { tk, sh, cb, ac, costIsTotal, custom }
+    var mapping = null;     // { tk, sh, cb, ac, pd, costIsTotal, custom }
     var mapOpen = false;
+    // Purchase date → ISO 'YYYY-MM-DD'. Brokerages export MM/DD/YYYY (or
+    // M/D/YY); pass ISO through untouched. Returns null when unparseable.
+    function parseDate(s) {
+      s = String(s || '').trim();
+      if (!s) return null;
+      var iso = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+      if (iso) return iso[1] + '-' + iso[2] + '-' + iso[3];
+      var us = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})$/);
+      if (us) {
+        var y = us[3].length === 2 ? (Number(us[3]) > 50 ? '19' + us[3] : '20' + us[3]) : us[3];
+        var mo = ('0' + us[1]).slice(-2), dy = ('0' + us[2]).slice(-2);
+        if (Number(mo) >= 1 && Number(mo) <= 12 && Number(dy) >= 1 && Number(dy) <= 31) return y + '-' + mo + '-' + dy;
+      }
+      return null;
+    }
     function detectMapping(headers) {
       var tk = findCol(headers, ['ticker', 'symbol']);
       var sh = findCol(headers, ['shares', 'quantity', 'qty']);
       var cb = findCol(headers, ['cost basis total', 'average cost basis', 'cost basis', 'cost_basis', 'cost']);
       var ac = findCol(headers, ['account']);
+      var pd = findCol(headers, ['purchase date', 'purchase_date', 'date acquired', 'acquisition date', 'acquired', 'trade date', 'open date']);
       // Fallback for 3-col generic (ticker,shares,cost_basis) with odd headers
       if (tk < 0 && headers.length >= 3) { tk = 0; sh = 1; cb = 2; }
       // Store convention (Portfolio Tracker): costBasis is PER-SHARE.
       // Vanguard-style "... total" headers carry lot totals → divide by
       // shares; "average"/generic cost headers are already per-share.
       var costIsTotal = cb >= 0 && headers[cb] != null && /total/i.test(headers[cb]);
-      return { tk: tk, sh: sh, cb: cb, ac: ac, costIsTotal: costIsTotal, custom: false };
+      return { tk: tk, sh: sh, cb: cb, ac: ac, pd: pd, costIsTotal: costIsTotal, custom: false };
     }
     function buildParsed() {
       if (!rawImport || !mapping || mapping.tk < 0) { parsed = []; return; }
@@ -553,7 +569,8 @@ AAPL,50,142.80,Schwab 401(k)"></textarea>
         var shares = mapping.sh >= 0 ? num(c[mapping.sh]) : 0;
         var rawCost = mapping.cb >= 0 ? num(c[mapping.cb]) : 0;
         var costPerShare = (mapping.costIsTotal && rawCost && shares) ? rawCost / shares : rawCost;
-        return { ticker: ticker, shares: shares, costBasis: costPerShare, account: account, status: status };
+        var purchaseDate = mapping.pd >= 0 ? parseDate(c[mapping.pd]) : null;
+        return { ticker: ticker, shares: shares, costBasis: costPerShare, account: account, purchaseDate: purchaseDate, status: status };
       }).filter(Boolean);
     }
     function mapSelect(field, label) {
@@ -574,16 +591,17 @@ AAPL,50,142.80,Schwab 401(k)"></textarea>
         ? '<span class="dh-ok">Custom mapping</span>'
         : '<span class="dh-ok"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"></polyline></svg>Columns mapped automatically</span>';
       var mapPanel = mapOpen
-        ? '<div class="dh-map">' + mapSelect('tk', 'Ticker') + mapSelect('sh', 'Shares') + mapSelect('cb', 'Cost basis') + mapSelect('ac', 'Account') +
+        ? '<div class="dh-map">' + mapSelect('tk', 'Ticker') + mapSelect('sh', 'Shares') + mapSelect('cb', 'Cost basis') + mapSelect('ac', 'Account') + mapSelect('pd', 'Purchase date') +
           '<label><input type="checkbox" id="dh-map-total"' + (mapping.costIsTotal ? ' checked' : '') + '> Cost column is a lot total (÷ shares)</label></div>'
         : '';
       var rowsHtml = parsed.length
-        ? '<div class="dh-prow dh-prow--head"><span class="dh-ph">Ticker</span><span class="dh-ph dh-cell--r">Shares</span><span class="dh-ph dh-cell--r">Cost Basis</span><span class="dh-ph" style="padding-left:12px;">Account</span><span class="dh-ph dh-cell--r">Status</span></div>' +
+        ? '<div class="dh-prow dh-prow--head"><span class="dh-ph">Ticker</span><span class="dh-ph dh-cell--r">Shares</span><span class="dh-ph dh-cell--r">Cost Basis</span><span class="dh-ph dh-cell--r">Purchased</span><span class="dh-ph" style="padding-left:12px;">Account</span><span class="dh-ph dh-cell--r">Status</span></div>' +
           shown.map(function (r) {
             var costTotal = (r.costBasis && r.shares) ? r.costBasis * r.shares : r.costBasis;
             return '<div class="dh-prow"><span class="dh-cell--tk">' + esc(r.ticker) + '</span>' +
               '<span class="dh-cell dh-cell--r dh-mono">' + (r.shares ? r.shares.toLocaleString('en-US') : '—') + '</span>' +
               '<span class="dh-cell dh-cell--r dh-mono">' + (costTotal ? fmtFull(costTotal) : '—') + '</span>' +
+              '<span class="dh-cell dh-cell--r dh-mono">' + (r.purchaseDate || '—') + '</span>' +
               '<span class="dh-cell" style="padding-left:12px;">' + (esc(r.account) || '—') + '</span>' +
               '<span class="dh-cell--r ' + stClass[r.status] + '">' + stLabel[r.status] + '</span></div>';
           }).join('') +
@@ -619,9 +637,12 @@ AAPL,50,142.80,Schwab 401(k)"></textarea>
       var hs = holdings();
       parsed.forEach(function (r) {
         var idx = hs.findIndex(function (h) { return h.ticker === r.ticker && (h.account || '') === (r.account || ''); });
-        if (idx >= 0) { hs[idx].shares = r.shares; hs[idx].costBasis = r.costBasis; }
+        if (idx >= 0) {
+          hs[idx].shares = r.shares; hs[idx].costBasis = r.costBasis;
+          if (r.purchaseDate) hs[idx].purchaseDate = r.purchaseDate;
+        }
         // `id` is required by the Portfolio Tracker (row edit/delete key on it)
-        else hs.push({ id: r.ticker + '-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6), ticker: r.ticker, name: r.ticker, shares: r.shares, costBasis: r.costBasis, account: r.account, assetClass: 'equity', currentPrice: null, priceUpdatedAt: null });
+        else hs.push({ id: r.ticker + '-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6), ticker: r.ticker, name: r.ticker, shares: r.shares, costBasis: r.costBasis, account: r.account, purchaseDate: r.purchaseDate || null, assetClass: 'equity', currentPrice: null, priceUpdatedAt: null });
       });
       store.set('portfolio.holdings', hs, EDIT);
       // record import + auto-register any unknown accounts referenced

@@ -1,6 +1,6 @@
 # Wealth Suite — Backlog
 
-*Updated 2026-07-09, after Phase 13q (Retirement Master Plan live figures — see CLAUDE.md Phase 13 log). This file is the resume point: pick the top unchecked item unless directed otherwise.*
+*Updated 2026-07-09, after Phase 13r (purchase dates + since-purchase Performance table — see CLAUDE.md Phase 13 log). This file is the resume point: pick the top unchecked item unless directed otherwise.*
 
 ## Up next (roughly by value)
 
@@ -10,6 +10,8 @@
 - **TaxAssetCalcv4 renders blank in *headless* Chrome** (Babel+D3 vs virtual-time). Fine in real browsers since the 7.29.7 pin. Don't chase it in headless tests.
 - **Babel pin**: every React page must use `@babel/standalone@7.29.7` (Babel 8 rejects raw `>` in JSX text → blank page).
 - `holding.costBasis` is **per-share** everywhere. Never write lot totals.
+- `holding.purchaseDate` is ISO `YYYY-MM-DD` or null. Null = "held forever"
+  in the dashboard Performance table (full-period return).
 - Net-worth history accrues one snapshot/day (`localStorage['wealthSuite.nwHistory']`) — the Growth chart needs ≥2 days of visits to draw.
 - Tracker doesn't live-subscribe to store changes while open (iframe remount covers the shell case).
 
@@ -19,6 +21,13 @@
 - Cloudflare Pages + Access privacy migration (see memory: quote-infra-and-privacy-plan)
 
 ## Done recently (context for resuming)
+- Phase 13r: purchase dates + since-purchase Performance table —
+  `holding.purchaseDate` captured in the Data Hub (CSV auto-map +
+  mapping editor + preview column) and Portfolio Tracker (CSV, add
+  form, editable table column); dashboard "Your Portfolio" row is now a
+  monthly chain-linked return where each lot enters at its purchase
+  date, benchmarks clipped to the same window per column; no dates =
+  old full-period behavior.
 - Phase 13q: Retirement Master Plan live figures — adapter v7 seeds the
   remaining hardcoded copy from the store (subtitle/title, 25×-spend
   target stat + tile, buffer tiers + inflation schedule + SS note,

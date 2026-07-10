@@ -652,6 +652,45 @@ Phase 13q (Retirement Master Plan live figures — backlog item 2):
   $709k matches the tool's own sample math), tiers $215k, buffer note
   $256k→$173k, MC paths 26 pts starting 7.28 at ages 65..90, rate 97%.
 
+Phase 13r (purchase dates + since-purchase Performance table):
+- **`holding.purchaseDate` added** (ISO 'YYYY-MM-DD', nullable —
+  additive, no schema bump). Captured in BOTH entry points:
+  - `data_hub.html` — CSV auto-map ('Purchase Date' / 'Date Acquired' /
+    'Acquisition Date' / 'Trade Date' / 'Open Date' headers), a
+    "Purchase date" select in the mapping editor, a Purchased column in
+    the preview (6-col grid now), and commit writes it (update rows only
+    overwrite when the CSV provides a date). `parseDate()` normalizes
+    MM/DD/YYYY / M/D/YY / ISO.
+  - `portfolio_tracker.html` — same header detection in `parseCSV`
+    (`parseDateISO`), import merge preserves an existing date when the
+    CSV lacks one, add-form "Purchased" date field, and an editable
+    Purchased date column in the holdings table.
+- **Dashboard Performance table (index.html) is now purchase-aware.**
+  Previously "Your Portfolio" was a hypothetical backtest: current
+  position weights × each ticker's full-period market return. Now it's a
+  **monthly chain-linked (time-weighted) return where each lot enters at
+  the first month boundary on/after its purchaseDate** — the buy-in
+  itself never counts as return; month returns are value-weighted
+  (shares × that month's adj-close); annualized over the ACTUAL span the
+  portfolio existed within the period; the $-growth column uses the
+  actual chained factor. Prices matched across tickers by 'YYYY-MM' key
+  (tolerates timestamp misalignment).
+- **Benchmarks are clipped to the same window per column**
+  (`growthFrom(series, windowStart)`), so each cell compares you vs the
+  index over the identical window — a 2-yr-old portfolio's "10Y" column
+  shows 2-yr annualized returns for BOTH rows. When your cell is absent
+  the benchmark falls back to the full period.
+- **No purchase dates = old behavior** (lots held for the whole period;
+  a short-history benchmark like VXUS still renders "—" beyond its
+  data). Subtitle switches between "since purchase …" and the old
+  "current holdings mix …" wording (the latter now hints to add dates).
+- Verified via the perfSeries test seam (synthetic VTI 8%/16y, ^GSPC
+  10%/16y, VXUS 5%/4y): purchase 24 mo ago → every column +8.0% you /
+  +10.0% S&P / +5.0% VXUS (same window); no dates → full-period with
+  VXUS "—" at 5Y/10Y/All. Hub paste (US + ISO dates) → preview + commit
+  → tracker mounts with populated date inputs → tracker CSV re-import
+  updates dates → store round-trip intact.
+
 ## Constraints to preserve
 
 - **Zero build step.** No Vite/Webpack until scope demands it.
@@ -760,7 +799,9 @@ info leaves the browser.
 **Holdings store:** `portfolio.holdings[]` array, each entry:
 ```js
 { ticker, name, shares, costBasis, currentPrice, priceUpdatedAt,
-  assetClass }  // assetClass: 'equity'|'bond'|'cash'|'other'
+  purchaseDate,  // ISO 'YYYY-MM-DD' or null (Phase 13r; feeds the
+                 // dashboard Performance table's since-purchase returns)
+  assetClass }   // assetClass: 'equity'|'bond'|'cash'|'other'
 ```
 
 **Dashboard panels:**

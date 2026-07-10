@@ -110,6 +110,22 @@
       return Number.isFinite(n) && n !== 0 ? n : null;
     }
 
+    // Purchase date → ISO 'YYYY-MM-DD' (brokerages export MM/DD/YYYY or
+    // M/D/YY; ISO passes through). Null when unparseable/absent.
+    function parseDateISO(s) {
+      s = String(s || '').trim();
+      if (!s) return null;
+      const iso = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+      if (iso) return `${iso[1]}-${iso[2]}-${iso[3]}`;
+      const us = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})$/);
+      if (us) {
+        const y = us[3].length === 2 ? (Number(us[3]) > 50 ? '19' + us[3] : '20' + us[3]) : us[3];
+        const mo = ('0' + us[1]).slice(-2), dy = ('0' + us[2]).slice(-2);
+        if (Number(mo) >= 1 && Number(mo) <= 12 && Number(dy) >= 1 && Number(dy) <= 31) return `${y}-${mo}-${dy}`;
+      }
+      return null;
+    }
+
     function parseCSV(text) {
       const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
       // Skip leading non-data lines (Fidelity/Schwab add a preamble)
@@ -143,6 +159,7 @@
 
       if (tickerCol < 0 || sharesCol < 0)
         throw new Error(`Could not find ticker/shares columns (detected: ${fmt}). Headers: ${headers.slice(0,6).join(', ')}`);
+      const dateCol = col('purchase date', 'purchase_date', 'date acquired', 'acquisition date', 'acquired', 'trade date', 'open date');
 
       const results = [];
       for (let i = headerIdx + 1; i < lines.length; i++) {
@@ -160,6 +177,7 @@
           id: `${ticker}-${Date.now()}-${i}`,
           ticker, name: ticker, shares,
           costBasis: costPerShare,
+          purchaseDate: dateCol >= 0 ? parseDateISO(cells[dateCol]) : null,
           currentPrice: priceFromValue,
           prevClose: null, dayChange: null, dayChangePct: null,
           priceUpdatedAt: priceFromValue ? Date.now() : null,
@@ -178,7 +196,7 @@
       const [activeTab,   setActiveTab]   = React.useState('holdings');
       const [growthRates, setGrowthRates] = React.useState(DEFAULT_RATES);
       const [importMsg,   setImportMsg]   = React.useState('');
-      const [addForm,     setAddForm]     = React.useState({ ticker: '', shares: '', costBasis: '', assetClass: 'equity' });
+      const [addForm,     setAddForm]     = React.useState({ ticker: '', shares: '', costBasis: '', purchaseDate: '', assetClass: 'equity' });
 
       const donutRef = React.useRef(null);
       const projRef  = React.useRef(null);
@@ -274,13 +292,14 @@
           id: `${ticker}-${Date.now()}`,
           ticker, name: ticker, shares,
           costBasis:      Number(addForm.costBasis) || null,
+          purchaseDate:   addForm.purchaseDate || null,
           currentPrice:   null, prevClose: null,
           dayChange: null, dayChangePct: null,
           priceUpdatedAt: null,
           assetClass:     addForm.assetClass,
         };
         setHoldings(prev => [...prev, newH]);
-        setAddForm({ ticker: '', shares: '', costBasis: '', assetClass: 'equity' });
+        setAddForm({ ticker: '', shares: '', costBasis: '', purchaseDate: '', assetClass: 'equity' });
         // Try fetching price immediately
         setPxStatus(s => ({ ...s, [ticker]: 'loading' }));
         try {
@@ -317,6 +336,7 @@
                 const idx = merged.findIndex(h => h.ticker === p.ticker);
                 if (idx >= 0) {
                   merged[idx] = { ...merged[idx], shares: p.shares, costBasis: p.costBasis ?? merged[idx].costBasis,
+                    purchaseDate: p.purchaseDate ?? merged[idx].purchaseDate,
                     currentPrice: p.currentPrice ?? merged[idx].currentPrice };
                 } else {
                   merged.push(p);
@@ -460,7 +480,7 @@
                   <table className="min-w-full text-sm">
                     <thead className="bg-gray-50">
                       <tr className="text-xs text-gray-400 uppercase">
-                        {['Ticker','Shares','Cost/Share','Price','Day $','Day %','Mkt Value','Total Cost','Gain/Loss','Class',''].map(h => (
+                        {['Ticker','Shares','Cost/Share','Purchased','Price','Day $','Day %','Mkt Value','Total Cost','Gain/Loss','Class',''].map(h => (
                           <th key={h} className="px-3 py-3 text-left font-medium whitespace-nowrap">{h}</th>
                         ))}
                       </tr>
@@ -488,6 +508,11 @@
                               <input type="number" value={h.costBasis ?? ''} min="0" step="0.01" placeholder="—"
                                 onChange={e => updateHolding(h.id, 'costBasis', e.target.value ? Number(e.target.value) : null)}
                                 className="w-24 border border-gray-200 rounded px-2 py-0.5 text-sm" />
+                            </td>
+                            <td className="px-3 py-2">
+                              <input type="date" value={h.purchaseDate ?? ''}
+                                onChange={e => updateHolding(h.id, 'purchaseDate', e.target.value || null)}
+                                className="w-32 border border-gray-200 rounded px-2 py-0.5 text-sm" />
                             </td>
                             <td className="px-3 py-2 whitespace-nowrap">
                               {h.currentPrice ? fmt2(h.currentPrice) : (
@@ -553,6 +578,12 @@
                     <input type="number" value={addForm.costBasis} placeholder="150.00" min="0" step="0.01"
                       onChange={e => setAddForm(f => ({ ...f, costBasis: e.target.value }))}
                       className="w-28 border border-gray-300 rounded px-2 py-1.5 text-sm" />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-1">Purchased</label>
+                    <input type="date" value={addForm.purchaseDate}
+                      onChange={e => setAddForm(f => ({ ...f, purchaseDate: e.target.value }))}
+                      className="w-36 border border-gray-300 rounded px-2 py-1.5 text-sm" />
                   </div>
                   <div>
                     <label className="block text-xs text-gray-500 mb-1">Class</label>
