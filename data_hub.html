@@ -206,9 +206,9 @@
         </div>
         <input type="file" id="dh-file" accept=".csv,text/csv" hidden>
         <button class="dh-paste" id="dh-paste-toggle" type="button">Paste rows instead</button>
-        <textarea class="dh-textarea" id="dh-paste-area" hidden placeholder="Ticker,Shares,Cost Basis,Account
-VTI,120,165.34,Fidelity Brokerage
-AAPL,50,142.80,Schwab 401(k)"></textarea>
+        <textarea class="dh-textarea" id="dh-paste-area" hidden placeholder="Ticker,Shares,Cost Basis,Purchase Date,Account
+VTI,120,165.34,06/15/2020,Fidelity Brokerage
+AAPL,50,142.80,2023-01-10,Schwab 401(k)"></textarea>
         <div class="dh-hint" style="line-height:1.5;">Accepted columns: Ticker, Shares, Cost Basis (per share; "…Total" headers auto-divide), Account, Purchase Date ("Acquisition Date" / "Date Acquired" / "Trade Date" auto-map — feeds the dashboard Performance table). Fidelity / Schwab / Vanguard headers auto-map; extra columns are ignored.</div>
       </div>
       <div class="dh-preview" id="dh-preview">
