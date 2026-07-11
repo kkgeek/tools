@@ -751,6 +751,16 @@ Phase 13u (account names + tax-treatment tracking):
   tiles $20,000/$7,500/$3,000 (exact), datalist lists all registry
   names, typing "New HSA Account" into a row auto-registers HSA/Tax
   Free within the 400ms sync debounce.
+- **13u follow-up 4 — inline registry editing** (user still saw
+  Taxable after follow-up 3): the registry LOOKUP deliberately beats
+  the name guess, so accounts auto-registered as Taxable by the
+  pre-fix guesser stayed Taxable — and the registry only offered
+  delete + re-add. The hub's Accounts Registry rows now render Type
+  and Tax Treatment as inline `.dh-rowsel` selects (delegated `change`
+  handler → `store.set('accounts')`; unknown legacy values are kept as
+  an extra option). Tools pick edits up on their next load. Verified:
+  stale "Tax Free"=Taxable entry flipped via the select → tracker tile
+  reclassifies $20k to Tax Free on reload.
 - **13u follow-up 3 — "Tax Free" account names not recognized** (user
   report): the name guesser only knew roth/hsa/401k-style patterns, so
   an account literally named "… Tax Free …" classified as Taxable.
