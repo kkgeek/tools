@@ -127,6 +127,8 @@
     .dh-form[hidden] { display: none; }
     .dh-form input, .dh-form select { font-size: 12px; color: var(--text); background: var(--surface-2); border: 1px solid var(--border); border-radius: 8px; padding: 7px 9px; font-family: inherit; }
     .dh-form input:focus, .dh-form select:focus { outline: none; border-color: var(--primary); }
+    .dh-rowsel { font-size: 12px; color: var(--text); background: var(--surface-2); border: 1px solid var(--border); border-radius: 8px; padding: 4px 6px; font-family: inherit; max-width: 100%; cursor: pointer; }
+    .dh-rowsel:focus { outline: none; border-color: var(--primary); }
 
     /* asset/liability rows */
     .dh-2col { display: grid; grid-template-columns: 1.4fr 1fr; gap: 18px; }
@@ -405,6 +407,20 @@ MSFT,25,310.00,11/20/2023,Schwab 401(k),Tax Deferred"></textarea>
     }
 
     // ---------- accounts ----------
+    var ACCT_TYPES = ['Taxable', 'Roth', 'Traditional', 'HSA', 'Cash', 'Other'];
+    var ACCT_TREATMENTS = ['Taxable', 'Tax Free', 'Tax Deferred'];
+    // Inline select for a registry row — Type and Tax Treatment are
+    // editable in place (auto-registered guesses often need correcting,
+    // and the tracker's per-treatment tiles read taxTreatment).
+    function acctSelect(a, field, options) {
+      var cur = a[field] || '';
+      var opts = options.map(function (o) {
+        return '<option' + (o === cur ? ' selected' : '') + '>' + o + '</option>';
+      }).join('');
+      if (cur && options.indexOf(cur) < 0) opts = '<option selected>' + esc(cur) + '</option>' + opts;
+      if (!cur) opts = '<option value="" selected>—</option>' + opts;
+      return '<select class="dh-rowsel" data-acct-field="' + field + '" data-acct-id="' + esc(a.id) + '">' + opts + '</select>';
+    }
     function renderAccounts() {
       var rows = accounts();
       var host = $('dh-acct-rows');
@@ -412,9 +428,9 @@ MSFT,25,310.00,11/20/2023,Schwab 401(k),Tax Deferred"></textarea>
       host.innerHTML = rows.map(function (a) {
         return '<div class="dh-trow">' +
           '<span class="dh-td" style="font-weight:500;">' + esc(a.name) + '</span>' +
-          '<span class="dh-td--2">' + esc(a.type || '—') + '</span>' +
+          '<span class="dh-td--2">' + acctSelect(a, 'type', ACCT_TYPES) + '</span>' +
           '<span class="dh-td--2">' + esc(a.owner || '—') + '</span>' +
-          '<span class="dh-td--2">' + esc(a.taxTreatment || '—') + '</span>' +
+          '<span class="dh-td--2">' + acctSelect(a, 'taxTreatment', ACCT_TREATMENTS) + '</span>' +
           '<span class="dh-td--2 dh-td--r dh-mono">' + acctCount(a.name) + '</span>' +
           '<span class="dh-td dh-td--r dh-mono" style="font-weight:500;">' + fmtM(acctValue(a.name)) + '</span>' +
           '<span class="dh-td--r"><button class="dh-del" data-del-acct="' + esc(a.id) + '" title="Remove">×</button></span>' +
@@ -1052,6 +1068,20 @@ MSFT,25,310.00,11/20/2023,Schwab 401(k),Tax Deferred"></textarea>
         store.set('liabilities.total', items.reduce(function (s, l) { return s + num(l.balance); }, 0), EDIT);
       }
       renderAll();
+    });
+
+    // inline registry edits (delegated) — Type / Tax Treatment selects
+    document.body.addEventListener('change', function (e) {
+      var sel = e.target.closest && e.target.closest('select[data-acct-field]');
+      if (!sel || !sel.value) return;
+      var id = sel.getAttribute('data-acct-id');
+      var field = sel.getAttribute('data-acct-field');
+      var a = accounts();
+      for (var i = 0; i < a.length; i++) {
+        if (a[i].id === id) { a[i][field] = sel.value; break; }
+      }
+      store.set('accounts', a, EDIT);
+      flash('Account updated — tools pick this up on their next load.');
     });
 
     // last-import label from holdings
