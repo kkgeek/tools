@@ -751,6 +751,16 @@ Phase 13u (account names + tax-treatment tracking):
   tiles $20,000/$7,500/$3,000 (exact), datalist lists all registry
   names, typing "New HSA Account" into a row auto-registers HSA/Tax
   Free within the 400ms sync debounce.
+- **13u follow-up 2 — optional "Account Type" import column**: hub
+  import/paste accepts an "Account Type" / "Tax Treatment" column
+  (normalized via `normTreatLabel` — taxable/cash, tax free/roth/hsa,
+  tax deferred/traditional → the three canonical labels; unrecognized
+  → name-based guess). On commit it sets the treatment for newly
+  auto-registered accounts and FILLS blank treatments on existing
+  registry entries (never overwrites a curated value). Mapping editor
+  gained an "Account type" select; paste placeholder + Accepted-columns
+  hint document the full column set (and that Account Number is never
+  used).
 - **13u follow-up fixes** (user found import/paste gaps): both column
   detectors now prefer "Account Name" and NEVER auto-map "Account
   Number" (Fidelity/Schwab carry both; the number column comes first
