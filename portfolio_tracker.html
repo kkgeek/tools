@@ -160,6 +160,7 @@
       if (tickerCol < 0 || sharesCol < 0)
         throw new Error(`Could not find ticker/shares columns (detected: ${fmt}). Headers: ${headers.slice(0,6).join(', ')}`);
       const dateCol = col('purchase date', 'purchase_date', 'date acquired', 'acquisition date', 'acquired', 'trade date', 'open date');
+      const acctCol = col('account');
 
       const results = [];
       for (let i = headerIdx + 1; i < lines.length; i++) {
@@ -178,6 +179,7 @@
           ticker, name: ticker, shares,
           costBasis: costPerShare,
           purchaseDate: dateCol >= 0 ? parseDateISO(cells[dateCol]) : null,
+          account: acctCol >= 0 ? (cells[acctCol] || null) : null,
           currentPrice: priceFromValue,
           prevClose: null, dayChange: null, dayChangePct: null,
           priceUpdatedAt: priceFromValue ? Date.now() : null,
@@ -196,7 +198,8 @@
       const [activeTab,   setActiveTab]   = React.useState('holdings');
       const [growthRates, setGrowthRates] = React.useState(DEFAULT_RATES);
       const [importMsg,   setImportMsg]   = React.useState('');
-      const [addForm,     setAddForm]     = React.useState({ ticker: '', shares: '', costBasis: '', purchaseDate: '', assetClass: 'equity' });
+      const [addForm,     setAddForm]     = React.useState({ ticker: '', shares: '', costBasis: '', purchaseDate: '', account: '', assetClass: 'equity' });
+      const [accounts,    setAccounts]    = React.useState([]);   // accounts registry (Data Hub owns it)
 
       const donutRef = React.useRef(null);
       const projRef  = React.useRef(null);
@@ -209,7 +212,35 @@
         const s = store.export();
         const h = s.portfolio?.holdings;
         if (Array.isArray(h) && h.length > 0) setHoldings(h);
+        if (Array.isArray(s.accounts)) setAccounts(s.accounts);
       }, []);
+
+      // ── Account tax treatment (registry-driven) ─────────────────────────────
+      // Mirrors the Data Hub's convention: accounts[].taxTreatment holds
+      // 'Taxable' | 'Tax Free' | 'Tax Deferred'; type (Roth/HSA/Traditional…)
+      // is the fallback, then a name-based guess.
+      function guessAcct(name) {
+        const n = String(name || '').toLowerCase();
+        if (/roth/.test(n)) return { type: 'Roth', taxTreatment: 'Tax Free' };
+        if (/hsa/.test(n)) return { type: 'HSA', taxTreatment: 'Tax Free' };
+        if (/401|403|457|ira|trad|sep\b|pension|deferred/.test(n)) return { type: 'Traditional', taxTreatment: 'Tax Deferred' };
+        return { type: 'Taxable', taxTreatment: 'Taxable' };
+      }
+      function normTreat(v) {
+        const n = String(v || '').toLowerCase().replace(/[^a-z]/g, '');
+        if (n === 'taxfree' || n === 'roth' || n === 'hsa') return 'taxFree';
+        if (n === 'taxdeferred' || n === 'traditional') return 'taxDeferred';
+        if (n === 'taxable' || n === 'cash') return 'taxable';
+        return null;
+      }
+      const acctTreat = {};
+      accounts.forEach(a => {
+        acctTreat[a.name] = normTreat(a.taxTreatment) || normTreat(a.type) || normTreat(guessAcct(a.name).taxTreatment);
+      });
+      function treatOf(h) {
+        if (!h.account) return 'unassigned';
+        return acctTreat[h.account] || normTreat(guessAcct(h.account).taxTreatment);
+      }
 
       // Sync to suite store (debounced)
       const syncTimer = React.useRef(null);
@@ -231,8 +262,21 @@
           store.set('portfolio.holdings', holdings, { editedBy: 'tracker' });
           if (totalValue > 0) store.set('portfolio.totalValue', totalValue, { editedBy: 'tracker' });
           if (Object.keys(allocs).length) store.set('portfolio.allocations', allocs, { editedBy: 'tracker' });
+          // Auto-register account names the registry doesn't know yet
+          // (same behavior as the Data Hub's CSV commit) so type / tax
+          // treatment can be curated there.
+          const known = new Set(accounts.map(a => a.name));
+          const unknown = [...new Set(holdings.map(h => h.account).filter(Boolean))].filter(n => !known.has(n));
+          if (unknown.length) {
+            const next = [...accounts, ...unknown.map(n => ({
+              id: 'a-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6),
+              name: n, owner: '', ...guessAcct(n),
+            }))];
+            store.set('accounts', next, { editedBy: 'tracker' });
+            setAccounts(next);
+          }
         }, 400);
-      }, [holdings]);
+      }, [holdings, accounts]);
 
       // ── Derived values ──────────────────────────────────────────────────────
       const totalValue  = holdings.reduce((s, h) => s + (h.currentPrice || 0) * (h.shares || 0), 0);
@@ -293,13 +337,14 @@
           ticker, name: ticker, shares,
           costBasis:      Number(addForm.costBasis) || null,
           purchaseDate:   addForm.purchaseDate || null,
+          account:        addForm.account.trim() || null,
           currentPrice:   null, prevClose: null,
           dayChange: null, dayChangePct: null,
           priceUpdatedAt: null,
           assetClass:     addForm.assetClass,
         };
         setHoldings(prev => [...prev, newH]);
-        setAddForm({ ticker: '', shares: '', costBasis: '', purchaseDate: '', assetClass: 'equity' });
+        setAddForm({ ticker: '', shares: '', costBasis: '', purchaseDate: '', account: '', assetClass: 'equity' });
         // Try fetching price immediately
         setPxStatus(s => ({ ...s, [ticker]: 'loading' }));
         try {
@@ -329,14 +374,18 @@
         reader.onload = () => {
           try {
             const { holdings: parsed, format } = parseCSV(String(reader.result));
-            // Merge: update existing tickers, append new ones
+            // Merge: update existing tickers, append new ones. When the CSV
+            // names an account, match on ticker+account (same key as the
+            // Data Hub) so the same ticker can live in several accounts.
             setHoldings(prev => {
               const merged = [...prev];
               for (const p of parsed) {
-                const idx = merged.findIndex(h => h.ticker === p.ticker);
+                const idx = merged.findIndex(h => h.ticker === p.ticker &&
+                  (p.account == null || (h.account || '') === p.account));
                 if (idx >= 0) {
                   merged[idx] = { ...merged[idx], shares: p.shares, costBasis: p.costBasis ?? merged[idx].costBasis,
                     purchaseDate: p.purchaseDate ?? merged[idx].purchaseDate,
+                    account: p.account ?? merged[idx].account,
                     currentPrice: p.currentPrice ?? merged[idx].currentPrice };
                 } else {
                   merged.push(p);
@@ -460,6 +509,35 @@
             ))}
           </div>
 
+          {/* ── Account tax-treatment tiles ── */}
+          {holdings.length > 0 && (() => {
+            const tileVal = (h) => (h.currentPrice || h.costBasis || 0) * (h.shares || 0);
+            const byTreat = { taxable: 0, taxFree: 0, taxDeferred: 0, unassigned: 0 };
+            holdings.forEach(h => { byTreat[treatOf(h)] += tileVal(h); });
+            const grand = byTreat.taxable + byTreat.taxFree + byTreat.taxDeferred + byTreat.unassigned;
+            const tiles = [
+              { key: 'taxable',     label: 'Taxable' },
+              { key: 'taxFree',     label: 'Tax Free' },
+              { key: 'taxDeferred', label: 'Tax Deferred' },
+              ...(byTreat.unassigned > 0 ? [{ key: 'unassigned', label: 'No Account Set' }] : []),
+            ];
+            return (
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6 -mt-3">
+                {tiles.map(({ key, label }) => (
+                  <div key={key} className="bg-white rounded-xl shadow-sm p-4">
+                    <div className="text-xs text-gray-400 uppercase tracking-wide mb-1">{label}</div>
+                    <div className={`text-xl font-bold ${byTreat[key] > 0 ? 'text-gray-800' : 'text-gray-400'}`}>
+                      {byTreat[key] > 0 ? fmt0(byTreat[key]) : '—'}
+                    </div>
+                    <div className="text-xs text-gray-400 mt-0.5">
+                      {grand > 0 && byTreat[key] > 0 ? pct1(byTreat[key] / grand * 100) + ' of portfolio' : 'by account type'}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            );
+          })()}
+
           {/* ── Tabs ── */}
           <div className="flex gap-1 mb-4">
             {[['holdings','Holdings'], ['allocation','Allocation'], ['projections','Projections']].map(([id,label]) => (
@@ -480,7 +558,7 @@
                   <table className="min-w-full text-sm">
                     <thead className="bg-gray-50">
                       <tr className="text-xs text-gray-400 uppercase">
-                        {['Ticker','Shares','Cost/Share','Purchased','Price','Day $','Day %','Mkt Value','Total Cost','Gain/Loss','Class',''].map(h => (
+                        {['Ticker','Account','Shares','Cost/Share','Purchased','Price','Day $','Day %','Mkt Value','Total Cost','Gain/Loss','Class',''].map(h => (
                           <th key={h} className="px-3 py-3 text-left font-medium whitespace-nowrap">{h}</th>
                         ))}
                       </tr>
@@ -497,6 +575,16 @@
                               {h.ticker}
                               {h.name && h.name !== h.ticker && (
                                 <div className="text-xs text-gray-400 font-normal truncate max-w-24">{h.name}</div>
+                              )}
+                            </td>
+                            <td className="px-3 py-2">
+                              <input value={h.account ?? ''} list="ws-acct-list" placeholder="—"
+                                onChange={e => updateHolding(h.id, 'account', e.target.value || null)}
+                                className="w-32 border border-gray-200 rounded px-2 py-0.5 text-sm" />
+                              {h.account && (
+                                <div className="text-xs text-gray-400 mt-0.5">
+                                  {{ taxable: 'Taxable', taxFree: 'Tax Free', taxDeferred: 'Tax Deferred' }[treatOf(h)]}
+                                </div>
                               )}
                             </td>
                             <td className="px-3 py-2">
@@ -585,6 +673,15 @@
                       onChange={e => setAddForm(f => ({ ...f, purchaseDate: e.target.value }))}
                       className="w-36 border border-gray-300 rounded px-2 py-1.5 text-sm" />
                   </div>
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-1">Account</label>
+                    <input value={addForm.account} list="ws-acct-list" placeholder="Brokerage"
+                      onChange={e => setAddForm(f => ({ ...f, account: e.target.value }))}
+                      className="w-36 border border-gray-300 rounded px-2 py-1.5 text-sm" />
+                  </div>
+                  <datalist id="ws-acct-list">
+                    {accounts.map(a => <option key={a.id} value={a.name} />)}
+                  </datalist>
                   <div>
                     <label className="block text-xs text-gray-500 mb-1">Class</label>
                     <select value={addForm.assetClass} onChange={e => setAddForm(f => ({ ...f, assetClass: e.target.value }))}
