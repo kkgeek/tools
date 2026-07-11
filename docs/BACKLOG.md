@@ -23,6 +23,9 @@
 - `holding.costBasis` is **per-share** everywhere. Never write lot totals.
 - `holding.purchaseDate` is ISO `YYYY-MM-DD` or null. Null = "held forever"
   in the dashboard Performance table (full-period return).
+- `accounts[].taxTreatment` is `'Taxable' | 'Tax Free' | 'Tax Deferred'`;
+  holdings link to the registry via `holding.account` (name string).
+  Consumers fall back to `type`, then a name-based guess.
 - Net-worth history accrues one snapshot/day (`localStorage['wealthSuite.nwHistory']`) — the Growth chart needs ≥2 days of visits to draw.
 - Tracker doesn't live-subscribe to store changes while open (iframe remount covers the shell case).
 

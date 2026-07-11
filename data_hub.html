@@ -239,7 +239,7 @@ AAPL,50,142.80,2023-01-10,Schwab 401(k)"></textarea>
       <input name="name" placeholder="Account name" style="min-width:180px;" required>
       <select name="type"><option>Taxable</option><option>Roth</option><option>Traditional</option><option>HSA</option><option>Cash</option><option>Other</option></select>
       <input name="owner" placeholder="Owner" style="width:90px;">
-      <input name="taxTreatment" placeholder="Tax treatment" style="width:130px;">
+      <select name="taxTreatment" style="width:130px;"><option value="">Tax treatment…</option><option>Taxable</option><option>Tax Free</option><option>Tax Deferred</option></select>
       <button class="dh-btn-primary" type="submit" style="padding:7px 14px;">Add</button>
       <button class="dh-btn-outline" type="button" data-cancel style="padding:7px 14px;">Cancel</button>
     </form>
@@ -645,11 +645,21 @@ AAPL,50,142.80,2023-01-10,Schwab 401(k)"></textarea>
         else hs.push({ id: r.ticker + '-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6), ticker: r.ticker, name: r.ticker, shares: r.shares, costBasis: r.costBasis, account: r.account, purchaseDate: r.purchaseDate || null, assetClass: 'equity', currentPrice: null, priceUpdatedAt: null });
       });
       store.set('portfolio.holdings', hs, EDIT);
-      // record import + auto-register any unknown accounts referenced
+      // record import + auto-register any unknown accounts referenced,
+      // guessing type + tax treatment from the account name (review in
+      // the registry — the tracker's per-treatment tiles read these)
+      function guessAcct(name) {
+        var n = String(name).toLowerCase();
+        if (/roth/.test(n)) return { type: 'Roth', taxTreatment: 'Tax Free' };
+        if (/hsa/.test(n)) return { type: 'HSA', taxTreatment: 'Tax Free' };
+        if (/401|403|457|ira|trad|sep\b|pension|deferred/.test(n)) return { type: 'Traditional', taxTreatment: 'Tax Deferred' };
+        return { type: 'Taxable', taxTreatment: 'Taxable' };
+      }
       var accts = accounts();
       parsed.forEach(function (r) {
         if (r.account && !accts.some(function (a) { return a.name === r.account; })) {
-          accts.push({ id: uid(), name: r.account, type: 'Taxable', owner: '', taxTreatment: '' });
+          var g = guessAcct(r.account);
+          accts.push({ id: uid(), name: r.account, type: g.type, owner: '', taxTreatment: g.taxTreatment });
         }
       });
       store.set('accounts', accts, EDIT);
@@ -976,7 +986,12 @@ AAPL,50,142.80,2023-01-10,Schwab 401(k)"></textarea>
     }
     bindForm('dh-acct-add', 'dh-acct-form', function (fd) {
       var a = accounts();
-      a.push({ id: uid(), name: fd.get('name').trim(), type: fd.get('type'), owner: (fd.get('owner') || '').trim(), taxTreatment: (fd.get('taxTreatment') || '').trim() });
+      // Treatment left blank → derive from the account type (Roth/HSA are
+      // tax-free, Traditional is tax-deferred, everything else taxable).
+      var type = fd.get('type');
+      var treat = (fd.get('taxTreatment') || '').trim() ||
+        (type === 'Roth' || type === 'HSA' ? 'Tax Free' : type === 'Traditional' ? 'Tax Deferred' : 'Taxable');
+      a.push({ id: uid(), name: fd.get('name').trim(), type: type, owner: (fd.get('owner') || '').trim(), taxTreatment: treat });
       store.set('accounts', a, EDIT); renderAll(); flash('Account added.');
     });
     bindForm('dh-asset-add', 'dh-asset-form', function (fd) {

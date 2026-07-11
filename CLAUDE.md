@@ -723,6 +723,35 @@ Phase 13t (mobile sidebar fix — Data Hub/Settings unreachable):
   527px), hub was at y=661 (offscreen) pre-scroll and both chips fully
   visible after; desktop 1500×950 renders pinned-bottom, unchanged.
 
+Phase 13u (account names + tax-treatment tracking):
+- **Convention: `accounts[].taxTreatment` = 'Taxable' | 'Tax Free' |
+  'Tax Deferred'** (human labels; consumers normalize case/spacing and
+  fall back to `type` — Roth/HSA → tax-free, Traditional → tax-deferred
+  — then to a name-based guess: /roth/, /hsa/, /401|403|457|ira|trad…/).
+  Holdings link to the registry by `holding.account` (name string).
+- `data_hub.html`: the registry's free-text Tax Treatment input is now
+  a select with those three values; manual add with treatment blank
+  derives it from the account type; CSV-commit auto-register now
+  guesses type + treatment from the account name (was always
+  'Taxable' + empty treatment).
+- `portfolio_tracker.html`: captures `account` everywhere — CSV import
+  (`account` header; merge keys on ticker+account when the CSV names
+  one, matching the hub), add-form Account field, and an editable
+  Account column (2nd, after Ticker) with a `<datalist>` of registry
+  names + a live treatment sublabel. The tracker loads `accounts[]` on
+  mount and **auto-registers unknown account names** into the registry
+  on sync (same guess as the hub) so hub/tracker stay linked.
+- **Second tile row in the tracker** (only when holdings exist):
+  Taxable / Tax Free / Tax Deferred totals + "% of portfolio", valued
+  at (currentPrice||costBasis)×shares; a "No Account Set" tile appears
+  only when unassigned holdings exist.
+- Verified headless end-to-end: hub CSV with Schwab Brokerage / My
+  Roth IRA / Fidelity 401k → registry Taxable / Tax Free / Tax
+  Deferred; manual Roth add with blank treatment → Tax Free; tracker
+  tiles $20,000/$7,500/$3,000 (exact), datalist lists all registry
+  names, typing "New HSA Account" into a row auto-registers HSA/Tax
+  Free within the 400ms sync debounce.
+
 ## Constraints to preserve
 
 - **Zero build step.** No Vite/Webpack until scope demands it.
