@@ -751,6 +751,18 @@ Phase 13u (account names + tax-treatment tracking):
   tiles $20,000/$7,500/$3,000 (exact), datalist lists all registry
   names, typing "New HSA Account" into a row auto-registers HSA/Tax
   Free within the 400ms sync debounce.
+- **13u follow-up fixes** (user found import/paste gaps): both column
+  detectors now prefer "Account Name" and NEVER auto-map "Account
+  Number" (Fidelity/Schwab carry both; the number column comes first
+  in the file, so bare 'account' substring matching grabbed opaque
+  numbers). And both merge paths gained a **backfill rule**: a CSV row
+  that only matches on ticker ADOPTS the CSV's account when the
+  existing holding has none, instead of duplicating the position —
+  re-importing the same file with an Account column now fills accounts
+  in place (hub preview's New/Update status matches). Verified: tracker
+  CSV plain-account + Fidelity-style dual-column (names not numbers,
+  auto-registered treatments), tracker + hub backfill each keep 1 row,
+  hub paste never leaks the account number.
 
 ## Constraints to preserve
 

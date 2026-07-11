@@ -545,7 +545,15 @@ AAPL,50,142.80,2023-01-10,Schwab 401(k)"></textarea>
       var tk = findCol(headers, ['ticker', 'symbol']);
       var sh = findCol(headers, ['shares', 'quantity', 'qty']);
       var cb = findCol(headers, ['cost basis total', 'average cost basis', 'cost basis', 'cost_basis', 'cost']);
-      var ac = findCol(headers, ['account']);
+      // Prefer "Account Name"; never auto-map "Account Number" (Fidelity/
+      // Schwab carry both and the number column comes first in the file).
+      var ac = findCol(headers, ['account name', 'account_name']);
+      if (ac < 0) {
+        var lowH = headers.map(function (h) { return String(h || '').toLowerCase(); });
+        for (var ai = 0; ai < lowH.length; ai++) {
+          if (lowH[ai].indexOf('account') >= 0 && !/number|nbr|#/.test(lowH[ai])) { ac = ai; break; }
+        }
+      }
       var pd = findCol(headers, ['purchase date', 'purchase_date', 'date acquired', 'acquisition date', 'acquired', 'trade date', 'open date']);
       // Fallback for 3-col generic (ticker,shares,cost_basis) with odd headers
       if (tk < 0 && headers.length >= 3) { tk = 0; sh = 1; cb = 2; }
@@ -563,7 +571,7 @@ AAPL,50,142.80,2023-01-10,Schwab 401(k)"></textarea>
         var ticker = String(c[mapping.tk] || '').toUpperCase();
         if (!ticker) return null;
         var account = mapping.ac >= 0 ? (c[mapping.ac] || '') : '';
-        var already = existing.some(function (h) { return h.ticker === ticker && (!account || h.account === account); });
+        var already = existing.some(function (h) { return h.ticker === ticker && (!account || !h.account || h.account === account); });
         var status = already ? 'update' : 'new';
         if (account && acctNames.length && acctNames.indexOf(account) < 0) status = 'warn';
         var shares = mapping.sh >= 0 ? num(c[mapping.sh]) : 0;
@@ -637,8 +645,12 @@ AAPL,50,142.80,2023-01-10,Schwab 401(k)"></textarea>
       var hs = holdings();
       parsed.forEach(function (r) {
         var idx = hs.findIndex(function (h) { return h.ticker === r.ticker && (h.account || '') === (r.account || ''); });
+        // Backfill: a ticker row with no account yet adopts the CSV's
+        // account instead of duplicating the position.
+        if (idx < 0 && r.account) idx = hs.findIndex(function (h) { return h.ticker === r.ticker && !h.account; });
         if (idx >= 0) {
           hs[idx].shares = r.shares; hs[idx].costBasis = r.costBasis;
+          if (r.account && !hs[idx].account) hs[idx].account = r.account;
           if (r.purchaseDate) hs[idx].purchaseDate = r.purchaseDate;
         }
         // `id` is required by the Portfolio Tracker (row edit/delete key on it)

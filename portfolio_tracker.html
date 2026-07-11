@@ -160,7 +160,14 @@
       if (tickerCol < 0 || sharesCol < 0)
         throw new Error(`Could not find ticker/shares columns (detected: ${fmt}). Headers: ${headers.slice(0,6).join(', ')}`);
       const dateCol = col('purchase date', 'purchase_date', 'date acquired', 'acquisition date', 'acquired', 'trade date', 'open date');
-      const acctCol = col('account');
+      // Prefer "Account Name" and never grab "Account Number" — Fidelity/
+      // Schwab exports carry both, and a bare 'account' substring match
+      // would land on the number column (it comes first in the file).
+      const acctCol = (() => {
+        const named = col('account name', 'account_name');
+        if (named >= 0) return named;
+        return hLow.findIndex(h => h.includes('account') && !/number|nbr|#/.test(h));
+      })();
 
       const results = [];
       for (let i = headerIdx + 1; i < lines.length; i++) {
@@ -377,11 +384,14 @@
             // Merge: update existing tickers, append new ones. When the CSV
             // names an account, match on ticker+account (same key as the
             // Data Hub) so the same ticker can live in several accounts.
+            // Backfill: a row that only matches on ticker ADOPTS the CSV's
+            // account when its own is unset, instead of duplicating.
             setHoldings(prev => {
               const merged = [...prev];
               for (const p of parsed) {
-                const idx = merged.findIndex(h => h.ticker === p.ticker &&
+                let idx = merged.findIndex(h => h.ticker === p.ticker &&
                   (p.account == null || (h.account || '') === p.account));
+                if (idx < 0 && p.account) idx = merged.findIndex(h => h.ticker === p.ticker && !h.account);
                 if (idx >= 0) {
                   merged[idx] = { ...merged[idx], shares: p.shares, costBasis: p.costBasis ?? merged[idx].costBasis,
                     purchaseDate: p.purchaseDate ?? merged[idx].purchaseDate,
@@ -485,7 +495,7 @@
           {importMsg && (
             <div className={`mb-3 px-4 py-2 rounded-lg text-sm ${importMsg.startsWith('Import failed') ? 'bg-red-50 text-red-700' : 'bg-emerald-50 text-emerald-700'}`}>
               {importMsg}
-              <span className="text-xs text-gray-400 ml-2">Supports: Fidelity, Schwab, Vanguard, Generic (ticker,shares,cost_basis)</span>
+              <span className="text-xs text-gray-400 ml-2">Supports: Fidelity, Schwab, Vanguard, Generic (ticker,shares,cost_basis) · optional: Account Name, Purchase Date columns</span>
             </div>
           )}
 
