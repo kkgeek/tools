@@ -6,6 +6,17 @@
 
 1. **AI chat re-homing** — `assets/ai/chat.js` + `briefing.js` still exist but nothing loads them since the shell rebuild. Decide: chat panel inside the shell? Delete briefing? (Needs a user product decision.)
 
+2. **Data Hub health strip: flag orphaned `portfolio.totalValue`** — when
+   the scalar is set but `portfolio.holdings` is empty, show a stale-data
+   warning in the hub's health strip with a one-tap "recompute from
+   holdings" fix (writes `total || null`, same as the hub's existing
+   `recompute()`). Context: legacy pre-hub paths (old dashboard
+   quick-entry) wrote the scalar without holdings, and the tracker only
+   writes `totalValue` when > 0 — deleting all holdings orphans the last
+   value (seen live on the user's phone, 2026-07-10: "$4.75M · 0
+   holdings"). Optional companion fix: make the tracker always write
+   `totalValue` (null when holdings empty).
+
 ## Known issues / watchlist
 - **TaxAssetCalcv4 renders blank in *headless* Chrome** (Babel+D3 vs virtual-time). Fine in real browsers since the 7.29.7 pin. Don't chase it in headless tests.
 - **Babel pin**: every React page must use `@babel/standalone@7.29.7` (Babel 8 rejects raw `>` in JSX text → blank page).
