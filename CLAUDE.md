@@ -706,6 +706,23 @@ Phase 13s (dashboard shell UI cleanup — per user screenshot):
   Settings intact, theme still applied from the stored preference,
   sidebar→tool→Dashboard routing works, KPI sample renders.
 
+Phase 13t (mobile sidebar fix — Data Hub/Settings unreachable):
+- index.html only. On phones/iPads the sidebar footer (Data Hub promo +
+  Settings + avatar) sat in a separate non-scrolling flex block below
+  the scrollable nav, AND the drawer used `height:100vh` — which iOS/
+  Android measure behind the browser toolbar — so the footer was
+  clipped offscreen with no way to scroll to it.
+- Fix: the footer content moved INSIDE `.ws-nav` as `.ws-navfoot`
+  (`margin-top:auto` pins it to the bottom when the list is short;
+  scrolls with the list when the viewport is short — reachable either
+  way), `.ws-sidefoot` container/CSS removed (`.ws-sidefoot__row` class
+  kept — collapsed-rail rules reference it), and `height:100dvh` added
+  (with 100vh fallback) on body/shell/drawer. `.ws-navfoot` also pads
+  `env(safe-area-inset-bottom)`.
+- Verified headless at 390×600: drawer opens, nav scrolls (712 >
+  527px), hub was at y=661 (offscreen) pre-scroll and both chips fully
+  visible after; desktop 1500×950 renders pinned-bottom, unchanged.
+
 ## Constraints to preserve
 
 - **Zero build step.** No Vite/Webpack until scope demands it.

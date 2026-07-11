@@ -62,8 +62,8 @@
      * (handoff step 2) and the computed layer (step 4). Nodes carry
      * data-ws-metric hooks so that wiring can target them later.
      * ============================================================ */
-    body.suite-body { margin: 0; padding-top: 0 !important; height: 100vh; overflow: hidden; }
-    .ws-shell { display: flex; height: 100vh; overflow: hidden; background: var(--bg); }
+    body.suite-body { margin: 0; padding-top: 0 !important; height: 100vh; height: 100dvh; overflow: hidden; }
+    .ws-shell { display: flex; height: 100vh; height: 100dvh; overflow: hidden; background: var(--bg); }
 
     /* ---- Sidebar ---- */
     .ws-sidebar {
@@ -91,7 +91,11 @@
     .ws-badge { margin-left: auto; padding: 2px 7px; border-radius: 20px; font-size: 9px; font-weight: 700; }
     .ws-badge--q2 { background: var(--warn-weak); color: var(--warn); }
 
-    .ws-sidefoot { padding: 12px; border-top: 1px solid var(--border); flex-shrink: 0; display: flex; flex-direction: column; gap: 8px; }
+    /* Data Hub promo + Settings live INSIDE the scrollable nav: pinned to
+       the bottom when the list is short (margin-top:auto), scrolling with
+       it when the viewport is short — so they're always reachable on
+       phones/tablets (the old fixed footer sat behind mobile toolbars). */
+    .ws-navfoot { margin-top: auto; display: flex; flex-direction: column; gap: 8px; padding-top: 12px; border-top: 1px solid var(--border); padding-bottom: env(safe-area-inset-bottom, 0); }
     .ws-datahub { padding: 12px 14px; background: var(--primary-weak); border-radius: 12px; cursor: default; display: block; text-decoration: none; }
     .ws-datahub__row { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; color: var(--primary-text); }
     .ws-datahub__title { font-size: 12px; font-weight: 500; }
@@ -222,7 +226,7 @@
     .ws-backdrop { display: none; }
     @media (max-width: 860px) {
       .ws-sidebar {
-        position: fixed; top: 0; left: 0; height: 100vh; z-index: 40;
+        position: fixed; top: 0; left: 0; height: 100vh; height: 100dvh; z-index: 40;
         width: 240px !important; min-width: 240px !important;
         transform: translateX(-100%); transition: transform .25s ease;
         box-shadow: var(--shadow-2);
@@ -322,9 +326,7 @@
         <span class="sb-x">Monte Carlo</span>
       </a>
 
-    </nav>
-
-    <div class="ws-sidefoot">
+      <div class="ws-navfoot">
       <a class="ws-datahub" href="data_hub.html" title="Data Hub">
         <span class="ws-datahub__row">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><ellipse cx="12" cy="5" rx="9" ry="3"></ellipse><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"></path><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"></path></svg>
@@ -340,7 +342,8 @@
         </a>
         <div class="ws-avatar" id="ws-avatar" title="Household">WC</div>
       </div>
-    </div>
+      </div>
+    </nav>
   </aside>
 
   <!-- ██████████████  MAIN  ██████████████ -->
