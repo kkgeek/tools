@@ -751,6 +751,16 @@ Phase 13u (account names + tax-treatment tracking):
   tiles $20,000/$7,500/$3,000 (exact), datalist lists all registry
   names, typing "New HSA Account" into a row auto-registers HSA/Tax
   Free within the 400ms sync debounce.
+- **13u follow-up 3 — "Tax Free" account names not recognized** (user
+  report): the name guesser only knew roth/hsa/401k-style patterns, so
+  an account literally named "… Tax Free …" classified as Taxable.
+  Both guessers (tracker + hub) now match tax-free / tax-exempt / 529
+  → Tax Free and tax-deferred → Tax Deferred. Also: the tracker's
+  registry lookup is now case/whitespace-insensitive (`acctKey`) so a
+  typed variant of a curated account resolves; and auto-registration
+  moved OUT of the debounced sync (which registered half-typed names
+  on a >400ms typing pause) to complete-name moments only — add-form
+  submit, CSV import, and Account-input blur (`registerAccounts`).
 - **13u follow-up 2 — optional "Account Type" import column**: hub
   import/paste accepts an "Account Type" / "Tax Treatment" column
   (normalized via `normTreatLabel` — taxable/cash, tax free/roth/hsa,
