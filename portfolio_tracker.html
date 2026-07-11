@@ -219,7 +219,23 @@
         const s = store.export();
         const h = s.portfolio?.holdings;
         if (Array.isArray(h) && h.length > 0) setHoldings(h);
-        if (Array.isArray(s.accounts)) setAccounts(s.accounts);
+        if (Array.isArray(s.accounts)) {
+          // Heal pre-13u-fix auto-registrations: strongly-named accounts
+          // ("… Tax Free …") stuck on the old Taxable default get
+          // re-guessed; user-curated entries (`curated`/owner set) never.
+          let changed = false;
+          const healed = s.accounts.map(a => {
+            if (a.curated || a.owner) return a;
+            const g = guessAcct(a.name);
+            if ((a.taxTreatment || 'Taxable') === 'Taxable' && g.taxTreatment !== 'Taxable') {
+              changed = true;
+              return { ...a, type: g.type, taxTreatment: g.taxTreatment };
+            }
+            return a;
+          });
+          if (changed) store.set('accounts', healed, { editedBy: 'tracker' });
+          setAccounts(healed);
+        }
       }, []);
 
       // ── Account tax treatment (registry-driven) ─────────────────────────────
