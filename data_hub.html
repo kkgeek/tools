@@ -676,6 +676,7 @@ MSFT,25,310.00,11/20/2023,Schwab 401(k),Tax Deferred"></textarea>
         var n = String(name).toLowerCase();
         if (/roth/.test(n)) return { type: 'Roth', taxTreatment: 'Tax Free' };
         if (/hsa/.test(n)) return { type: 'HSA', taxTreatment: 'Tax Free' };
+        if (/tax[\s._-]*free|tax[\s._-]*exempt|529/.test(n)) return { type: 'Other', taxTreatment: 'Tax Free' };
         if (/401|403|457|ira|trad|sep\b|pension|deferred/.test(n)) return { type: 'Traditional', taxTreatment: 'Tax Deferred' };
         return { type: 'Taxable', taxTreatment: 'Taxable' };
       }
