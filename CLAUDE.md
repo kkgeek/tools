@@ -751,6 +751,17 @@ Phase 13u (account names + tax-treatment tracking):
   tiles $20,000/$7,500/$3,000 (exact), datalist lists all registry
   names, typing "New HSA Account" into a row auto-registers HSA/Tax
   Free within the 400ms sync debounce.
+- **13u follow-up 5 — self-heal for poisoned auto-registrations** (user
+  repro persisted; verified their exact flow passes on current code —
+  the residue was pre-fix registry entries in their store): tracker
+  mount + hub init now re-guess UNCURATED accounts stuck on the old
+  Taxable default whose name strongly signals otherwise (roth/hsa/
+  tax-free/401k…). `curated: true` marks anything user-set — hub
+  inline edit, hub manual add, explicit CSV Account Type — and is
+  never healed. Hub's `guessAcct` lifted from commit() to script scope
+  (shared with `healAutoRegistered`). Verified: poisoned
+  "Tax Free"=Taxable heals to Tax Free on either page's load ($20k
+  tile), curated conflicting entry untouched, plain taxable untouched.
 - **13u follow-up 4 — inline registry editing** (user still saw
   Taxable after follow-up 3): the registry LOOKUP deliberately beats
   the name guess, so accounts auto-registered as Taxable by the

@@ -668,6 +668,34 @@ MSFT,25,310.00,11/20/2023,Schwab 401(k),Tax Deferred"></textarea>
       var commitBtn = $('dh-commit');
       if (commitBtn) commitBtn.addEventListener('click', commit);
     }
+    // Name-based account guess — shared by CSV auto-register and the
+    // load-time heal below. The tracker mirrors this.
+    function guessAcct(name) {
+      var n = String(name).toLowerCase();
+      if (/roth/.test(n)) return { type: 'Roth', taxTreatment: 'Tax Free' };
+      if (/hsa/.test(n)) return { type: 'HSA', taxTreatment: 'Tax Free' };
+      if (/tax[\s._-]*free|tax[\s._-]*exempt|529/.test(n)) return { type: 'Other', taxTreatment: 'Tax Free' };
+      if (/401|403|457|ira|trad|sep\b|pension|deferred/.test(n)) return { type: 'Traditional', taxTreatment: 'Tax Deferred' };
+      return { type: 'Taxable', taxTreatment: 'Taxable' };
+    }
+    // One-time heal: the pre-13u-fix guesser auto-registered strongly-named
+    // accounts ("… Tax Free …", "… 401k …") as Taxable, and registry entries
+    // beat the guess — so those stayed wrong forever. Re-guess uncurated
+    // Taxable entries whose name signals otherwise; anything user-set
+    // (inline edit, manual add, explicit CSV Account Type) carries
+    // `curated: true` and is never touched.
+    function healAutoRegistered() {
+      var a = accounts();
+      var changed = false;
+      a.forEach(function (acct) {
+        if (acct.curated || acct.owner) return;
+        var g = guessAcct(acct.name);
+        if ((acct.taxTreatment || 'Taxable') === 'Taxable' && g.taxTreatment !== 'Taxable') {
+          acct.type = g.type; acct.taxTreatment = g.taxTreatment; changed = true;
+        }
+      });
+      if (changed) store.set('accounts', a, EDIT);
+    }
     function commit() {
       if (!parsed.length) return;
       var hs = holdings();
@@ -688,14 +716,6 @@ MSFT,25,310.00,11/20/2023,Schwab 401(k),Tax Deferred"></textarea>
       // record import + auto-register any unknown accounts referenced,
       // guessing type + tax treatment from the account name (review in
       // the registry — the tracker's per-treatment tiles read these)
-      function guessAcct(name) {
-        var n = String(name).toLowerCase();
-        if (/roth/.test(n)) return { type: 'Roth', taxTreatment: 'Tax Free' };
-        if (/hsa/.test(n)) return { type: 'HSA', taxTreatment: 'Tax Free' };
-        if (/tax[\s._-]*free|tax[\s._-]*exempt|529/.test(n)) return { type: 'Other', taxTreatment: 'Tax Free' };
-        if (/401|403|457|ira|trad|sep\b|pension|deferred/.test(n)) return { type: 'Traditional', taxTreatment: 'Tax Deferred' };
-        return { type: 'Taxable', taxTreatment: 'Taxable' };
-      }
       var accts = accounts();
       parsed.forEach(function (r) {
         if (!r.account) return;
@@ -703,10 +723,10 @@ MSFT,25,310.00,11/20/2023,Schwab 401(k),Tax Deferred"></textarea>
         for (var xi = 0; xi < accts.length; xi++) { if (accts[xi].name === r.account) { existing = accts[xi]; break; } }
         if (existing) {
           // CSV names a treatment and the registry entry has none → fill it
-          if (r.acctType && !existing.taxTreatment) existing.taxTreatment = r.acctType;
+          if (r.acctType && !existing.taxTreatment) { existing.taxTreatment = r.acctType; existing.curated = true; }
         } else {
           var g = guessAcct(r.account);
-          accts.push({ id: uid(), name: r.account, type: g.type, owner: '', taxTreatment: r.acctType || g.taxTreatment });
+          accts.push({ id: uid(), name: r.account, type: g.type, owner: '', taxTreatment: r.acctType || g.taxTreatment, curated: !!r.acctType });
         }
       });
       store.set('accounts', accts, EDIT);
@@ -1038,7 +1058,7 @@ MSFT,25,310.00,11/20/2023,Schwab 401(k),Tax Deferred"></textarea>
       var type = fd.get('type');
       var treat = (fd.get('taxTreatment') || '').trim() ||
         (type === 'Roth' || type === 'HSA' ? 'Tax Free' : type === 'Traditional' ? 'Tax Deferred' : 'Taxable');
-      a.push({ id: uid(), name: fd.get('name').trim(), type: type, owner: (fd.get('owner') || '').trim(), taxTreatment: treat });
+      a.push({ id: uid(), name: fd.get('name').trim(), type: type, owner: (fd.get('owner') || '').trim(), taxTreatment: treat, curated: true });
       store.set('accounts', a, EDIT); renderAll(); flash('Account added.');
     });
     bindForm('dh-asset-add', 'dh-asset-form', function (fd) {
@@ -1078,7 +1098,7 @@ MSFT,25,310.00,11/20/2023,Schwab 401(k),Tax Deferred"></textarea>
       var field = sel.getAttribute('data-acct-field');
       var a = accounts();
       for (var i = 0; i < a.length; i++) {
-        if (a[i].id === id) { a[i][field] = sel.value; break; }
+        if (a[i].id === id) { a[i][field] = sel.value; a[i].curated = true; break; }
       }
       store.set('accounts', a, EDIT);
       flash('Account updated — tools pick this up on their next load.');
@@ -1088,6 +1108,7 @@ MSFT,25,310.00,11/20/2023,Schwab 401(k),Tax Deferred"></textarea>
     var lastHoldingUpdate = store.get('meta') && store.get('meta').lastUpdated;
     $('dh-lastimport').textContent = holdings().length ? (holdings().length + ' holdings on file') : 'No imports yet';
 
+    healAutoRegistered();
     store.subscribe('', renderAll);
     renderAll();
   }
