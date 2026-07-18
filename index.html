@@ -440,7 +440,7 @@
               <div class="ws-cardhead" style="margin-bottom:14px;">
                 <div>
                   <div class="ws-cardtitle">Net Worth Growth</div>
-                  <div class="ws-cardsub">12-month trend · Net worth &amp; top buckets</div>
+                  <div class="ws-cardsub" id="ws-nw-sub">12-month trend · Net worth &amp; top buckets</div>
                 </div>
                 <div class="ws-rangebtns" id="ws-nw-ranges">
                   <button class="ws-rangebtn is-active" type="button" data-months="12">1Y</button>
@@ -1318,18 +1318,41 @@
         '<div class="ws-legend__item"><div class="ws-legend__dash" style="background:var(--cat2);"></div>Investments<span class="ws-legend__val">' + money(lastP.inv) + '</span></div>' +
         '<div class="ws-legend__item"><div class="ws-legend__dash" style="background:var(--cat3);"></div>Retirement<span class="ws-legend__val">' + money(lastP.ret) + '</span></div>' +
         '<div class="ws-legend__item"><div class="ws-legend__dash" style="background:var(--cat4);"></div>Home<span class="ws-legend__val">' + money(lastP.home) + '</span></div>';
+      // X-axis labels: granularity follows the VISIBLE window's actual
+      // span — days → months → quarters → years — with consecutive
+      // duplicates blanked (spacing kept), so the 1Y/3Y/5Y/All pills
+      // visibly change the axis once history spans long enough.
+      var spanDays = Math.max(1, (new Date(lastP.d + 'T12:00:00') - new Date(first.d + 'T12:00:00')) / 86400000);
       var months = document.getElementById('ws-nw-months');
       if (months) {
         var MO = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+        function axisLbl(d) {
+          if (spanDays <= 70) return MO[d.getMonth()] + ' ' + d.getDate();
+          if (spanDays <= 550) return MO[d.getMonth()] + (d.getMonth() === 0 ? " '" + String(d.getFullYear()).slice(2) : '');
+          if (spanDays <= 1500) return 'Q' + (Math.floor(d.getMonth() / 3) + 1) + " '" + String(d.getFullYear()).slice(2);
+          return String(d.getFullYear());
+        }
         var n = Math.min(12, hist.length);
-        var out = '';
+        var out = '', prevLbl = null;
         for (var i = 0; i < n; i++) {
           var p = hist[Math.round(i * (hist.length - 1) / Math.max(1, n - 1))];
           var d = new Date(p.d + 'T12:00:00');
           var isLast = i === n - 1;
-          out += '<span class="ws-date" style="font-size:11.5px;color:' + (isLast ? 'var(--primary-text)' : 'var(--text-3)') + (isLast ? ';font-weight:500' : '') + ';">' + MO[d.getMonth()] + (isLast ? ' ▲' : '') + '</span>';
+          var text = axisLbl(d);
+          var show = isLast || text !== prevLbl;
+          if (show) prevLbl = text;
+          out += '<span class="ws-date" style="font-size:11.5px;color:' + (isLast ? 'var(--primary-text)' : 'var(--text-3)') + (isLast ? ';font-weight:500' : '') + ';">' + (show ? text + (isLast ? ' ▲' : '') : '&nbsp;') + '</span>';
         }
         months.innerHTML = out;
+      }
+      // Subtitle states the selected range AND how much history actually
+      // exists — with days of snapshots, every range shows the same data,
+      // and this is why (history accrues from dashboard visits).
+      var subEl = document.getElementById('ws-nw-sub');
+      if (subEl) {
+        var rname = { 12: '1Y', 36: '3Y', 60: '5Y', 0: 'All' }[nwRangeMonths] || 'All';
+        var covered = spanDays >= 350 ? (Math.round(spanDays / 365.25 * 10) / 10) + ' yrs' : Math.round(spanDays) + ' days';
+        subEl.textContent = rname + ' view · ' + covered + ' of daily snapshots · net worth & top buckets';
       }
     }
 
@@ -1442,14 +1465,36 @@
       var spouses = (s.household && s.household.spouses) || [];
       var ages = spouses.map(function (x) { return Number(x && x.age); }).filter(function (n) { return n > 0; });
       var curAge = ages.length ? Math.min.apply(null, ages) : null;
-      var retAge = Number(plan.targetRetireAge) || null;
+      // Retire age: active scenario overrides the plan (same precedence as
+      // the Roth/MC adapters), then the spouses' Settings targets.
+      var prefs = s.preferences || {};
+      var scens = Array.isArray(prefs.scenarios) ? prefs.scenarios : [];
+      var scen = scens.length ? (scens.filter(function (x) { return x && x.id === prefs.activeScenarioId; })[0] || scens[0]) : null;
+      var retAge = (scen && Number(scen.targetRetireAge)) || Number(plan.targetRetireAge)
+        || (spouses[0] && Number(spouses[0].targetRetireAge)) || (spouses[1] && Number(spouses[1].targetRetireAge)) || null;
       var startBal = (portfolioVal || 0) + (retireBal || 0);
       var expenses = Number(plan.annualExpenses) || (monthlyBudget ? monthlyBudget * 12 : 0);
-      if (!curAge || !retAge || retAge <= curAge || !(startBal > 0) || !(expenses > 0)) return; // keep sample
+      if (!curAge || !retAge || retAge <= curAge || !(startBal > 0) || !(expenses > 0)) {
+        // keep the sample chart, but say WHY it isn't live yet (only once
+        // the store has any data — a fully empty store stays pure sample)
+        if (s.meta && s.meta.lastUpdated != null) {
+          var miss = [];
+          if (!curAge) miss.push('household ages');
+          if (!retAge || (curAge && retAge <= curAge)) miss.push('retirement age');
+          if (!(startBal > 0)) miss.push('portfolio balance');
+          if (!(expenses > 0)) miss.push('annual expenses');
+          var subG = document.getElementById('ws-ret-sub');
+          if (subG && miss.length) subG.textContent = 'Sample — add ' + miss.join(' + ') + ' in Settings / Retirement Plan to go live';
+        }
+        return;
+      }
       var c = (s.retirement && s.retirement.contributions) || {};
       function sumSp(o) { return o ? (Number(o.s1) || 0) + (Number(o.s2) || 0) : 0; }
       var contrib = sumSp(c.traditional401k) + sumSp(c.roth401k) + sumSp(c.afterTax401k) + sumSp(c.catchup) + sumSp(c.ira) + (Number(c.hsa) || 0);
-      var mean = (Number(plan.growthAssumption) || 7) / 100, sd = 0.15;
+      // growthAssumption may be stored as a fraction (0.07, the adapters'
+      // convention) or a percent (7) — normalize either to a fraction
+      var gRaw = Number(plan.growthAssumption) || 0;
+      var mean = gRaw > 1 ? gRaw / 100 : (gRaw > 0 ? gRaw : 0.07), sd = 0.15;
       var END = 95, YRS = END - curAge, SIMS = 1000;
       var rand = mulberry32(Math.round(startBal + expenses * 7 + retAge * 131 + curAge * 17));
       function gauss() { var u = Math.max(rand(), 1e-9), v = rand(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v); }

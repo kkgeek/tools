@@ -258,8 +258,12 @@
           <div><div class="st-rval">Price source</div><div class="st-rsub">Yahoo Finance · free tier</div></div>
           <select class="st-select" id="st-pricesrc"><option value="yahoo">Yahoo Finance</option></select>
         </div>
+        <div class="st-row">
+          <div><div class="st-rval">Clear chart history</div><div class="st-rsub">Deletes this device's net-worth snapshots (the dashboard Growth chart re-accrues from tomorrow)</div></div>
+          <button class="st-btn-outline" id="st-clearhist" type="button">Clear</button>
+        </div>
         <div class="st-row st-row--danger">
-          <div><div class="st-rval st-danger-label">Reset all data</div><div class="st-rsub">Clears holdings, accounts, scenarios</div></div>
+          <div><div class="st-rval st-danger-label">Reset all data</div><div class="st-rsub">Clears holdings, accounts, scenarios + this device's chart caches</div></div>
           <button class="st-btn-danger" id="st-reset" type="button">Reset…</button>
         </div>
       </div>
@@ -453,7 +457,25 @@
       clearTimeout(resetTimer); resetArmed = false;
       this.classList.remove('is-armed'); this.textContent = 'Reset…';
       store.reset({ editedBy: 'reset' });
+      clearDeviceCaches();
       renderAll(); flash('All data cleared.');
+    });
+    // Device-local derived caches live OUTSIDE the store (deliberately),
+    // so store.reset() alone leaves the dashboard Growth chart drawing
+    // stale test-era snapshots. Clear them with the reset — and expose
+    // history-clearing on its own for fixing a poisoned chart without
+    // losing real data.
+    function clearDeviceCaches() {
+      try {
+        localStorage.removeItem('wealthSuite.nwHistory');
+        localStorage.removeItem('wealthSuite.perfSeries');
+        localStorage.removeItem('wealthSuite.briefingStats');
+        localStorage.removeItem('wealthSuite.briefingNarrative');
+      } catch (e) {}
+    }
+    $('st-clearhist').addEventListener('click', function () {
+      try { localStorage.removeItem('wealthSuite.nwHistory'); } catch (e) {}
+      flash('Chart history cleared — the Growth chart restarts from your next dashboard visit.');
     });
 
     // ---------- render ----------
