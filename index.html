@@ -1333,6 +1333,49 @@
 
     // today's live values, set by refreshKPIs before each render
     var nwHoldings = [], nwTodayPV = 0, nwTodayNW = 0, nwTodayRet = 0, nwTodayHome = 0;
+
+    // ---- hover crosshair: vertical guide + value at the nearest point.
+    // renderNWChart stashes its point grid in nwHover; sample state keeps
+    // nwHover null so the mockup chart stays inert. ----
+    var nwHover = null;
+    (function () {
+      var svg = document.getElementById('ws-nw-svg');
+      if (!svg) return;
+      function clearHover() { var g = svg.querySelector('#ws-nw-hoverg'); if (g) g.remove(); }
+      svg.addEventListener('pointerleave', clearHover);
+      svg.addEventListener('pointermove', function (ev) {
+        if (!nwHover) return;
+        var ctm = svg.getScreenCTM(); if (!ctm) return;
+        var p0 = svg.createSVGPoint(); p0.x = ev.clientX; p0.y = ev.clientY;
+        var loc = p0.matrixTransform(ctm.inverse());
+        var W = { x0: 34, x1: 648, y0: 150, y1: 20 };
+        var h = nwHover;
+        var frac = Math.min(1, Math.max(0, (loc.x - W.x0) / (W.x1 - W.x0)));
+        var tt = h.t0 + frac * (h.tN - h.t0);
+        var bi = 0, bd = Infinity;
+        for (var i = 0; i < h.pts.length; i++) { var dd = Math.abs(h.pts[i] - tt); if (dd < bd) { bd = dd; bi = i; } }
+        var x = W.x0 + (W.x1 - W.x0) * ((h.pts[bi] - h.t0) / Math.max(1, h.tN - h.t0));
+        var y = W.y0 - (W.y0 - W.y1) * ((h.vals[bi] || 0) / h.maxV);
+        var MO = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+        var dte = new Date(h.pts[bi]);
+        var lbl = full(h.vals[bi]) + ' · ' + MO[dte.getMonth()] + ' ' + dte.getDate() + " '" + String(dte.getFullYear()).slice(2);
+        var bw = lbl.length * 6.6 + 14;
+        var lx = x + 9; if (lx + bw > 655) lx = x - 9 - bw;
+        var ly = Math.max(22, y - 27);
+        clearHover();
+        var g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+        g.setAttribute('id', 'ws-nw-hoverg');
+        g.setAttribute('pointer-events', 'none');
+        g.innerHTML =
+          '<line x1="' + x.toFixed(1) + '" y1="20" x2="' + x.toFixed(1) + '" y2="150" style="stroke:var(--text-3);" stroke-width="1" stroke-dasharray="3 3"></line>' +
+          '<circle cx="' + x.toFixed(1) + '" cy="' + y.toFixed(1) + '" r="4.5" style="fill:var(--primary); stroke:var(--surface);" stroke-width="2"></circle>' +
+          '<rect x="' + lx.toFixed(1) + '" y="' + ly.toFixed(1) + '" width="' + bw.toFixed(0) + '" height="20" rx="5" style="fill:var(--surface); stroke:var(--border); filter:drop-shadow(0 1px 3px rgba(0,0,0,.12));"></rect>' +
+          '<text x="' + (lx + bw / 2).toFixed(1) + '" y="' + (ly + 13.5).toFixed(1) + '" text-anchor="middle" font-size="11" font-family="Roboto Mono,monospace" style="fill:var(--text);">' + lbl + '</text>';
+        svg.appendChild(g);
+      });
+      svg.style.cursor = 'crosshair';
+      svg.style.touchAction = 'none';
+    })();
     function renderNWChart() {
       var holdings = nwHoldings.filter(function (h) { return h.ticker && Number(h.shares) > 0; });
       if (!holdings.length || !(nwTodayPV > 0)) return; // keep illustrative sample
@@ -1465,6 +1508,8 @@
         var anyFetched = holdings.some(function (h) { return ph[h.ticker]; });
         subEl.textContent = rname + ' view · positions × market price from purchase date' + (anyFetched ? '' : ' · downloading price history…');
       }
+      // hand the point grid to the hover crosshair
+      nwHover = { pts: pts, vals: vals, t0: t0, tN: tN, maxV: maxV };
     }
 
     // ---- Asset allocation donut from holdings' asset classes ----
