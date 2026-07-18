@@ -142,6 +142,11 @@
     <div class="st-cardtitle">Household Profile</div>
     <div class="st-carddesc">Drives retirement timelines, RMD ages, and Social Security projections.</div>
     <div class="st-people" id="st-people"></div>
+    <div style="display:flex; gap:16px; flex-wrap:wrap; margin-top:16px; align-items:flex-end;">
+      <div><div class="st-flabel">Annual spending in retirement ($/yr)</div><input class="st-input st-mono" id="st-annual-exp" inputmode="numeric" placeholder="90000" style="width:160px;"></div>
+      <div><div class="st-flabel">Expected growth (%/yr)</div><input class="st-input st-mono" id="st-growth" inputmode="decimal" placeholder="7" style="width:120px;"></div>
+    </div>
+    <div class="st-carddesc" style="margin-top:10px; margin-bottom:0;">These two + birth years + retirement age power the dashboard's Retirement Planning simulation and the Retirement / Roth / Monte Carlo tools.</div>
   </div>
 
   <!-- Scenarios -->
@@ -329,6 +334,27 @@
       flash('Household updated.');
     });
 
+    // ---------- Retirement plan (annual spending + growth) ----------
+    function renderPlanFields() {
+      var plan = store.get('retirement.plan') || {};
+      var exp = $('st-annual-exp'), gr = $('st-growth');
+      if (exp) exp.value = plan.annualExpenses || '';
+      // store convention: growthAssumption is a FRACTION (0.07) — display %
+      if (gr) {
+        var g = Number(plan.growthAssumption);
+        gr.value = g > 0 ? (g > 1 ? g : Math.round(g * 1000) / 10) : '';
+      }
+    }
+    $('st-annual-exp').addEventListener('change', function () {
+      store.set('retirement.plan.annualExpenses', num(this.value) || null, EDIT);
+      flash('Retirement plan updated.');
+    });
+    $('st-growth').addEventListener('change', function () {
+      var p = num(this.value);
+      store.set('retirement.plan.growthAssumption', p > 0 ? (p > 1 ? p / 100 : p) : null, EDIT);
+      flash('Retirement plan updated.');
+    });
+
     // ---------- Scenarios ----------
     function scenarios() { return prefs().scenarios || []; }
     function activeId() { return prefs().activeScenarioId || null; }
@@ -483,7 +509,7 @@
     });
 
     // ---------- render ----------
-    function renderAll() { renderPeople(); renderScenarios(); renderTax(); renderAppearance(); renderAlerts(); }
+    function renderAll() { renderPeople(); renderPlanFields(); renderScenarios(); renderTax(); renderAppearance(); renderAlerts(); }
     renderAll();
     store.subscribe('', function () { renderScenarios(); renderTax(); renderAlerts(); });
   }

@@ -1725,8 +1725,9 @@
         '<div class="ws-stat" style="background:var(--pos-weak);"><div class="ws-stat__big" style="color:var(--pos);">' + pct + '%</div><div class="ws-stat__label">Success rate</div></div>' +
         '<div class="ws-stat" style="background:var(--primary-weak);"><div class="ws-stat__big" style="color:var(--primary-text);">' + money(med85) + '</div><div class="ws-stat__label">Median at 85</div></div>' +
         '<div class="ws-stat" style="background:var(--warn-weak);"><div class="ws-stat__big" style="color:var(--warn);">' + retYear + '</div><div class="ws-stat__label">Target retire</div></div>';
-      // Fan chart from real percentile paths
-      var FX0 = 20, FX1 = 400, FY0 = 106, FY1 = 6;
+      // Fan chart from real percentile paths — live render takes the full
+      // card width (the mockup sample keeps its own 420-wide viewBox)
+      var FX0 = 24, FX1 = 646, FY0 = 116, FY1 = 8;
       var fmax = Math.max.apply(null, p90) * 1.05 || 1;
       function fx(y5) { return FX0 + (FX1 - FX0) * y5 / YRS; }
       function fy(v) { return FY0 - (FY0 - FY1) * (v / fmax); }
@@ -1738,18 +1739,62 @@
       }
       var rx = fx(retAge - curAge).toFixed(1);
       var svg2 = document.getElementById('ws-ret-svg');
-      if (svg2) svg2.innerHTML =
-        '<path d="' + band(p90, p50) + '" style="fill:var(--primary-weak);"></path>' +
-        '<path d="' + band(p50, p10) + '" style="fill:var(--primary-weak); opacity:0.55;"></path>' +
-        '<path d="' + fpath(p90) + '" fill="none" style="stroke:var(--primary);" stroke-width="2.5" stroke-dasharray="5 3" opacity="0.9"></path>' +
-        '<path d="' + fpath(p50) + '" fill="none" style="stroke:var(--text-3);" stroke-width="1" stroke-dasharray="3 4" opacity="0.6"></path>' +
-        '<line x1="' + rx + '" y1="4" x2="' + rx + '" y2="110" style="stroke:var(--warn);" stroke-width="1.5" stroke-dasharray="4 3" opacity="0.6"></line>' +
-        '<rect x="' + (+rx + 2) + '" y="6" width="52" height="14" rx="4" style="fill:var(--warn-weak);"></rect>' +
-        '<text x="' + (+rx + 28) + '" y="16" font-size="8.5" style="fill:var(--warn);" font-family="Roboto,sans-serif" text-anchor="middle" font-weight="500">Retire @' + retAge + '</text>' +
-        '<text x="24" y="10" font-size="8" style="fill:var(--text-3);" font-family="Roboto,sans-serif">p90</text>' +
-        '<text x="' + (FX1 - 14) + '" y="' + (fy(p50[YRS]) - 4).toFixed(1) + '" font-size="8" style="fill:var(--text-3);" font-family="Roboto,sans-serif">p50</text>' +
-        '<text x="' + (FX1 - 14) + '" y="' + Math.min(108, fy(p10[YRS]) + 10).toFixed(1) + '" font-size="8" style="fill:var(--text-3);" font-family="Roboto,sans-serif">p10</text>';
+      if (svg2) {
+        svg2.setAttribute('viewBox', '0 0 660 128');
+        svg2.style.height = '128px';
+        svg2.innerHTML =
+          '<path d="' + band(p90, p50) + '" style="fill:var(--primary-weak);"></path>' +
+          '<path d="' + band(p50, p10) + '" style="fill:var(--primary-weak); opacity:0.55;"></path>' +
+          '<path d="' + fpath(p90) + '" fill="none" style="stroke:var(--primary);" stroke-width="2.5" stroke-dasharray="5 3" opacity="0.9"></path>' +
+          '<path d="' + fpath(p50) + '" fill="none" style="stroke:var(--text-3);" stroke-width="1" stroke-dasharray="3 4" opacity="0.6"></path>' +
+          '<line x1="' + rx + '" y1="6" x2="' + rx + '" y2="122" style="stroke:var(--warn);" stroke-width="1.5" stroke-dasharray="4 3" opacity="0.6"></line>' +
+          '<rect x="' + (+rx + 3) + '" y="8" width="58" height="15" rx="4" style="fill:var(--warn-weak);"></rect>' +
+          '<text x="' + (+rx + 32) + '" y="19" font-size="9" style="fill:var(--warn);" font-family="Roboto,sans-serif" text-anchor="middle" font-weight="500">Retire @' + retAge + '</text>' +
+          '<text x="28" y="14" font-size="8.5" style="fill:var(--text-3);" font-family="Roboto,sans-serif">p90</text>' +
+          '<text x="' + (FX1 - 16) + '" y="' + (fy(p50[YRS]) - 4).toFixed(1) + '" font-size="8.5" style="fill:var(--text-3);" font-family="Roboto,sans-serif">p50</text>' +
+          '<text x="' + (FX1 - 16) + '" y="' + Math.min(124, fy(p10[YRS]) + 11).toFixed(1) + '" font-size="8.5" style="fill:var(--text-3);" font-family="Roboto,sans-serif">p10</text>';
+      }
+      // hand the percentile paths to the hover crosshair
+      retHover = { p10: p10, p50: p50, p90: p90, YRS: YRS, curAge: curAge, fmax: fmax, FX0: FX0, FX1: FX1, FY0: FY0, FY1: FY1 };
     }
+
+    // ---- fan-chart hover: guide line + p10/p50/p90 at the hovered age ----
+    var retHover = null;
+    (function () {
+      var svg = document.getElementById('ws-ret-svg');
+      if (!svg) return;
+      function clearHover() { var g = svg.querySelector('#ws-ret-hoverg'); if (g) g.remove(); }
+      svg.addEventListener('pointerleave', clearHover);
+      svg.addEventListener('pointermove', function (ev) {
+        if (!retHover) return;
+        var ctm = svg.getScreenCTM(); if (!ctm) return;
+        var p0 = svg.createSVGPoint(); p0.x = ev.clientX; p0.y = ev.clientY;
+        var loc = p0.matrixTransform(ctm.inverse());
+        var h = retHover;
+        var idx = Math.round((loc.x - h.FX0) / (h.FX1 - h.FX0) * h.YRS);
+        idx = Math.max(0, Math.min(h.YRS, idx));
+        var x = h.FX0 + (h.FX1 - h.FX0) * idx / h.YRS;
+        var yv = h.FY0 - (h.FY0 - h.FY1) * ((h.p50[idx] || 0) / h.fmax);
+        var l1 = 'Age ' + (h.curAge + idx) + ' · median ' + money(h.p50[idx]);
+        var l2 = 'p10 ' + money(h.p10[idx]) + ' · p90 ' + money(h.p90[idx]);
+        var bw = Math.max(l1.length, l2.length) * 6.4 + 16;
+        var lx = x + 10; if (lx + bw > 655) lx = x - 10 - bw;
+        var ly = Math.max(8, Math.min(yv - 18, 128 - 40));
+        clearHover();
+        var g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+        g.setAttribute('id', 'ws-ret-hoverg');
+        g.setAttribute('pointer-events', 'none');
+        g.innerHTML =
+          '<line x1="' + x.toFixed(1) + '" y1="6" x2="' + x.toFixed(1) + '" y2="122" style="stroke:var(--text-3);" stroke-width="1" stroke-dasharray="3 3"></line>' +
+          '<circle cx="' + x.toFixed(1) + '" cy="' + yv.toFixed(1) + '" r="4" style="fill:var(--primary); stroke:var(--surface);" stroke-width="2"></circle>' +
+          '<rect x="' + lx.toFixed(1) + '" y="' + ly.toFixed(1) + '" width="' + bw.toFixed(0) + '" height="34" rx="5" style="fill:var(--surface); stroke:var(--border); filter:drop-shadow(0 1px 3px rgba(0,0,0,.12));"></rect>' +
+          '<text x="' + (lx + 8).toFixed(1) + '" y="' + (ly + 14).toFixed(1) + '" font-size="10.5" font-family="Roboto Mono,monospace" font-weight="500" style="fill:var(--text);">' + l1 + '</text>' +
+          '<text x="' + (lx + 8).toFixed(1) + '" y="' + (ly + 28).toFixed(1) + '" font-size="10" font-family="Roboto Mono,monospace" style="fill:var(--text-3);">' + l2 + '</text>';
+        svg.appendChild(g);
+      });
+      svg.style.cursor = 'crosshair';
+      svg.style.touchAction = 'none';
+    })();
     function refreshAll() { refreshProfile(); refreshKPIs(); }
 
     // suite-state.js is a defer script that runs after this inline one, so
