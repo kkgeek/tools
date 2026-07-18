@@ -838,6 +838,17 @@ Phase 13v (dashboard chart fixes — user-reported):
   scenario-only retire age + 0.07 growth → live card (96%, $6.25M
   median at 85); missing ages → explanatory sample note; Settings
   clear-history and Reset both purge the right keys.
+- **13v follow-up — live from day one** (user still saw samples): the
+  NW chart required ≥2 snapshots, so the first visit after "Clear
+  chart history" re-showed the SAMPLE for a day; now 1 snapshot
+  renders live as a flat line at today's real value (sample only with
+  zero history = truly empty store, since recordHistory is gated on
+  hasData). Retirement card: `annualExpenses` falls back to the
+  trailing-12-mo Expense Tracker average (mirrors the retirement
+  adapter's "Adopt actual spend"), and the gated state is unmistakable
+  — badge flips to gray "Sample" and the KPI readiness tile hint
+  lists the missing inputs. Ages + retire age remain hard
+  requirements (can't be derived from portfolio data).
 
 ## Constraints to preserve
 
