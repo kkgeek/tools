@@ -894,6 +894,29 @@ snapshots):
   pointerleave clears; the mockup sample stays inert since `nwHover`
   is only set by a live render).
 
+Phase 13x (Retirement Planning widget — complete the inputs + chart UX):
+- **Root cause of "still sample"**: the gate's fourth input, annual
+  retirement spending, had NO input surface in Settings — it only came
+  from the Retirement tool's "Adopt actual spend", budgets, or expense
+  history. (Also: the Monte Carlo page is read-only BY DESIGN — its
+  adapter seeds FROM the store; edits there never write back.)
+- `settings.html`: Household Profile card gained **"Annual spending in
+  retirement"** (→ `retirement.plan.annualExpenses`) and **"Expected
+  growth %/yr"** (→ `plan.growthAssumption`, stored as a FRACTION —
+  input 7 → 0.07, displayed back as 7). With birth years + retirement
+  age already there, Settings alone can now fully light up the widget.
+- `index.html`: the live fan chart re-sizes its own geometry to the
+  full card width (viewBox 660×128; the mockup sample keeps its
+  original 420-wide viewBox — live render sets the attribute), and
+  gained a **hover crosshair**: guide line + dot with a two-line pill
+  "Age N · median $X" / "p10 $Y · p90 $Z" at the hovered age (same
+  getScreenCTM pattern as the NW chart; sample state inert).
+- Verified headless: client-like store (portfolio + ages + retire age,
+  no expenses) → Settings fields write 80000/0.07 and repopulate as
+  80000/7 → dashboard flips live (On Track, retire 2043), svg 660×128,
+  hover "Age 71 · median $2.46M / p10 $708K · p90 $6.61M", clears on
+  leave.
+
 ## Constraints to preserve
 
 - **Zero build step.** No Vite/Webpack until scope demands it.
