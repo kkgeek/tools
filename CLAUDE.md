@@ -887,6 +887,12 @@ snapshots):
   first purchase with quarter ticks Q4'24–Q3'26; unheld MSFT pruned
   from cache; live fetch pulled 302 monthly + 27 weekly points per
   symbol in the background.
+- **13w follow-up — hover crosshair**: pointermove on the chart SVG
+  draws a dashed vertical guide + dot + "$value · date" pill snapped
+  to the nearest data point (screen→viewBox via `getScreenCTM`, so it
+  survives responsive scaling; label flips sides near the right edge;
+  pointerleave clears; the mockup sample stays inert since `nwHover`
+  is only set by a live render).
 
 ## Constraints to preserve
 
