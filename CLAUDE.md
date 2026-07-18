@@ -850,6 +850,44 @@ Phase 13v (dashboard chart fixes — user-reported):
   lists the missing inputs. Ages + retire age remain hard
   requirements (can't be derived from portfolio data).
 
+Phase 13w (NW Growth chart reconstructed from price history — user
+feature request; design choices confirmed via AskUserQuestion:
+positions-only history / undated = held forever / computed replaces
+snapshots):
+- **The Growth chart no longer draws daily snapshots** — it
+  reconstructs portfolio value at each point as Σ shares × RAW close
+  (adjusted close would distort past values for dividend payers) for
+  positions already purchased. Lots enter at `purchaseDate`; undated =
+  held forever (Performance-table convention). Final point is always
+  the live store value; callout = today's full net worth; legend shows
+  today's buckets (retirement/home have no price history — they're
+  numbers, not lines). The chart recomputes on every store change, so
+  add/delete/shares edits update it immediately.
+- **Background price download + cache**: `wealthSuite.priceHist`
+  (24h TTL per symbol) holds `1wk/6mo` + `1mo/max` RAW-close series
+  per held ticker, fetched via the worker → query2 → query1 chain on
+  dashboard load (`ensurePriceHist`); symbols no longer held are
+  pruned from the cache (delete-a-stock requirement). Re-render fires
+  when the background download completes.
+- **Point grid = the requested tiers**: weekly points for the last 3
+  months, monthly to 1 year, quarterly beyond. Window start = chip
+  range, clipped to the earliest purchase when all positions are
+  dated ("All" = since first purchase).
+- **X-axis fixed**: time-scaled x positions (was index-based) with
+  ticks drawn IN-SVG at exact x — months for the 1Y chip, quarters
+  for 3Y/5Y, span-based for All (days/months/quarters/years). The old
+  flex label row (`#ws-nw-months`) is cleared — it could never align
+  with data points.
+- Settings "Clear chart history" → "Clear chart caches" (also removes
+  priceHist); Reset clears it too. Daily snapshots are still recorded
+  (cheap, future use) but nothing reads them for this chart.
+- Verified headless: seeded flat-price cache (VTI $100 ×100sh dated
+  −2y, AAPL $200 ×50sh dated −6mo) → 1Y delta EXACTLY +$10K (+100.0%)
+  (the AAPL entry step), month ticks Aug–Jul; 3Y/All clip to the
+  first purchase with quarter ticks Q4'24–Q3'26; unheld MSFT pruned
+  from cache; live fetch pulled 302 monthly + 27 weekly points per
+  symbol in the background.
+
 ## Constraints to preserve
 
 - **Zero build step.** No Vite/Webpack until scope demands it.

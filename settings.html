@@ -259,7 +259,7 @@
           <select class="st-select" id="st-pricesrc"><option value="yahoo">Yahoo Finance</option></select>
         </div>
         <div class="st-row">
-          <div><div class="st-rval">Clear chart history</div><div class="st-rsub">Deletes this device's net-worth snapshots (the dashboard Growth chart re-accrues from tomorrow)</div></div>
+          <div><div class="st-rval">Clear chart caches</div><div class="st-rsub">Deletes this device's cached price history + legacy snapshots (the Growth chart re-downloads on the next dashboard visit)</div></div>
           <button class="st-btn-outline" id="st-clearhist" type="button">Clear</button>
         </div>
         <div class="st-row st-row--danger">
@@ -468,14 +468,18 @@
     function clearDeviceCaches() {
       try {
         localStorage.removeItem('wealthSuite.nwHistory');
+        localStorage.removeItem('wealthSuite.priceHist');
         localStorage.removeItem('wealthSuite.perfSeries');
         localStorage.removeItem('wealthSuite.briefingStats');
         localStorage.removeItem('wealthSuite.briefingNarrative');
       } catch (e) {}
     }
     $('st-clearhist').addEventListener('click', function () {
-      try { localStorage.removeItem('wealthSuite.nwHistory'); } catch (e) {}
-      flash('Chart history cleared — the Growth chart restarts from your next dashboard visit.');
+      try {
+        localStorage.removeItem('wealthSuite.nwHistory');
+        localStorage.removeItem('wealthSuite.priceHist');
+      } catch (e) {}
+      flash('Chart caches cleared — the Growth chart re-downloads price history on your next dashboard visit.');
     });
 
     // ---------- render ----------

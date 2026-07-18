@@ -1230,6 +1230,9 @@
 
         // ---- charts + retirement (step 4 slice 3) ----
         recordHistory({ nw: netWorth, inv: portfolioVal, ret: retire, home: homeVal });
+        nwHoldings = holdings; nwTodayPV = portfolioVal; nwTodayNW = netWorth;
+        nwTodayRet = retire; nwTodayHome = homeVal;
+        ensurePriceHist(holdings.map(function (h) { return h.ticker; }).filter(function (t, i, a) { return t && a.indexOf(t) === i; }));
         renderNWChart();
         renderAllocation(holdings, portfolioVal);
         renderRetirement(s, portfolioVal, retire, budget);
@@ -1238,10 +1241,9 @@
       } catch (e) {}
     }
 
-    // ---- Net-worth history: one snapshot per day, kept outside the store
-    // (derived data; keeps export/import lean). The Growth chart goes live
-    // from the FIRST snapshot (flat line on day one); history accrues from
-    // daily dashboard visits.
+    // ---- Net-worth daily snapshots: still recorded (cheap, future use)
+    // but the Growth chart no longer reads them — it reconstructs history
+    // from positions × cached market prices (Phase 13w).
     var HKEY = 'wealthSuite.nwHistory';
     function readHistory() { try { return JSON.parse(localStorage.getItem(HKEY) || '[]'); } catch (e) { return []; } }
     function recordHistory(snap) {
@@ -1265,50 +1267,185 @@
       renderNWChart();
     });
 
-    function renderNWChart() {
-      var hist = readHistory();
-      if (!hist.length) return; // truly no data yet → keep illustrative sample
-      // A single snapshot (first visit, or right after "Clear chart
-      // history") still renders live: flat line at today's real value.
-      if (hist.length === 1) hist = [hist[0], hist[0]];
-      if (nwRangeMonths > 0) {
-        var cutoff = new Date(); cutoff.setMonth(cutoff.getMonth() - nwRangeMonths);
-        var cut = cutoff.toISOString().slice(0, 10);
-        var windowed = hist.filter(function (p) { return p.d >= cut; });
-        if (windowed.length >= 2) hist = windowed;
+    // ---- Portfolio price history (Phase 13w) ----
+    // Per-symbol RAW-close series downloaded in the background from the
+    // quote worker (adjusted close would distort past position values for
+    // dividend payers), cached in localStorage for 24h: weekly bars for
+    // the recent months + monthly bars back to inception. Symbols no
+    // longer held are pruned from the cache. The chart reconstructs
+    // portfolio value at each point as Σ shares × price for positions
+    // already purchased (no purchaseDate = held forever, matching the
+    // Performance table), so it updates whenever positions change.
+    var PHKEY = 'wealthSuite.priceHist';
+    var PH_TTL = 24 * 3600 * 1000;
+    function readPH() { try { return JSON.parse(localStorage.getItem(PHKEY) || '{}') || {}; } catch (e) { return {}; } }
+    function savePH(ph) { try { localStorage.setItem(PHKEY, JSON.stringify(ph)); } catch (e) {} }
+    async function fetchRange(t, interval, range) {
+      var path = 'v8/finance/chart/' + encodeURIComponent(t) + '?interval=' + interval + '&range=' + range;
+      var candidates = [QUOTE_WORKER + '/' + path,
+        'https://query2.finance.yahoo.com/' + path,
+        'https://query1.finance.yahoo.com/' + path];
+      for (var i = 0; i < candidates.length; i++) {
+        try {
+          var res = await fetch(candidates[i], { signal: AbortSignal.timeout(8000) });
+          if (!res.ok) continue;
+          var json = await res.json();
+          var r0 = json.chart && json.chart.result && json.chart.result[0];
+          if (!r0 || !r0.timestamp) continue;
+          var px = (r0.indicators.quote && r0.indicators.quote[0].close) || [];
+          var ts = [], p = [];
+          for (var j = 0; j < r0.timestamp.length; j++) {
+            if (px[j] != null && isFinite(px[j])) { ts.push(r0.timestamp[j] * 1000); p.push(px[j]); }
+          }
+          if (p.length) return { ts: ts, px: p };
+        } catch (e) { /* next candidate */ }
       }
+      return null;
+    }
+    var phBusy = false;
+    function ensurePriceHist(tickers) {
+      var ph = readPH();
+      // deleted positions → drop their cached series
+      Object.keys(ph).forEach(function (t) { if (tickers.indexOf(t) < 0) { delete ph[t]; savePH(ph); } });
+      if (phBusy) return;
+      var stale = tickers.filter(function (t) { var e = ph[t]; return !e || !(Date.now() - e.fetchedAt < PH_TTL); });
+      if (!stale.length) return;
+      phBusy = true;
+      Promise.all(stale.map(async function (t) {
+        var mo = await fetchRange(t, '1mo', 'max');
+        var wk = await fetchRange(t, '1wk', '6mo');
+        if (mo || wk) ph[t] = { fetchedAt: Date.now(), mo: mo, wk: wk };
+      })).then(function () {
+        savePH(ph);
+        phBusy = false;
+        renderNWChart(); // background download done → re-render live
+      }).catch(function () { phBusy = false; });
+    }
+    function priceAt(entry, t) {
+      // weekly series for recent dates when present, else monthly
+      var s = (entry.wk && t >= Date.now() - 100 * 864e5) ? entry.wk : (entry.mo || entry.wk);
+      if (!s || !s.ts.length) return null;
+      if (t <= s.ts[0]) return s.px[0]; // before data starts → earliest price
+      var v = s.px[0];
+      for (var i = 0; i < s.ts.length; i++) { if (s.ts[i] <= t) v = s.px[i]; else break; }
+      return v;
+    }
+
+    // today's live values, set by refreshKPIs before each render
+    var nwHoldings = [], nwTodayPV = 0, nwTodayNW = 0, nwTodayRet = 0, nwTodayHome = 0;
+    function renderNWChart() {
+      var holdings = nwHoldings.filter(function (h) { return h.ticker && Number(h.shares) > 0; });
+      if (!holdings.length || !(nwTodayPV > 0)) return; // keep illustrative sample
+      var ph = readPH();
+      var now = Date.now();
+      var dated = holdings.map(function (h) {
+        if (!h.purchaseDate) return null;
+        var t = new Date(String(h.purchaseDate).slice(0, 10) + 'T12:00:00').getTime();
+        return isNaN(t) ? null : t;
+      });
+      var allDated = dated.length && dated.every(function (x) { return x != null; });
+      var earliest = allDated ? Math.min.apply(null, dated) : null;
+      // window start: the selected range; "All" reaches back to the
+      // earliest purchase (all positions dated) or the earliest cached
+      // price data (undated positions = held forever)
+      var winStart;
+      if (nwRangeMonths > 0) {
+        var wd = new Date(); wd.setMonth(wd.getMonth() - nwRangeMonths);
+        winStart = wd.getTime();
+        if (allDated && earliest > winStart) winStart = earliest;
+      } else if (earliest != null) {
+        winStart = earliest;
+      } else {
+        var minTs = now;
+        holdings.forEach(function (h) { var e2 = ph[h.ticker]; if (e2 && e2.mo && e2.mo.ts.length) minTs = Math.min(minTs, e2.mo.ts[0]); });
+        winStart = minTs < now ? minTs : now - 365 * 864e5;
+      }
+      if (winStart >= now - 864e5) winStart = now - 30 * 864e5; // degenerate → 30d
+      // point grid: weekly for the last 3 months, monthly to 1 year,
+      // quarterly beyond (the cached-series tiers)
+      var t3m = now - 91 * 864e5, t1y = now - 366 * 864e5;
+      var pts = [];
+      var dNow = new Date(); dNow.setHours(12, 0, 0, 0);
+      for (var w2 = new Date(dNow); w2.getTime() >= Math.max(winStart, t3m); w2.setDate(w2.getDate() - 7)) pts.push(w2.getTime());
+      var mCur = new Date(dNow.getFullYear(), dNow.getMonth(), 1, 12);
+      for (var m2 = new Date(mCur); m2.getTime() >= Math.max(winStart, t1y); m2.setMonth(m2.getMonth() - 1)) { if (m2.getTime() < t3m) pts.push(m2.getTime()); }
+      var qCur = new Date(dNow.getFullYear(), Math.floor(dNow.getMonth() / 3) * 3, 1, 12);
+      for (var q2 = new Date(qCur); q2.getTime() >= winStart; q2.setMonth(q2.getMonth() - 3)) { if (q2.getTime() < t1y) pts.push(q2.getTime()); }
+      pts.push(winStart);
+      pts = pts.filter(function (t, i2, a) { return a.indexOf(t) === i2 && t >= winStart; }).sort(function (a, b) { return a - b; });
+      if (pts[pts.length - 1] < now - 12 * 3600 * 1000) pts.push(now); else pts[pts.length - 1] = now;
+      if (pts.length < 2) return;
+      // portfolio value at each point: positions held by then × price
+      var vals = pts.map(function (t) {
+        var v = 0;
+        holdings.forEach(function (h, i3) {
+          if (dated[i3] != null && dated[i3] > t) return; // not yet purchased
+          var e3 = ph[h.ticker];
+          var p = e3 ? priceAt(e3, t) : null;
+          if (p == null) p = Number(h.currentPrice) > 0 ? Number(h.currentPrice) : (Number(h.costBasis) || 0);
+          v += p * Number(h.shares);
+        });
+        return v;
+      });
+      vals[vals.length - 1] = nwTodayPV; // final point = live store value
+      // ---- draw (time-scaled X so points AND axis ticks align exactly) ----
       var W = { x0: 34, x1: 648, y0: 150, y1: 20 };
-      var maxV = hist.reduce(function (m, p) { return Math.max(m, p.nw || 0); }, 0) * 1.08 || 1;
-      function X(i) { return W.x0 + (W.x1 - W.x0) * (hist.length === 1 ? 1 : i / (hist.length - 1)); }
+      var t0 = pts[0], tN = pts[pts.length - 1];
+      var maxV = Math.max.apply(null, vals) * 1.08 || 1;
+      function X(t) { return W.x0 + (W.x1 - W.x0) * ((t - t0) / Math.max(1, tN - t0)); }
       function Y(v) { return W.y0 - (W.y0 - W.y1) * ((v || 0) / maxV); }
-      function line(key) { return hist.map(function (p, i) { return (i ? 'L' : 'M') + ' ' + X(i).toFixed(1) + ',' + Y(p[key]).toFixed(1); }).join(' '); }
+      var lineD = pts.map(function (t, i4) { return (i4 ? 'L' : 'M') + ' ' + X(t).toFixed(1) + ',' + Y(vals[i4]).toFixed(1); }).join(' ');
       var grid = '', labels = '';
       for (var g = 0; g <= 3; g++) {
         var gv = maxV * g / 3, gy = Y(gv);
         grid += '<line x1="34" y1="' + gy.toFixed(1) + '" x2="648" y2="' + gy.toFixed(1) + '" style="stroke:var(--border);" stroke-width="1"></line>';
         labels += '<text x="2" y="' + (gy - 4).toFixed(1) + '" font-size="14" style="fill:var(--text-3);" font-family="Roboto Mono,monospace">' + moneyC(gv) + '</text>';
       }
-      var lastP = hist[hist.length - 1];
-      var cx = X(hist.length - 1).toFixed(1), cy = Y(lastP.nw).toFixed(1);
+      // axis ticks: granularity follows the selected range — 1Y months,
+      // 3Y/5Y quarters, All by span — drawn in-SVG at exact x positions
+      var MO = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+      var spanD = (tN - t0) / 864e5;
+      var mode = nwRangeMonths === 12 ? 'mo' : (nwRangeMonths === 36 || nwRangeMonths === 60) ? 'q'
+        : (spanD <= 400 ? 'mo' : spanD <= 1600 ? 'q' : 'y');
+      if (spanD <= 95) mode = 'd';
+      var ticks = [];
+      var c;
+      if (mode === 'd') {
+        for (var i5 = 0; i5 < pts.length; i5 += Math.max(1, Math.ceil(pts.length / 6))) {
+          var dd = new Date(pts[i5]); ticks.push({ t: pts[i5], l: MO[dd.getMonth()] + ' ' + dd.getDate() });
+        }
+      } else if (mode === 'mo') {
+        c = new Date(t0); c = new Date(c.getFullYear(), c.getMonth() + 1, 1, 12);
+        for (; c.getTime() <= tN; c.setMonth(c.getMonth() + 1)) ticks.push({ t: c.getTime(), l: MO[c.getMonth()] + (c.getMonth() === 0 ? " '" + String(c.getFullYear()).slice(2) : '') });
+      } else if (mode === 'q') {
+        c = new Date(t0); c = new Date(c.getFullYear(), (Math.floor(c.getMonth() / 3) + 1) * 3, 1, 12);
+        for (; c.getTime() <= tN; c.setMonth(c.getMonth() + 3)) ticks.push({ t: c.getTime(), l: 'Q' + (Math.floor(c.getMonth() / 3) + 1) + " '" + String(c.getFullYear()).slice(2) });
+      } else {
+        c = new Date(t0); c = new Date(c.getFullYear() + 1, 0, 1, 12);
+        for (; c.getTime() <= tN; c.setFullYear(c.getFullYear() + 1)) ticks.push({ t: c.getTime(), l: String(c.getFullYear()) });
+      }
+      var tickStep = Math.max(1, Math.ceil(ticks.length / 12));
+      var tickSvg = ticks.filter(function (_, i6) { return i6 % tickStep === 0; }).map(function (tk) {
+        return '<text x="' + X(tk.t).toFixed(1) + '" y="164" text-anchor="middle" font-size="11" style="fill:var(--text-3);" font-family="Roboto,sans-serif">' + tk.l + '</text>';
+      }).join('');
+      var cx = X(tN).toFixed(1), cy = Y(vals[vals.length - 1]).toFixed(1);
       var svg = document.getElementById('ws-nw-svg');
       if (svg) svg.innerHTML =
         '<defs><linearGradient id="wsArea" x1="0" y1="0" x2="0" y2="1">' +
         '<stop offset="0%" style="stop-color:var(--primary); stop-opacity:0.22"></stop>' +
         '<stop offset="85%" style="stop-color:var(--primary); stop-opacity:0.02"></stop>' +
         '<stop offset="100%" style="stop-color:var(--primary); stop-opacity:0"></stop></linearGradient></defs>' +
-        grid + labels +
-        '<path d="' + line('nw') + ' L ' + W.x1 + ',' + W.y0 + ' L ' + W.x0 + ',' + W.y0 + ' Z" fill="url(#wsArea)" stroke="none"></path>' +
-        '<path d="' + line('home') + '" fill="none" style="stroke:var(--cat4);" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>' +
-        '<path d="' + line('ret') + '" fill="none" style="stroke:var(--cat3);" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>' +
-        '<path d="' + line('inv') + '" fill="none" style="stroke:var(--cat2);" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>' +
-        '<path d="' + line('nw') + '" fill="none" style="stroke:var(--primary);" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"></path>' +
+        grid + labels + tickSvg +
+        '<path d="' + lineD + ' L ' + W.x1 + ',' + W.y0 + ' L ' + W.x0 + ',' + W.y0 + ' Z" fill="url(#wsArea)" stroke="none"></path>' +
+        '<path d="' + lineD + '" fill="none" style="stroke:var(--primary);" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"></path>' +
         '<circle cx="' + cx + '" cy="' + cy + '" r="10" style="fill:var(--primary-weak);"></circle>' +
         '<circle cx="' + cx + '" cy="' + cy + '" r="4" style="fill:var(--primary); stroke:var(--surface);" stroke-width="2"></circle>';
-      // callout + delta vs window start
-      var first = hist[0];
-      var delta = (lastP.nw || 0) - (first.nw || 0);
-      var pctD = first.nw ? (delta / first.nw * 100) : 0;
-      var co = document.getElementById('ws-nw-callout'); if (co) co.textContent = full(lastP.nw);
+      // clear the old flex label row — ticks are drawn in-SVG now
+      var mrow = document.getElementById('ws-nw-months'); if (mrow) mrow.innerHTML = '';
+      // callout = today's full net worth; delta = portfolio move over window
+      var delta = vals[vals.length - 1] - vals[0];
+      var pctD = vals[0] ? (delta / vals[0] * 100) : 0;
+      var co = document.getElementById('ws-nw-callout'); if (co) co.textContent = full(nwTodayNW);
       var de = document.getElementById('ws-nw-delta');
       if (de) {
         de.innerHTML = '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><polyline points="' + (delta >= 0 ? '18 15 12 9 6 15' : '6 9 12 15 18 9') + '"></polyline></svg>' +
@@ -1318,46 +1455,15 @@
       }
       var lg = document.getElementById('ws-nw-legend');
       if (lg) lg.innerHTML =
-        '<div class="ws-legend__item"><div class="ws-legend__dash" style="background:var(--primary);"></div>Net Worth<span class="ws-legend__val">' + money(lastP.nw) + '</span></div>' +
-        '<div class="ws-legend__item"><div class="ws-legend__dash" style="background:var(--cat2);"></div>Investments<span class="ws-legend__val">' + money(lastP.inv) + '</span></div>' +
-        '<div class="ws-legend__item"><div class="ws-legend__dash" style="background:var(--cat3);"></div>Retirement<span class="ws-legend__val">' + money(lastP.ret) + '</span></div>' +
-        '<div class="ws-legend__item"><div class="ws-legend__dash" style="background:var(--cat4);"></div>Home<span class="ws-legend__val">' + money(lastP.home) + '</span></div>';
-      // X-axis labels: granularity follows the VISIBLE window's actual
-      // span — days → months → quarters → years — with consecutive
-      // duplicates blanked (spacing kept), so the 1Y/3Y/5Y/All pills
-      // visibly change the axis once history spans long enough.
-      var spanDays = Math.max(1, (new Date(lastP.d + 'T12:00:00') - new Date(first.d + 'T12:00:00')) / 86400000);
-      var months = document.getElementById('ws-nw-months');
-      if (months) {
-        var MO = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-        function axisLbl(d) {
-          if (spanDays <= 70) return MO[d.getMonth()] + ' ' + d.getDate();
-          if (spanDays <= 550) return MO[d.getMonth()] + (d.getMonth() === 0 ? " '" + String(d.getFullYear()).slice(2) : '');
-          if (spanDays <= 1500) return 'Q' + (Math.floor(d.getMonth() / 3) + 1) + " '" + String(d.getFullYear()).slice(2);
-          return String(d.getFullYear());
-        }
-        var n = Math.min(12, hist.length);
-        var out = '', prevLbl = null;
-        for (var i = 0; i < n; i++) {
-          var p = hist[Math.round(i * (hist.length - 1) / Math.max(1, n - 1))];
-          var d = new Date(p.d + 'T12:00:00');
-          var isLast = i === n - 1;
-          var text = axisLbl(d);
-          var show = isLast || text !== prevLbl;
-          if (show) prevLbl = text;
-          out += '<span class="ws-date" style="font-size:11.5px;color:' + (isLast ? 'var(--primary-text)' : 'var(--text-3)') + (isLast ? ';font-weight:500' : '') + ';">' + (show ? text + (isLast ? ' ▲' : '') : '&nbsp;') + '</span>';
-        }
-        months.innerHTML = out;
-      }
-      // Subtitle states the selected range AND how much history actually
-      // exists — with days of snapshots, every range shows the same data,
-      // and this is why (history accrues from dashboard visits).
+        '<div class="ws-legend__item"><div class="ws-legend__dash" style="background:var(--primary);"></div>Portfolio (line)<span class="ws-legend__val">' + money(nwTodayPV) + '</span></div>' +
+        '<div class="ws-legend__item"><div class="ws-legend__dash" style="background:var(--cat3);"></div>Retirement<span class="ws-legend__val">' + money(nwTodayRet) + '</span></div>' +
+        '<div class="ws-legend__item"><div class="ws-legend__dash" style="background:var(--cat4);"></div>Home<span class="ws-legend__val">' + money(nwTodayHome) + '</span></div>' +
+        '<div class="ws-legend__item"><div class="ws-legend__dash" style="background:var(--cat2);"></div>Net Worth today<span class="ws-legend__val">' + money(nwTodayNW) + '</span></div>';
       var subEl = document.getElementById('ws-nw-sub');
       if (subEl) {
         var rname = { 12: '1Y', 36: '3Y', 60: '5Y', 0: 'All' }[nwRangeMonths] || 'All';
-        var dR = Math.max(1, Math.round(spanDays));
-        var covered = spanDays >= 350 ? (Math.round(spanDays / 365.25 * 10) / 10) + ' yrs' : dR + ' day' + (dR === 1 ? '' : 's');
-        subEl.textContent = rname + ' view · ' + covered + ' of daily snapshots · net worth & top buckets';
+        var anyFetched = holdings.some(function (h) { return ph[h.ticker]; });
+        subEl.textContent = rname + ' view · positions × market price from purchase date' + (anyFetched ? '' : ' · downloading price history…');
       }
     }
 
