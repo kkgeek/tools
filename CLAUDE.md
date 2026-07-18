@@ -805,6 +805,40 @@ Phase 13u (account names + tax-treatment tracking):
   auto-registered treatments), tracker + hub backfill each keep 1 row,
   hub paste never leaks the account number.
 
+Phase 13v (dashboard chart fixes — user-reported):
+- **NW Growth "stale data"**: the chart draws `wealthSuite.nwHistory`
+  (device-local daily snapshots), which faithfully includes test-era
+  junk — and `store.reset()` never touched it, so a cleaned store kept
+  charting old values. Settings Reset now also clears the device
+  caches (nwHistory/perfSeries/briefingStats/briefingNarrative) via
+  `clearDeviceCaches()`, and Data Controls gained a standalone
+  **"Clear chart history"** button (fix a poisoned chart without
+  losing real data; history re-accrues from the next dashboard visit).
+- **Range pills**: they always re-windowed the data, but with < 1 yr
+  of snapshots every window is identical — invisible. Now the x-axis
+  granularity follows the VISIBLE window's actual span (≤70d → "Jul
+  18", ≤550d → months, ≤1500d → quarters "Q3 '25", else years;
+  consecutive duplicates blanked), and the card subtitle (`#ws-nw-sub`)
+  states the selected range AND recorded span ("1Y view · 9 days of
+  daily snapshots …") so "no effect" is self-explaining.
+- **Retirement Planning card**: three fixes. (1) retire age now falls
+  back active scenario → plan.targetRetireAge → spouses'
+  targetRetireAge (index.html doesn't load suite.js, so the scenario
+  precedence is replicated inline, matching the Roth/MC adapters).
+  (2) **growthAssumption unit bug**: the card did `(v||7)/100`, but
+  the store convention is a FRACTION (0.07) → mean 0.0007 silently
+  wrecked the simulation whenever the plan was populated; now
+  normalized (>1 → percent, else fraction, default 0.07). (3) When
+  still gated on a non-empty store, `#ws-ret-sub` names the missing
+  inputs ("Sample — add household ages + annual expenses …") instead
+  of silently showing the mockup.
+- Verified headless: 24-mo seeded history → 1Y pill months axis +
+  "+$219K", All pill quarters axis + "+$300K", callout tracks the
+  store's live NW; 6-day history → day labels + honest subtitle;
+  scenario-only retire age + 0.07 growth → live card (96%, $6.25M
+  median at 85); missing ages → explanatory sample note; Settings
+  clear-history and Reset both purge the right keys.
+
 ## Constraints to preserve
 
 - **Zero build step.** No Vite/Webpack until scope demands it.
