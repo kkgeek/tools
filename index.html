@@ -1239,8 +1239,9 @@
     }
 
     // ---- Net-worth history: one snapshot per day, kept outside the store
-    // (derived data; keeps export/import lean). The Growth chart draws from
-    // it once ≥2 days exist — history accrues from daily dashboard visits.
+    // (derived data; keeps export/import lean). The Growth chart goes live
+    // from the FIRST snapshot (flat line on day one); history accrues from
+    // daily dashboard visits.
     var HKEY = 'wealthSuite.nwHistory';
     function readHistory() { try { return JSON.parse(localStorage.getItem(HKEY) || '[]'); } catch (e) { return []; } }
     function recordHistory(snap) {
@@ -1266,7 +1267,10 @@
 
     function renderNWChart() {
       var hist = readHistory();
-      if (hist.length < 2) return; // keep illustrative sample until history accrues
+      if (!hist.length) return; // truly no data yet → keep illustrative sample
+      // A single snapshot (first visit, or right after "Clear chart
+      // history") still renders live: flat line at today's real value.
+      if (hist.length === 1) hist = [hist[0], hist[0]];
       if (nwRangeMonths > 0) {
         var cutoff = new Date(); cutoff.setMonth(cutoff.getMonth() - nwRangeMonths);
         var cut = cutoff.toISOString().slice(0, 10);
@@ -1351,7 +1355,8 @@
       var subEl = document.getElementById('ws-nw-sub');
       if (subEl) {
         var rname = { 12: '1Y', 36: '3Y', 60: '5Y', 0: 'All' }[nwRangeMonths] || 'All';
-        var covered = spanDays >= 350 ? (Math.round(spanDays / 365.25 * 10) / 10) + ' yrs' : Math.round(spanDays) + ' days';
+        var dR = Math.max(1, Math.round(spanDays));
+        var covered = spanDays >= 350 ? (Math.round(spanDays / 365.25 * 10) / 10) + ' yrs' : dR + ' day' + (dR === 1 ? '' : 's');
         subEl.textContent = rname + ' view · ' + covered + ' of daily snapshots · net worth & top buckets';
       }
     }
@@ -1474,9 +1479,27 @@
         || (spouses[0] && Number(spouses[0].targetRetireAge)) || (spouses[1] && Number(spouses[1].targetRetireAge)) || null;
       var startBal = (portfolioVal || 0) + (retireBal || 0);
       var expenses = Number(plan.annualExpenses) || (monthlyBudget ? monthlyBudget * 12 : 0);
+      if (!(expenses > 0)) {
+        // fall back to actual spending: trailing-12-month average from the
+        // Expense Tracker (same derivation as the retirement adapter's
+        // "Adopt actual spend"); sign convention: negative = spend
+        var tx2 = (s.expenses && s.expenses.transactions) || [];
+        var cut2 = Date.now() - 366 * 864e5;
+        var byM = {};
+        tx2.forEach(function (r) {
+          var dt = r && (r.date || r.at); if (!dt) return;
+          var t2 = new Date(String(dt).slice(0, 10) + 'T12:00:00').getTime();
+          if (!(t2 > cut2)) return;
+          var k = String(dt).slice(0, 7);
+          byM[k] = (byM[k] || 0) - (Number(r.amount) || 0);
+        });
+        var ms = Object.keys(byM).map(function (k) { return byM[k]; }).filter(function (v) { return v > 0; });
+        if (ms.length) expenses = Math.round(ms.reduce(function (a, b) { return a + b; }, 0) / ms.length * 12);
+      }
       if (!curAge || !retAge || retAge <= curAge || !(startBal > 0) || !(expenses > 0)) {
-        // keep the sample chart, but say WHY it isn't live yet (only once
-        // the store has any data — a fully empty store stays pure sample)
+        // keep the sample chart, but make the sample state unmistakable and
+        // say WHY it isn't live yet (only once the store has any data —
+        // a fully empty store stays pure sample)
         if (s.meta && s.meta.lastUpdated != null) {
           var miss = [];
           if (!curAge) miss.push('household ages');
@@ -1485,6 +1508,13 @@
           if (!(expenses > 0)) miss.push('annual expenses');
           var subG = document.getElementById('ws-ret-sub');
           if (subG && miss.length) subG.textContent = 'Sample — add ' + miss.join(' + ') + ' in Settings / Retirement Plan to go live';
+          var badgeG = document.getElementById('ws-ret-badge');
+          if (badgeG) { badgeG.textContent = 'Sample'; badgeG.style.background = 'var(--surface-2)'; badgeG.style.color = 'var(--text-2)'; }
+          var rrG = metricEl('retirementReadiness');
+          if (rrG && miss.length) {
+            var hintsG = rrG.querySelectorAll('.ws-hint');
+            if (hintsG[0]) hintsG[0].textContent = 'Sample — needs ' + miss.join(', ');
+          }
         }
         return;
       }
