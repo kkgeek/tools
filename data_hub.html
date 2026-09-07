@@ -625,20 +625,22 @@ MSFT,25,310.00,11/20/2023,Schwab 401(k),Tax Deferred"></textarea>
       var stClass = { new: 'dh-st-new', update: 'dh-st-upd', warn: 'dh-st-warn' };
       var mapBadge = mapping.custom
         ? '<span class="dh-ok">Custom mapping</span>'
+        : mapping.assumed
+        ? '<span class="dh-ok" title="Columns read in order: ' + ASSUMED_HEADERS.join(', ') + '">No header row — columns assumed in order</span>'
         : '<span class="dh-ok"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"></polyline></svg>Columns mapped automatically</span>';
       var mapPanel = mapOpen
-        ? '<div class="dh-map">' + mapSelect('tk', 'Ticker') + mapSelect('sh', 'Shares') + mapSelect('cb', 'Cost basis') + mapSelect('ac', 'Account') + mapSelect('pd', 'Purchase date') + mapSelect('at', 'Account type') +
+        ? '<div class="dh-map">' + mapSelect('tk', 'Ticker') + mapSelect('sh', 'Shares') + mapSelect('cb', 'Cost basis') + mapSelect('ac', 'Account name') + mapSelect('pd', 'Purchase date') + mapSelect('at', 'Account type') +
           '<label><input type="checkbox" id="dh-map-total"' + (mapping.costIsTotal ? ' checked' : '') + '> Cost column is a lot total (÷ shares)</label></div>'
         : '';
       var rowsHtml = parsed.length
-        ? '<div class="dh-prow dh-prow--head"><span class="dh-ph">Ticker</span><span class="dh-ph dh-cell--r">Shares</span><span class="dh-ph dh-cell--r">Cost Basis</span><span class="dh-ph dh-cell--r">Purchased</span><span class="dh-ph" style="padding-left:12px;">Account</span><span class="dh-ph dh-cell--r">Status</span></div>' +
+        ? '<div class="dh-prow dh-prow--head"><span class="dh-ph">Ticker</span><span class="dh-ph dh-cell--r">Shares</span><span class="dh-ph dh-cell--r">Cost Basis</span><span class="dh-ph dh-cell--r">Purchase Date</span><span class="dh-ph" style="padding-left:12px;">Account</span><span class="dh-ph dh-cell--r">Status</span></div>' +
           shown.map(function (r) {
             var costTotal = (r.costBasis && r.shares) ? r.costBasis * r.shares : r.costBasis;
             return '<div class="dh-prow"><span class="dh-cell--tk">' + esc(r.ticker) + '</span>' +
               '<span class="dh-cell dh-cell--r dh-mono">' + (r.shares ? r.shares.toLocaleString('en-US') : '—') + '</span>' +
               '<span class="dh-cell dh-cell--r dh-mono">' + (costTotal ? fmtFull(costTotal) : '—') + '</span>' +
               '<span class="dh-cell dh-cell--r dh-mono">' + (r.purchaseDate || '—') + '</span>' +
-              '<span class="dh-cell" style="padding-left:12px;">' + (esc(r.account) || '—') + '</span>' +
+              '<span class="dh-cell" style="padding-left:12px;">' + (esc(r.account) || '—') + (r.acctType ? '<div class="dh-hint" style="margin-top:1px;">' + esc(r.acctType) + '</div>' : '') + '</span>' +
               '<span class="dh-cell--r ' + stClass[r.status] + '">' + stLabel[r.status] + '</span></div>';
           }).join('') +
           '<div class="dh-preview__foot"><span class="dh-cell">' + (parsed.length > 6 ? (parsed.length - 6) + ' more rows · ' : '') + counts.new + ' new, ' + counts.update + ' updates' + (counts.warn ? ', ' + counts.warn + ' need review' : '') + '</span>' +
@@ -739,16 +741,44 @@ MSFT,25,310.00,11/20/2023,Schwab 401(k),Tax Deferred"></textarea>
       flash('Committed ' + n + ' holding' + (n === 1 ? '' : 's') + ' to the store.');
     }
 
+    // Positional column order assumed when a paste/CSV has no header row
+    // (matches the paste placeholder + "Accepted columns" hint).
+    var ASSUMED_HEADERS = ['Ticker', 'Shares', 'Cost Basis', 'Purchase Date', 'Account Name', 'Account Type'];
+    function isNumericCell(v) { var t = String(v == null ? '' : v).replace(/[$,\s]/g, ''); return t !== '' && /^-?\d*\.?\d+$/.test(t); }
+    // Headerless = first cell looks like a ticker, second cell is a number,
+    // and no cell carries a known header keyword.
+    function looksHeaderless(cells) {
+      if (!cells || cells.length < 2) return false;
+      if (!/^[A-Za-z][A-Za-z0-9.\-]{0,9}$/.test(cells[0] || '')) return false;
+      if (!isNumericCell(cells[1])) return false;
+      return findCol(cells, ['ticker', 'symbol', 'shares', 'quantity', 'qty', 'cost', 'basis', 'account', 'date', 'type', 'treatment']) < 0;
+    }
     function ingestText(text) {
       var lines = String(text || '').replace(/\r\n?/g, '\n').split('\n').filter(function (l) { return l.trim() !== ''; });
-      if (lines.length < 2) {
+      if (!lines.length) {
         rawImport = null; mapping = null; parsed = [];
         renderPreview();
-        flash('No rows found — expected a header row plus at least one data row.');
+        flash('No rows found — paste a header row plus data rows, or bare rows in the order Ticker, Shares, Cost Basis, Purchase Date, Account, Account Type.');
         return;
       }
-      rawImport = { headers: splitLine(lines[0]), rows: lines.slice(1).map(function (l) { return splitLine(l); }) };
+      var first = splitLine(lines[0]);
+      var headerless = looksHeaderless(first);
+      // A bare paste (no header line) is common — "MSFT, 897, 131, 10/19/2016,
+      // Knv-fid". Treating that line as the header silently dropped the
+      // first holding AND left dates/accounts unmapped. Assume the
+      // documented positional order instead (the mapping editor can still
+      // override any column).
+      rawImport = headerless
+        ? { headers: ASSUMED_HEADERS.slice(0, Math.max(first.length, 3)), rows: lines.map(function (l) { return splitLine(l); }) }
+        : { headers: first, rows: lines.slice(1).map(function (l) { return splitLine(l); }) };
+      if (lines.length < 2 && !headerless) {
+        rawImport = null; mapping = null; parsed = [];
+        renderPreview();
+        flash('Only a header row found — add at least one data row.');
+        return;
+      }
       mapping = detectMapping(rawImport.headers);
+      mapping.assumed = headerless;
       mapOpen = false;
       buildParsed();
       renderPreview();

@@ -917,6 +917,72 @@ Phase 13x (Retirement Planning widget — complete the inputs + chart UX):
   hover "Age 71 · median $2.46M / p10 $708K · p90 $6.61M", clears on
   leave.
 
+Phase 13y (Data Hub — headerless paste import; user-reported):
+- `data_hub.html` only. `ingestText()` treated line 1 as the header
+  unconditionally, so a bare paste ("MSFT, 897, 131, 10/19/2016,
+  Knv-fid" …) silently DROPPED the first holding and — because the
+  "headers" were ticker/number cells — never mapped Purchase Date,
+  Account Name, or Account Type. Now `looksHeaderless(firstLine)`
+  (first cell ticker-shaped, second numeric, no header keyword in any
+  cell) synthesizes the documented positional headers
+  `ASSUMED_HEADERS` = Ticker, Shares, Cost Basis, Purchase Date,
+  Account Name, Account Type (trimmed to the row width) and keeps every
+  line as data. The mapping editor works unchanged on the synthetic
+  headers; badge reads "No header row — columns assumed in order".
+  A single headerless line imports; a header-only line gets an
+  explicit message.
+- Preview column renamed "Purchased" → "Purchase Date"; the Account
+  cell shows the parsed treatment as a sublabel; mapping-editor label
+  "Account" → "Account name". Account NUMBERS remain deliberately
+  never imported (13u).
+- Verified headless (harness paste → preview → commit): the user's 7
+  mixed-spacing/format rows → 7 holdings with ISO dates + accounts
+  auto-registered; lowercase `vti,10,$165.34,…,My Roth IRA,Tax Free` →
+  Roth/Tax Free curated; headered SYMBOL/QUANTITY/"Cost Basis Total"
+  paste still auto-maps with per-share cb 142.8.
+
+Phase 13z (dashboard: Spending-vs-Budget sample label + blank frame; user-reported):
+- `index.html` only.
+- **Blank white frame under the dashboard**: `#ws-frame` carries `hidden`
+  on the dashboard route, but `.ws-frame { display:block }` (class
+  specificity) beat the UA `[hidden]{display:none}` rule, so the empty
+  iframe (`flex:1 1 auto; height:100%`) rendered as a blank panel below
+  the footer. Fixed with `.ws-frame[hidden] { display:none; }`. The
+  router's `frame.hidden = true/false` toggling is unchanged.
+- **Spending vs Budget never said it was a sample**: the card's static
+  markup now DEFAULTS to the sample state (subtitle "Sample — import
+  transactions in the Expense Tracker to go live", gray "Sample" badge)
+  — covering the empty-store path where the renderer never runs — and
+  `renderSpending()`'s gated early-return (store has data but no spend
+  this month) sets an explicit "Sample — no <Month> transactions yet;
+  import them in the Expense Tracker or Data Hub" note + gray badge,
+  mirroring the retirement card's pattern. The live path already
+  overwrites subtitle + badge text/colours, so no other change.
+- Verified headless: empty store → Sample label/badge, frame display:
+  none h=0; data-but-no-spend → explicit month note; this-month spend →
+  "September 2026 · Auto-categorized" / "$860 left" / real rows; open
+  Settings → frame display:block h=1139; back → hidden again, no gap.
+
+Phase 13aa (Net Worth tracker — Assets card polish; user-reported):
+- `net_worth.html` only. Card title is now an icon + "Assets" (inline
+  briefcase SVG, `.card-t--icon`/`.card-ico`, tinted `--blue-t`); the
+  "— portfolio & retirement from tools" sub-text was dropped.
+  "Portfolio (Tracker / Review)" → "Stock Portfolio".
+- **"Stock Portfolio" and "Retirement accounts" link to the Portfolio
+  Tracker** via a new `nwGo(a)` helper — the first cross-tool link
+  authored INSIDE a tool page: when the immediate `window.parent` hosts
+  `#ws-frame` (i.e. the tool is embedded in the shell) it sets
+  `parent.location.hash = '#portfolio_tracker.html'` so the shell's
+  `hashchange` router loads the tool AND the sidebar highlight follows;
+  otherwise (standalone, or a cross-origin parent throwing) it returns
+  true and the plain `href` navigates. Reuse this pattern for any future
+  in-tool cross-link — a bare `href` inside the iframe would navigate
+  only the frame and leave the sidebar stale; `top.location` is wrong
+  under nested harnesses (the verify skill wraps pages in an iframe).
+- Verified headless: embedded click → shell hash `#portfolio_tracker.html`,
+  active nav "Portfolio Tracker", frame src swapped; standalone click →
+  `/portfolio_tracker.html`, harness hash untouched.
+
 ## Constraints to preserve
 
 - **Zero build step.** No Vite/Webpack until scope demands it.
