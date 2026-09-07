@@ -28,6 +28,14 @@
  *   we just seeded. To avoid clobbering meta.lastEditedBy on the
  *   echo, we record the last raw value we mirrored from/seeded to
  *   and skip on byte-equal repeats.
+ *
+ * A page visit never fills the store (Phase 13ac):
+ *   The tool saves its inputs on mount — DEFAULT figures on a fresh
+ *   browser, or whatever it last held after a suite Reset — and that
+ *   save used to mirror straight into an empty store. Mirroring (both
+ *   the load-time pass and the setItem patch) now runs only after the
+ *   user has interacted with the tool in this session, or when the
+ *   store already carries tax-authored data (a re-sync, not a seed).
  * ============================================================= */
 (function () {
   'use strict';
@@ -183,6 +191,7 @@
 
   function mirrorIfChanged(rawValue) {
     if (rawValue === lastMirroredRaw) return;
+    if (!canMirror()) return; // untouched session: don't record either, so the first post-interaction save mirrors in full
     lastMirroredRaw = rawValue;
     const parsed = parseTax(rawValue);
     if (!parsed) return;
@@ -195,10 +204,27 @@
   const suiteLastEditor = suiteState && suiteState.meta && suiteState.meta.lastEditedBy;
   const taxRaw = localStorage.getItem(TAX_KEY);
 
+  // ---------- user-interaction gate ----------
+  // True once the user has typed/changed/clicked inside the tool's React
+  // root this session. Until then, the tool's own saves (mount echo of
+  // defaults or stale inputs) are NOT mirrored into the store.
+  let userTouched = false;
+  function markTouched(e) {
+    if (userTouched) return;
+    const root = document.getElementById('root');
+    if (root && e.target instanceof Node && !root.contains(e.target)) return; // shell chrome / banners
+    if (e.type === 'click' && !(e.target.closest && e.target.closest('button,input,select,textarea,label,[role="button"],[role="tab"]'))) return;
+    userTouched = true;
+  }
+  ['input', 'change', 'keydown', 'paste', 'click'].forEach((t) => document.addEventListener(t, markTouched, true));
+  const suiteOwnedByTax = suiteHasData && suiteLastEditor === EDITED_BY;
+  function canMirror() { return userTouched || suiteOwnedByTax; }
+
   // Decision: who's authoritative right now?
   //  - Suite was last edited by something that isn't tax/null → seed tax from suite.
-  //  - Otherwise, mirror whatever the tax key currently has into suite (covers
-  //    first-time migration and normal startups).
+  //  - Suite already carries tax-authored data → re-sync from the tax key.
+  //  - Otherwise (empty or unattributed store) → nothing until the user
+  //    interacts; the tool's mount-time save must not populate the store.
   if (suiteHasData && suiteLastEditor && suiteLastEditor !== EDITED_BY) {
     try {
       const seeded = JSON.stringify(buildTaxFromSuite(suiteState));
@@ -207,7 +233,7 @@
     } catch (e) {
       console.error('[tax-adapter] seed-from-suite failed', e);
     }
-  } else if (taxRaw) {
+  } else if (taxRaw && suiteOwnedByTax) {
     lastMirroredRaw = taxRaw;
     try { applyPatchToSuite(buildSuitePatch(parseTax(taxRaw))); }
     catch (e) { console.error('[tax-adapter] initial mirror failed', e); }

@@ -1059,6 +1059,49 @@ Phase 13ab (backlog items 2 + 3, plus the sample/local data-mode toggle):
   cross-document mode flip (immediately when visible, deferred while a
   tool is open).
 
+Phase 13ac (critical bug — a page visit populated an empty store):
+- **Portfolio Review seeded $1.25M into an empty store.** Since Phase 2,
+  `assets/adapters/portfolio.js` `init()` parsed the page's static
+  "$1,250,000 · 48 holdings" header + mockup "Current allocation" bars
+  and wrote them to `portfolio.totalValue` / `portfolio.allocations`
+  whenever the store had none. With the hub/tracker owning portfolio.*,
+  one Review visit after Reset (even in local-data mode) made the
+  dashboard, Net Worth, and tracker report $1.25M with 0 holdings.
+  The adapter is now **read-only** (`?v=7`, portfolio_review.html only):
+  seed block + `setIfChanged/setObjectIfChanged` removed; it still
+  reflects a real store total into the header/"Total portfolio" tile,
+  scales the Target Allocation table, and renders the banner. The page
+  itself is unchanged (its example header still shows on an empty
+  store). Already-poisoned devices clear via the hub's "Recompute from
+  holdings", opening the tracker (nulls an orphan on mount), or Reset.
+- **Tax Estimator under the same rule** (`assets/adapters/tax.js?v=6`,
+  TaxEstimatorV5.html only): the tool's `useEffect` saves
+  `taxSuiteInputs_v2` on MOUNT (defaults on a fresh browser, or stale
+  inputs after a suite Reset), and the adapter's setItem patch mirrored
+  that straight into an empty store. Mirroring — the load-time pass AND
+  the continuous patch — now requires `canMirror()`: the user has
+  interacted inside `#root` this session (`input/change/keydown/paste`,
+  or `click` on a control; capture-phase listeners, shell chrome
+  excluded) OR the store is already tax-owned (`meta.lastEditedBy ===
+  'tax'` — a re-sync, not a seed). Skipped saves are NOT recorded as
+  `lastMirroredRaw`, so the first post-interaction save mirrors the
+  full input set. Seed-from-suite (other tool owns the store) is
+  unchanged.
+- **Rule going forward:** an adapter never writes a tool's defaults or
+  sample copy into the store on load; only user action (or a re-sync of
+  data the tool already owns) may write. Remaining load-time writers
+  audited: retirement.js (slider input / Adopt click — user actions),
+  networth.js (schema nodes only, no-op on v5), tracker (holdings sync
+  — writes null total, never a value, on an empty store).
+- Verified via the verify-skill harness: Review visit on an empty store
+  leaves totalValue/allocations/lastUpdated null and the raw
+  localStorage key absent while the header still shows the example;
+  real data reflects "$15,000 · 2 holdings" untouched; Tax first visit
+  saves defaults locally but the store stays empty; typing a salary
+  mirrors (editor 'tax', s1 150000); store owned by 'datahub' seeds the
+  tax key from suite with no mirror; tax-owned store still re-syncs on
+  load; post-Reset visit with saved inputs stays empty.
+
 ## Constraints to preserve
 
 - **Zero build step.** No Vite/Webpack until scope demands it.
