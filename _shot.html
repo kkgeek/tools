@@ -1,0 +1,12 @@
+<script>
+const q = new URLSearchParams(location.search);
+localStorage.removeItem('wealthSuite.state'); localStorage.removeItem('wealthSuite.nwHistory'); localStorage.removeItem('wealthSuite.priceHist');
+if (q.get('mode')) localStorage.setItem('wealthSuite.dataMode', q.get('mode')); else localStorage.removeItem('wealthSuite.dataMode');
+if (q.get('hold')) localStorage.setItem('wealthSuite.state', JSON.stringify({ meta:{version:5,lastUpdated:Date.now()}, portfolio:{ totalValue:15000, holdings:[
+ {id:'VTI-1',ticker:'VTI',shares:100,costBasis:100,account:'Schwab Brokerage',assetClass:'equity'},
+ {id:'BND-1',ticker:'BND',shares:50,costBasis:100,account:'Fidelity 401k',assetClass:'bond'}]},
+ accounts:[{id:'a1',name:'Schwab Brokerage',type:'Taxable',taxTreatment:'Taxable',curated:true},{id:'a2',name:'Fidelity 401k',type:'Traditional',taxTreatment:'Tax Deferred',curated:true}],
+ retirement:{balances:{total:999999}} }));
+localStorage.setItem('ws-shell-nav', JSON.stringify({collapsed:false}));
+location.replace(q.get('page') || 'index.html');
+</script>

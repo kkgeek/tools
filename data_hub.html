@@ -318,7 +318,7 @@ MSFT,25,310.00,11/20/2023,Schwab 401(k),Tax Deferred"></textarea>
 
 </div>
 
-<script src="assets/suite.js?v=15" defer></script>
+<script src="assets/suite.js?v=16" defer></script>
 <script src="assets/suite-state.js?v=8" defer></script>
 <script>
 (function () {
@@ -396,7 +396,15 @@ MSFT,25,310.00,11/20/2023,Schwab 401(k),Tax Deferred"></textarea>
       var priceHtml = lastPrice
         ? '<div style="display:flex;align-items:center;gap:7px;"><span class="dh-dot" style="background:var(--pos);"></span><span style="font-size:15px;font-weight:500;">Live</span></div><div class="dh-hnote">updated ' + (priceAge <= 0 ? 'today' : priceAge + 'd ago') + '</div>'
         : '<div style="display:flex;align-items:center;gap:7px;"><span class="dh-dot" style="background:var(--text-3);"></span><span style="font-size:15px;font-weight:500;">No prices</span></div><div class="dh-hnote">refresh in Portfolio Tracker</div>';
-      var staleHtml = (expAge != null && expAge > 30)
+      // Orphaned portfolio.totalValue: the scalar is set but no holdings
+      // back it (legacy quick-entry wrote the scalar alone; the tracker
+      // used to skip writing 0 when the last holding was deleted). Offer
+      // the same recompute the hub runs after its own edits.
+      var tv = Number(store.get('portfolio.totalValue')) || 0;
+      var orphan = tv > 0 && hs.length === 0;
+      var staleHtml = orphan
+        ? '<div class="dh-hcard dh-hcard--warn" id="dh-orphan"><div class="dh-hlabel">Stale Data</div><div class="dh-hbig" style="font-size:15px;">$' + Math.round(tv).toLocaleString('en-US') + ' · 0 holdings</div><div class="dh-hnote" style="color:var(--text-2);">portfolio value with no holdings behind it</div><button class="dh-btn-outline" id="dh-fix-orphan" type="button" style="margin-top:8px;padding:5px 12px;font-size:11.5px;">Recompute from holdings</button></div>'
+        : (expAge != null && expAge > 30)
         ? '<div class="dh-hcard dh-hcard--warn"><div class="dh-hlabel">Stale Data</div><div class="dh-hbig" style="font-size:15px;">Expenses feed</div><div class="dh-hnote" style="color:var(--text-2);">last import ' + expAge + ' days ago</div></div>'
         : '<div class="dh-hcard"><div class="dh-hlabel">Data Health</div><div style="display:flex;align-items:center;gap:7px;"><span class="dh-dot" style="background:var(--pos);"></span><span style="font-size:15px;font-weight:500;">All fresh</span></div><div class="dh-hnote">no feeds &gt; 30 days old</div></div>';
       $('dh-health').innerHTML =
@@ -404,6 +412,12 @@ MSFT,25,310.00,11/20/2023,Schwab 401(k),Tax Deferred"></textarea>
         '<div class="dh-hcard"><div class="dh-hlabel">Prices</div>' + priceHtml + '</div>' +
         '<div class="dh-hcard"><div class="dh-hlabel">Other Assets</div><div class="dh-hbig">' + oa.length + ' <small>items</small></div><div class="dh-hnote">' + liab.length + ' liabilit' + (liab.length === 1 ? 'y' : 'ies') + '</div></div>' +
         staleHtml;
+      var fix = $('dh-fix-orphan');
+      if (fix) fix.addEventListener('click', function () {
+        recompute(); // writes total || null — no holdings → null
+        renderAll();
+        flash('Portfolio value recomputed from holdings — cleared (no holdings).');
+      });
     }
 
     // ---------- accounts ----------

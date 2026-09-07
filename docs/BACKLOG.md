@@ -1,44 +1,31 @@
 # Wealth Suite — Backlog
 
-*Updated 2026-09-07, after Phase 13aa (post-release bug batch: headerless
-paste import, Spending sample label, blank frame, Net Worth Assets card;
-see CLAUDE.md Phase 13 log). This file is the resume point: pick the top
+*Updated 2026-09-07, after Phase 13ab (Data Hub orphaned-total warning,
+Net Worth retirement accounts from tax-advantaged holdings, and the
+sample/local "Empty-state display" toggle; see CLAUDE.md Phase 13 log). This file is the resume point: pick the top
 unchecked item unless directed otherwise.*
 
 ## Up next (roughly by value)
 
-1. **AI chat re-homing** — `assets/ai/chat.js` + `briefing.js` still exist
+1. **Local-data mode for calculator-style tools** — the Settings
+   "Empty-state display → Local data only" toggle (Phase 13ab) nulls every
+   store-driven surface (dashboard, Estate Plan, Retirement Master Plan,
+   Net Worth, Data Hub). The tools whose defaults are *inputs* rather than
+   sample data — Tax Estimator, Roth, Monte Carlo, Social Security, Asset
+   Calc, Portfolio Review, Golden φ — still show their built-in example
+   figures with an empty store. Decide per tool whether local mode should
+   blank the seeded inputs/outputs (or show an explicit "no household data
+   — example inputs" notice) and wire it through each adapter's existing
+   `meta.lastUpdated` gate. Note: `retirement.balances.total` is now
+   IGNORED by the net-worth formulas whenever tax-advantaged holdings
+   exist (double-count rule, Phase 13ab) — the Roth adapter still reads
+   the scalar as the traditional balance; consider deriving it from
+   Tax Deferred holdings too.
+
+2. **AI chat re-homing** — `assets/ai/chat.js` + `briefing.js` still exist
    but nothing loads them since the Phase 13b shell rebuild. Decide: chat
    panel inside the shell? Delete briefing? (Needs a user product
-   decision.)
-
-2. **Data Hub health strip: flag orphaned `portfolio.totalValue`** — when
-   the scalar is set but `portfolio.holdings` is empty, show a stale-data
-   warning in the hub's health strip with a one-tap "recompute from
-   holdings" fix (writes `total || null`, same as the hub's existing
-   `recompute()`). Context: legacy pre-hub paths (old dashboard
-   quick-entry) wrote the scalar without holdings, and the tracker only
-   writes `totalValue` when > 0 — deleting all holdings orphans the last
-   value (seen live on the user's phone, 2026-07-10: "$4.75M · 0
-   holdings"). Optional companion fix: make the tracker always write
-   `totalValue` (null when holdings empty). Still open as of Phase 13aa.
-
-3. **Feed "Retirement accounts" in the Net Worth tracker from the
-   tracker's Tax Deferred + Tax Free account totals** — the row reads
-   `retirement.balances.total`, which nothing in the Data Hub / Settings /
-   Tracker flow writes (only the legacy Retirement/Tax paths), so it shows
-   "—" even when the Portfolio Tracker's second tile row shows real Tax
-   Deferred / Tax Free totals (Phase 13u). Plan: compute Σ (currentPrice||
-   costBasis)×shares over holdings whose `account` resolves (registry →
-   type → name guess, same chain as the tracker) to Tax Deferred or Tax
-   Free, and either (a) have the tracker write it to
-   `retirement.balances.total` on sync, or (b) have net_worth.html derive
-   it live. Watch the double-count: "Stock Portfolio" = `portfolio.
-   totalValue` already INCLUDES those same holdings, so the Assets card
-   must subtract retirement-account holdings from the Stock Portfolio row
-   (or relabel it "Taxable brokerage") when this lands. The dashboard KPI
-   net-worth formula (portfolio + otherAssets + retirement.balances.total)
-   has the same double-count exposure. Requested 2026-09-07.
+   decision — moved to last on 2026-09-07.)
 
 ## Known issues / watchlist
 - **TaxAssetCalcv4 renders blank in *headless* Chrome** (Babel+D3 vs virtual-time). Fine in real browsers since the 7.29.7 pin. Don't chase it in headless tests.
@@ -68,6 +55,18 @@ unchecked item unless directed otherwise.*
 - Cloudflare Pages + Access privacy migration (see memory: quote-infra-and-privacy-plan)
 
 ## Done recently (context for resuming)
+- Phase 13ab: Settings → Data Controls "Empty-state display" radio —
+  Sample figures vs Local data only (`localStorage['wealthSuite.dataMode']`,
+  `WealthSuite.getDataMode/setDataMode/isLocalData`); local mode renders
+  "—"/empty on the dashboard (per card, partial data nulls only the gated
+  cards), Estate Plan, and Retirement Master Plan (empty charts), and
+  documents reload on a cross-document flip. Data Hub health strip flags
+  an orphaned `portfolio.totalValue` (scalar set, 0 holdings) with a
+  one-tap "Recompute from holdings"; the tracker now always writes
+  `totalValue` (null when empty). Net Worth "Retirement accounts" =
+  Tax Deferred + Tax Free holdings via `WealthSuite.holdingsByTreatment`
+  and "Stock Portfolio" excludes them; the dashboard KPI + estate size
+  ignore `retirement.balances.total` whenever such holdings exist.
 - Phase 13aa: Net Worth tracker Assets card — icon + "Assets" title,
   "Stock Portfolio" rename, both store-fed rows link to the Portfolio
   Tracker (routes through the shell when embedded via `nwGo()`).

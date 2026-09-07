@@ -101,6 +101,16 @@
   var _spend     = 90000;     // spendAtRetire — default matches tool hardcode
   var _retireAge = 62;        // default matches tool hardcode
   var _curAge    = 45;        // default matches tool hardcode
+  var _nullMode  = false;     // local-data mode with inputs missing → empty charts
+
+  // Settings → Data Controls "Empty-state display" = 'local': never leave
+  // the tool's age-45/$90k sample figures standing in for missing data.
+  function isLocal() {
+    try {
+      var WS = window.WealthSuite;
+      return WS && WS.isLocalData ? WS.isLocalData() : localStorage.getItem('wealthSuite.dataMode') === 'local';
+    } catch (e) { return false; }
+  }
 
   // Combined household SS at age 70, in at-retirement dollars — the
   // tool's baked estimate ($5,800/mo × 2 spouses). No store field yet.
@@ -116,6 +126,7 @@
   // inputs while preserving the identical loop logic (SS at 70, COLA, etc.).
   function patchCalcPortfolio() {
     window.calcPortfolio = function (gr, ir) {
+      if (_nullMode) return { labels: [], vals: [] };
       var port = _port, spend = _spend;
       var startAge = _retireAge;
       var years = Math.max(35, 90 - startAge);
@@ -138,6 +149,7 @@
   // 62-based x-axis labels. The wrapper re-labels after the tool builds.
   function patchMonteCarlo() {
     window.runMC = function (N, mu, sigma, ir) {
+      if (_nullMode) return { paths: [[]], successRate: 0 };
       var YEARS = Math.max(1, 90 - _retireAge), successes = 0, paths = [];
       for (var s = 0; s < N; s++) {
         var port = _port, spend = _spend;
@@ -161,6 +173,7 @@
     if (typeof origMC === 'function' && !origMC.__wsPatched) {
       var wrappedMC = function () {
         origMC();
+        if (_nullMode) { var mr = document.getElementById('mc-rate'); if (mr) mr.textContent = '—'; }
         var chart = window.projChart;
         var cache = window.mcCache;
         if (chart && cache && cache.paths && cache.paths[0]) {
@@ -200,7 +213,9 @@
   // ---------- Projection seeding ----------
   function seedProjections() {
     const state = store.export();
-    if (!state || !state.meta || state.meta.lastUpdated == null) return;
+    const local = isLocal();
+    _nullMode = false;
+    if (!state || !state.meta || state.meta.lastUpdated == null) { if (local) renderNullState(); return; }
 
     const currentPortfolio = state.portfolio && state.portfolio.totalValue;
     const retireAge        = state.retirement && state.retirement.plan && state.retirement.plan.targetRetireAge;
@@ -215,7 +230,11 @@
 
     const hasPortfolio = currentPortfolio && currentPortfolio > 0;
     const hasExpenses  = annualExpenses && annualExpenses > 0;
-    if (!hasPortfolio && !hasExpenses) return;
+    if (!hasPortfolio && !hasExpenses) { if (local) renderNullState(); return; }
+    // Local mode with one side missing: the projection/MC charts would
+    // still run on the tool's hardcoded $2.25M / $90k for the missing
+    // half — empty them instead (the figures are nulled below).
+    if (local && !(hasPortfolio && hasExpenses)) _nullMode = true;
 
     const growthRate     = (growthAssumption && growthAssumption > 0) ? growthAssumption : 0.07;
     const retireAgeVal   = (retireAge && retireAge > 0) ? retireAge : 55;
@@ -326,6 +345,79 @@
       cIra: cIra, cIraFV: annuityFV(cIra),
       cHsa: cHsa, cHsaFV: annuityFV(cHsa),
     });
+
+    // Local-data mode: whatever the store couldn't supply renders "—"
+    // rather than the tool's sample (runs AFTER the live rewrites above).
+    if (local && !hasPortfolio) nullPortfolioFigures();
+    if (local && !hasExpenses) nullSpendFigures();
+    if (local && !(hasPortfolio && hasExpenses)) nullRoadmap();
+  }
+
+  // ---------- null state (local-data mode) ----------
+  function setSc(prefixOrLabel, byPrefix, text) {
+    const sc = byPrefix ? findScByPrefix(prefixOrLabel) : null;
+    const v = sc ? sc.querySelector('.sc-v') : findScTile(prefixOrLabel);
+    if (v) v.textContent = text;
+  }
+  function nullPortfolioFigures() {
+    const hsVals = document.querySelectorAll('.hdr-r .hs-v');
+    if (hsVals[0]) hsVals[0].textContent = '—';
+    setSc('Current portfolio', false, '—');
+    setSc('Projected at age', true, '—');
+    setSc('Starting portfolio (age', true, '—');
+    ['v70', 'v85', 'v85s', 'mc-rate'].forEach(function (id) {
+      const el = document.getElementById(id); if (el) el.textContent = '—';
+    });
+  }
+  function nullSpendFigures() {
+    const hsVals = document.querySelectorAll('.hdr-r .hs-v');
+    if (hsVals[1]) hsVals[1].textContent = '—';
+    setSc('Target at age', true, '—');
+    setSc('3-yr buffer needed', false, '—');
+    setSc('Spend at retirement', false, '—');
+    setSc('Spend at age 70', false, '—');
+    const bufCards = document.querySelectorAll('#buf .card');
+    if (bufCards[0]) {
+      const cs = bufCards[0].querySelector('.cs');
+      if (cs) cs.textContent = 'Total: — · add your annual spending target in Settings to size the ladder';
+      bufCards[0].querySelectorAll('.tier-v').forEach(function (el) { el.textContent = '—'; });
+    }
+    document.querySelectorAll('#buf .g4 .sc').forEach(function (tile) {
+      const v = tile.querySelector('.sc-v');
+      const note = tile.lastElementChild;
+      if (v) v.textContent = '—';
+      if (note && note !== v && !note.classList.contains('sc-v')) note.textContent = 'Buffer total: —';
+    });
+    const ib = document.querySelector('#buf .ib');
+    if (ib) ib.textContent = 'Add your annual spending target in Settings (or adopt actual spend from the Expense Tracker) to compute the buffer ladder and the age-70 Social Security offset.';
+  }
+  function nullRoadmap() {
+    const road = document.querySelectorAll('#proj .card')[1];
+    if (!road) return;
+    const rc = road.querySelector('.ct'); if (rc) rc.textContent = 'Savings roadmap — no data yet';
+    const rcs = road.querySelector('.cs'); if (rcs) rcs.textContent = 'Needs a portfolio value (Data Hub) and an annual spending target (Settings)';
+    const kv = road.querySelector('.kv');
+    if (kv) kv.innerHTML = '<span class="kv-k">Projected at retirement</span><span class="kv-v">—</span>'
+      + '<span class="kv-k">Minimum target needed (4% SWR)</span><span class="kv-v">—</span>';
+    const note = road.querySelector('.ib');
+    if (note) { note.className = 'ib'; note.textContent = 'No data yet — figures appear once both inputs exist.'; }
+  }
+  function renderNullState() {
+    _nullMode = true;
+    _port = 0; _spend = 0;
+    const sub = document.querySelector('.hdr-l p');
+    if (sub) sub.textContent = 'No data yet — add your portfolio in the Data Hub and plan inputs in Settings';
+    nullPortfolioFigures();
+    nullSpendFigures();
+    nullRoadmap();
+    patchCalcPortfolio();
+    patchMonteCarlo();
+    window.bullD = window.baseD = window.stressD = window.calcPortfolio(0.07, 0.035);
+    if (window.projBuilt && window.projChart) {
+      try { window.projChart.destroy(); } catch (_) { /* ignore */ }
+      window.projChart = null;
+      window.projBuilt = false;
+    }
   }
 
   // ---------- static content seeding (Phase 13q) ----------
@@ -581,6 +673,9 @@
     renderAdoptSpendButton();
     store.subscribe('', renderHouseholdBanner);
     store.subscribe('expenses', renderAdoptSpendButton);
+    // Data mode flipped in Settings / another tab → reload so the tool's
+    // own sample copy comes back verbatim.
+    window.addEventListener('storage', function (e) { if (e.key === 'wealthSuite.dataMode') location.reload(); });
   }
 
   if (document.readyState === 'loading') {

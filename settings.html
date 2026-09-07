@@ -99,6 +99,10 @@
     .st-swatch.is-active { border-color: var(--text); }
 
     /* toggle */
+    .st-radios { display: flex; flex-direction: column; gap: 7px; }
+    .st-radio { display: flex; gap: 8px; align-items: flex-start; font-size: 12px; cursor: pointer; }
+    .st-radio input { accent-color: var(--primary); margin: 2px 0 0; flex-shrink: 0; }
+    .st-radio small { display: block; font-size: 10.5px; color: var(--text-3); margin-top: 1px; }
     .st-toggle { width: 36px; height: 20px; background: var(--track); border-radius: 20px; position: relative; cursor: pointer; border: none; flex-shrink: 0; padding: 0; transition: background .15s ease; }
     .st-toggle.is-on { background: var(--primary); }
     .st-toggle::after { content: ''; width: 16px; height: 16px; background: #fff; border-radius: 50%; position: absolute; top: 2px; left: 2px; transition: left .15s ease; }
@@ -255,6 +259,13 @@
       <div class="st-cardtitle">Data Controls</div>
       <div class="st-carddesc">Everything is stored locally in your browser.</div>
       <div style="display:flex; flex-direction:column; gap:11px;">
+        <div class="st-row" style="align-items:flex-start;">
+          <div><div class="st-rval">Empty-state display</div><div class="st-rsub">What every page shows where you haven't entered data yet</div></div>
+          <div class="st-radios" id="st-datamode" role="radiogroup" aria-label="Empty-state display">
+            <label class="st-radio"><input type="radio" name="st-datamode" value="sample"><span>Sample figures<small>illustrative placeholders until real data exists</small></span></label>
+            <label class="st-radio"><input type="radio" name="st-datamode" value="local"><span>Local data only<small>show — (null) wherever you have no data</small></span></label>
+          </div>
+        </div>
         <div class="st-row">
           <div><div class="st-rval">Export all data</div><div class="st-rsub">Full store as JSON</div></div>
           <button class="st-btn-outline" id="st-export" type="button">Download</button>
@@ -277,7 +288,7 @@
 
 </div>
 
-<script src="assets/suite.js?v=15" defer></script>
+<script src="assets/suite.js?v=16" defer></script>
 <script src="assets/suite-state.js?v=8" defer></script>
 <script>
 (function () {
@@ -464,6 +475,20 @@
       setPref('alerts', a); toggleState(btn, a[key]);
     });
 
+    // ---------- Data mode (sample vs local) ----------
+    // Device-local like theme/accent (WealthSuite.getDataMode/setDataMode →
+    // localStorage['wealthSuite.dataMode']); other documents pick it up via
+    // the `storage` event and re-render (the shell reloads its dashboard).
+    function renderDataMode() {
+      var mode = WS.getDataMode ? WS.getDataMode() : (localStorage.getItem('wealthSuite.dataMode') === 'local' ? 'local' : 'sample');
+      Array.prototype.forEach.call(document.querySelectorAll('#st-datamode input'), function (r) { r.checked = r.value === mode; });
+    }
+    $('st-datamode').addEventListener('change', function (e) {
+      var r = e.target; if (!r || r.name !== 'st-datamode' || !r.checked) return;
+      if (WS.setDataMode) WS.setDataMode(r.value); else { try { localStorage.setItem('wealthSuite.dataMode', r.value); } catch (err) {} }
+      flash(r.value === 'local' ? 'Local data only — pages now show — wherever you have no data.' : 'Sample figures restored where you have no data.');
+    });
+
     // ---------- Data controls ----------
     $('st-export').addEventListener('click', function () {
       var blob = new Blob([JSON.stringify(store.export(), null, 2)], { type: 'application/json' });
@@ -509,9 +534,10 @@
     });
 
     // ---------- render ----------
-    function renderAll() { renderPeople(); renderPlanFields(); renderScenarios(); renderTax(); renderAppearance(); renderAlerts(); }
+    function renderAll() { renderPeople(); renderPlanFields(); renderScenarios(); renderTax(); renderAppearance(); renderAlerts(); renderDataMode(); }
     renderAll();
     store.subscribe('', function () { renderScenarios(); renderTax(); renderAlerts(); });
+    window.addEventListener('storage', function (e) { if (e.key === 'wealthSuite.dataMode') renderDataMode(); });
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
   else init();
