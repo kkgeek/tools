@@ -178,7 +178,8 @@ Phase 12 additions (chat polish):
   chip + focus-visible outlines on chat buttons/links/inputs)
 
 Phase 13 additions (design-handoff retheme — step 1 of
-`design/Wealth-Suite/design_handoff_wealth_suite/README.md`):
+the design handoff bundle — archived OUTSIDE the repo at
+  `/mnt/data/Code/wealth-suite-design-handoff-2026-09-07.tar.gz`, formerly `design/…`):
 - `assets/theme.css?v=1` (ALL pages — linked immediately AFTER
   `suite.css` so it wins the `:root` cascade). New shared theme layer:
   ships the handoff design tokens (`--bg`/`--surface`/`--primary` green

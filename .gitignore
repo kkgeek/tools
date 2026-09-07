@@ -1,0 +1,9 @@
+# macOS metadata (a tracked .DS_Store used to show as perpetually modified)
+.DS_Store
+._*
+
+# Design handoff bundle — archived outside the repo, never committed
+design/
+
+# Local-only Claude Code settings
+.claude/settings.local.json
