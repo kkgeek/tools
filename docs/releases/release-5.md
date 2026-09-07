@@ -2,7 +2,7 @@
 
 *Shipped June–July 2026 (commits `c0ab0fa` … `5f717ca`). Implementation detail lives in CLAUDE.md Phases 13a–13aa (13y–13aa are the post-release bug batch below).*
 
-This release implements the design handoff (`design/Wealth-Suite/design_handoff_wealth_suite/README.md`): one green/Roboto design system, a sidebar app shell with single-window navigation, a Data Hub as the single source of truth, a Settings page, and a dashboard whose every panel renders live data from the store.
+This release implements the design handoff (the `design_handoff_wealth_suite` bundle — archived outside the repo at `/mnt/data/Code/wealth-suite-design-handoff-2026-09-07.tar.gz`; never committed): one green/Roboto design system, a sidebar app shell with single-window navigation, a Data Hub as the single source of truth, a Settings page, and a dashboard whose every panel renders live data from the store.
 
 ## Theme (13a, 13k)
 - `assets/theme.css` — shared token layer (handoff palette: green `#2E7D32` primary, Roboto/Roboto Mono, light + dark). Remaps the legacy `--md-sys-color-*` names so the shell and all vanilla tools repainted with no per-tool edits.

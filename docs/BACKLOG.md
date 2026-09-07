@@ -63,7 +63,7 @@ unchecked item unless directed otherwise.*
 - Tracker doesn't live-subscribe to store changes while open (iframe remount covers the shell case).
 
 ## Deferred indefinitely
-- Site Map page (sidebar "Review → Site Map" stays a "Soon" chip; spec: `Site Map.dc.html` in the design handoff bundle) — deferred by user 2026-07-08
+- Site Map page (sidebar "Review → Site Map" stays a "Soon" chip; spec: `Site Map.dc.html` in the design handoff bundle, archived at `/mnt/data/Code/wealth-suite-design-handoff-2026-09-07.tar.gz`) — deferred by user 2026-07-08
 - Vite migration (only if scope demands it)
 - Cloudflare Pages + Access privacy migration (see memory: quote-infra-and-privacy-plan)
 
