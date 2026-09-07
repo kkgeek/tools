@@ -1,8 +1,8 @@
 # Wealth Suite — Backlog
 
-*Updated 2026-09-07, after Phase 13ab (Data Hub orphaned-total warning,
-Net Worth retirement accounts from tax-advantaged holdings, and the
-sample/local "Empty-state display" toggle; see CLAUDE.md Phase 13 log). This file is the resume point: pick the top
+*Updated 2026-09-07, after Phase 13ac (Portfolio Review + Tax Estimator
+adapters no longer populate an empty store on a page visit; see CLAUDE.md
+Phase 13 log). This file is the resume point: pick the top
 unchecked item unless directed otherwise.*
 
 ## Up next (roughly by value)
@@ -28,6 +28,11 @@ unchecked item unless directed otherwise.*
    decision — moved to last on 2026-09-07.)
 
 ## Known issues / watchlist
+- **Adapters never seed the store from a tool's defaults/sample copy on
+  load** (Phase 13ac rule). Only user action, or a re-sync of data the
+  tool already owns (`meta.lastEditedBy` = that tool), may write. New
+  adapters must follow this — a load-time write reopens the "$1.25M
+  with 0 holdings after visiting Review" bug class.
 - **TaxAssetCalcv4 renders blank in *headless* Chrome** (Babel+D3 vs virtual-time). Fine in real browsers since the 7.29.7 pin. Don't chase it in headless tests.
 - **Babel pin**: every React page must use `@babel/standalone@7.29.7` (Babel 8 rejects raw `>` in JSX text → blank page).
 - `holding.costBasis` is **per-share** everywhere. Never write lot totals.
@@ -55,6 +60,11 @@ unchecked item unless directed otherwise.*
 - Cloudflare Pages + Access privacy migration (see memory: quote-infra-and-privacy-plan)
 
 ## Done recently (context for resuming)
+- Phase 13ac: critical — visiting Portfolio Review wrote its static
+  "$1,250,000" header into an empty store (adapter now read-only), and
+  the Tax Estimator's mount-time save mirrored default/stale inputs into
+  an empty store (adapter now mirrors only after a user interaction or
+  when the store is already tax-owned).
 - Phase 13ab: Settings → Data Controls "Empty-state display" radio —
   Sample figures vs Local data only (`localStorage['wealthSuite.dataMode']`,
   `WealthSuite.getDataMode/setDataMode/isLocalData`); local mode renders

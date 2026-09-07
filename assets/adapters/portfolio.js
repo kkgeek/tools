@@ -2,10 +2,13 @@
  * Wealth Suite — Portfolio Review adapter (Phase 2 step 4 / Phase 3)
  *
  * Phase 2:
- *   1. Parses the total-portfolio number out of the header on load
- *      and pushes it into suite.portfolio.totalValue.
- *   2. Parses the "Current allocation" bars into
- *      suite.portfolio.allocations (decimal fractions).
+ *   1. (REMOVED in Phase 13ac) Used to seed suite.portfolio.totalValue
+ *      from the page's static "$1,250,000 · 48 holdings" header and
+ *      suite.portfolio.allocations from the mockup "Current allocation"
+ *      bars whenever the store had none. The Data Hub / Portfolio
+ *      Tracker own portfolio.* now, and that seed made an EMPTY store
+ *      report $1.25M with 0 holdings suite-wide after one visit here.
+ *      This adapter is READ-ONLY against the store.
  *   3. Injects a "Wealth Suite household" subtitle into the header
  *      that surfaces income / contributions / ages from the store.
  *
@@ -22,7 +25,7 @@
  *   7. Expands the household banner to surface years-to-retirement
  *      and annual spending alongside income and ages.
  *
- * Only writes to the store when the parsed value actually changes.
+ * Never writes to the store (see 1. above).
  * ============================================================= */
 (function () {
   'use strict';
@@ -66,19 +69,6 @@
     const n = Number(cleaned);
     return Number.isFinite(n) && n > 0 ? n : null;
   }
-  function setIfChanged(path, value) {
-    if (value == null) return;
-    const current = store.get(path);
-    if (current === value) return;
-    store.set(path, value, { editedBy: EDITED_BY });
-  }
-  function setObjectIfChanged(path, value) {
-    if (value == null) return;
-    const current = store.get(path);
-    if (JSON.stringify(current) === JSON.stringify(value)) return;
-    store.set(path, value, { editedBy: EDITED_BY });
-  }
-
   // ---------- parsing ----------
   function parseTotalFromHeader() {
     const hdr = document.querySelector('.hdr p') || document.querySelector('.hdr');
@@ -247,18 +237,10 @@
 
   // ---------- bootstrap ----------
   function init() {
-    // The hardcoded header is a one-time SEED only — never overwrite a real
-    // value already in the store (Tracker / import / quick-entry). Otherwise
-    // visiting Review would clobber it back to the static $1.25M placeholder.
-    const existingTotal = store.get('portfolio.totalValue');
-    if (existingTotal == null || existingTotal === 0) {
-      setIfChanged('portfolio.totalValue', parseTotalFromHeader());
-    }
-    const existingAllocs = store.get('portfolio.allocations');
-    if (!existingAllocs || Object.keys(existingAllocs).length === 0) {
-      setObjectIfChanged('portfolio.allocations', parseCurrentAllocations());
-    }
-
+    // Read-only: the "$1,250,000 · 48 holdings" header and the "Current
+    // allocation" bars are this page's SAMPLE copy. A page visit must
+    // never populate the store from them (Phase 13ac) — the hub/tracker
+    // are the only portfolio writers.
     reflectStoreTotal();
     seedFromStore();
     renderHouseholdBanner();
