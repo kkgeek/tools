@@ -1,0 +1,154 @@
+<!doctype html><meta charset="utf-8"><pre id="out"></pre><iframe id="fr" style="width:1300px;height:1800px"></iframe>
+<script>
+const out = document.getElementById('out'); const fr = document.getElementById('fr');
+const log = (m) => { out.textContent += m + '\n'; };
+const ok = (name, cond, extra) => log((cond ? 'PASS ' : 'FAIL ') + name + (extra != null ? '  [' + extra + ']' : ''));
+const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+function seed(state) { if (state) localStorage.setItem('wealthSuite.state', JSON.stringify(Object.assign({ meta: { version: 5, lastUpdated: Date.now(), lastEditedBy: 'test' } }, state))); else localStorage.removeItem('wealthSuite.state'); }
+function mode(m) { if (m) localStorage.setItem('wealthSuite.dataMode', m); else localStorage.removeItem('wealthSuite.dataMode'); }
+async function load(src, readyId, extraMs) {
+  ['wealthSuite.nwHistory','wealthSuite.priceHist','wealthSuite.perfSeries'].forEach(k => localStorage.removeItem(k));
+  sessionStorage.clear();
+  fr.src = 'about:blank'; await sleep(50);
+  fr.src = src + '?t=' + Date.now();
+  for (let i = 0; i < 200; i++) { await sleep(100); try { const W = fr.contentWindow; if (W.WealthSuite && W.WealthSuite.store && W.document.getElementById(readyId)) break; } catch (e) {} }
+  await sleep(extraMs || 600);
+  return fr.contentWindow;
+}
+const T = (W, sel) => { const el = W.document.querySelector(sel); return el ? el.textContent.trim() : null; };
+const HOLD = {
+  portfolio: { totalValue: 15000, holdings: [
+    { id: 'VTI-1', ticker: 'VTI', shares: 100, costBasis: 100, currentPrice: null, account: 'Schwab Brokerage', assetClass: 'equity' },
+    { id: 'BND-1', ticker: 'BND', shares: 50, costBasis: 100, currentPrice: null, account: 'Fidelity 401k', assetClass: 'bond' } ] },
+  accounts: [ { id: 'a1', name: 'Schwab Brokerage', type: 'Taxable', taxTreatment: 'Taxable', curated: true },
+              { id: 'a2', name: 'Fidelity 401k', type: 'Traditional', taxTreatment: 'Tax Deferred', curated: true } ],
+  retirement: { balances: { total: 999999 } },
+};
+(async () => {
+  try {
+    // ---- T1 dashboard sample mode, empty store
+    seed(null); mode(null);
+    let W = await load('index.html', 'ws-sample-note');
+    ok('T1 sample KPI', T(W, '[data-ws-metric="netWorth"] .ws-kpi__big') === '$3.25M', T(W, '[data-ws-metric="netWorth"] .ws-kpi__big'));
+    ok('T1 sample note', /sample figures/.test(T(W, '#ws-sample-note')), T(W, '#ws-sample-note'));
+    ok('T1 tax alert visible', W.getComputedStyle(W.document.getElementById('ws-tax-alert')).display !== 'none');
+    // ---- T2 dashboard local mode, empty store
+    mode('local');
+    W = await load('index.html', 'ws-sample-note');
+    ok('T2 null KPI nw', T(W, '[data-ws-metric="netWorth"] .ws-kpi__big') === '—', T(W, '[data-ws-metric="netWorth"] .ws-kpi__big'));
+    ok('T2 null KPI readiness', T(W, '[data-ws-metric="retirementReadiness"] .ws-kpi__big') === '—');
+    ok('T2 null KPI spend', T(W, '[data-ws-metric="monthlySpending"] .ws-kpi__big') === '—');
+    ok('T2 note', /no data yet/.test(T(W, '#ws-sample-note')), T(W, '#ws-sample-note'));
+    ok('T2 nw callout', T(W, '#ws-nw-callout') === '—');
+    ok('T2 nw delta hidden', W.getComputedStyle(W.document.getElementById('ws-nw-delta')).display === 'none');
+    ok('T2 nw svg text', /No holdings yet/.test(T(W, '#ws-nw-svg')));
+    ok('T2 alloc', T(W, '#ws-alloc-sub') === 'No holdings yet');
+    const pcts = [...W.document.querySelectorAll('#ws-perf-body .ws-perf-pct')].map(e => e.textContent.trim());
+    ok('T2 perf all dashes', pcts.length === 20 && pcts.every(x => x === '—'), pcts.join(','));
+    ok('T2 perf basis', T(W, '.ws-perf-basis2') === '—', T(W, '.ws-perf-basis2'));
+    ok('T2 ret badge', T(W, '#ws-ret-badge') === 'No data');
+    ok('T2 ret stats', [...W.document.querySelectorAll('#ws-ret-stats .ws-stat__big')].every(e => e.textContent.trim() === '—'));
+    ok('T2 spend badge', T(W, '#ws-spend-badge') === 'No data');
+    ok('T2 tax alert hidden', W.getComputedStyle(W.document.getElementById('ws-tax-alert')).display === 'none');
+    // ---- T3 local mode, partial data (holdings only, no ages/expenses)
+    seed({ portfolio: HOLD.portfolio, accounts: HOLD.accounts });
+    W = await load('index.html', 'ws-sample-note', 1500);
+    ok('T3 KPI nw live', T(W, '[data-ws-metric="netWorth"] .ws-kpi__big') === '$15K', T(W, '[data-ws-metric="netWorth"] .ws-kpi__big'));
+    ok('T3 note live', /live from your data/.test(T(W, '#ws-sample-note')), T(W, '#ws-sample-note'));
+    ok('T3 ret null w/ missing', /^No data — add household ages, retirement age, annual expenses/.test(T(W, '#ws-ret-sub')), T(W, '#ws-ret-sub'));
+    ok('T3 ret tile', T(W, '[data-ws-metric="retirementReadiness"] .ws-kpi__big') === '—');
+    ok('T3 spend null month', /^No \w+ transactions yet/.test(T(W, '#ws-spend-sub')), T(W, '#ws-spend-sub'));
+    ok('T3 spend tile null', T(W, '[data-ws-metric="monthlySpending"] .ws-kpi__big') === '—');
+    ok('T3 alloc live', /\$15K · 2 asset classes/.test(T(W, '#ws-alloc-sub')), T(W, '#ws-alloc-sub'));
+    // ---- T4 item 3: retirement holdings not double counted (sample mode)
+    mode(null); seed(HOLD);
+    W = await load('index.html', 'ws-sample-note', 1500);
+    ok('T4 KPI nw excludes legacy scalar', T(W, '[data-ws-metric="netWorth"] .ws-kpi__big') === '$15K', T(W, '[data-ws-metric="netWorth"] .ws-kpi__big'));
+    ok('T4 assets hint', /\$15K assets/.test(T(W, '[data-ws-metric="netWorth"] .ws-kpi__foot')), T(W, '[data-ws-metric="netWorth"] .ws-kpi__foot'));
+    ok('T4 legend retirement $5K', /Retirement\$5K/.test(T(W, '#ws-nw-legend').replace(/\s+/g, '')), T(W, '#ws-nw-legend'));
+    // legacy-only: no retirement holdings → scalar counts
+    seed({ portfolio: { totalValue: 10000, holdings: [HOLD.portfolio.holdings[0]] }, accounts: [HOLD.accounts[0]], retirement: { balances: { total: 5000 } } });
+    W = await load('index.html', 'ws-sample-note', 1500);
+    ok('T4b legacy scalar additive', T(W, '[data-ws-metric="netWorth"] .ws-kpi__big') === '$15K', T(W, '[data-ws-metric="netWorth"] .ws-kpi__big'));
+    // ---- T5 net worth page
+    seed(HOLD);
+    W = await load('net_worth.html', 'aPortfolio');
+    ok('T5 stock portfolio $10,000', T(W, '#aPortfolio') === '$10,000', T(W, '#aPortfolio'));
+    ok('T5 retirement $5,000', T(W, '#aRetirement') === '$5,000', T(W, '#aRetirement'));
+    ok('T5 notes visible', !W.document.getElementById('aPortfolioNote').hidden && !W.document.getElementById('aRetirementNote').hidden);
+    ok('T5 total assets $15,000', T(W, '#totalAssetsDisplay') === '$15,000', T(W, '#totalAssetsDisplay'));
+    // live update: change account treatment via store from the harness (cross-doc storage event)
+    const st2 = JSON.parse(localStorage.getItem('wealthSuite.state')); st2.accounts[1].taxTreatment = 'Taxable'; st2.meta.lastUpdated = Date.now();
+    localStorage.setItem('wealthSuite.state', JSON.stringify(st2)); await sleep(500);
+    ok('T5 reacts to registry edit', T(W, '#aPortfolio') === '$15,000' && T(W, '#aRetirement') === '$999,999', T(W, '#aPortfolio') + '/' + T(W, '#aRetirement'));
+    ok('T5 notes hidden when legacy', W.document.getElementById('aPortfolioNote').hidden);
+    // ---- T6 estate plan
+    seed(HOLD);
+    W = await load('estate_plan.html', 'est-you-row');
+    ok('T6 estate $15k (no double count)', T(W, '[data-est="estate-1"]') === '$15k', T(W, '[data-est="estate-1"]'));
+    seed(null); mode('local');
+    W = await load('estate_plan.html', 'est-you-row');
+    ok('T6 local null', T(W, '[data-est="estate-1"]') === '—' && /no data yet/.test(T(W, '[data-est="subtitle"]')), T(W, '[data-est="subtitle"]'));
+    mode(null);
+    W = await load('estate_plan.html', 'est-you-row');
+    ok('T6 sample restored', T(W, '[data-est="estate-1"]') === '$3.5M+', T(W, '[data-est="estate-1"]'));
+    // ---- T7 retirement master plan
+    seed(null); mode('local');
+    W = await load('retirement_master_plan_2.html', 'v70', 1200);
+    ok('T7 subtitle null', /No data yet/.test(T(W, '.hdr-l p')), T(W, '.hdr-l p'));
+    ok('T7 header stats', [...W.document.querySelectorAll('.hdr-r .hs-v')].slice(0, 2).every(e => e.textContent.trim() === '—'));
+    ok('T7 tiers', [...W.document.querySelectorAll('#buf .tier-v')].every(e => e.textContent.trim() === '—'));
+    ok('T7 v70', T(W, '#v70') === '—');
+    ok('T7 charts empty', W.baseD && W.baseD.vals.length === 0);
+    const mc = W.runMC(10, 0.07, 0.15, 0.035); ok('T7 runMC empty', mc.paths.length === 1 && mc.paths[0].length === 0);
+    // partial: portfolio only
+    seed({ portfolio: { totalValue: 2000000, holdings: [] }, household: { spouses: [{ age: 48 }] }, retirement: { plan: { targetRetireAge: 65 } } });
+    W = await load('retirement_master_plan_2.html', 'v70', 1200);
+    ok('T7b portfolio live', T(W, '.hdr-r .hs-v') === '$2.0M' || /\$2/.test(T(W, '.hdr-r .hs-v')), T(W, '.hdr-r .hs-v'));
+    ok('T7b spend nulled', [...W.document.querySelectorAll('#buf .tier-v')].every(e => e.textContent.trim() === '—'));
+    ok('T7b charts empty (partial)', W.baseD && W.baseD.vals.length === 0);
+    mode(null); seed(null);
+    W = await load('retirement_master_plan_2.html', 'v70', 1200);
+    ok('T7c sample restored', /Age 45/.test(T(W, '.hdr-l p')) && W.baseD.vals.length > 10, T(W, '.hdr-l p'));
+    // ---- T8 hub orphan
+    seed({ portfolio: { totalValue: 4750000, holdings: [] } });
+    W = await load('data_hub.html', 'dh-health', 800);
+    ok('T8 orphan card', /4,750,000 · 0 holdings/.test(T(W, '#dh-orphan')), T(W, '#dh-orphan'));
+    W.document.getElementById('dh-fix-orphan').click(); await sleep(400);
+    ok('T8 fixed → null', W.WealthSuite.store.get('portfolio.totalValue') === null && !W.document.getElementById('dh-orphan'), String(W.WealthSuite.store.get('portfolio.totalValue')));
+    ok('T8 all fresh', /All fresh/.test(T(W, '#dh-health')));
+    // ---- T9 tracker companion: mount with orphan scalar → null
+    seed({ portfolio: { totalValue: 4750000, holdings: [] } });
+    W = await load('portfolio_tracker.html', 'root', 6000);
+    for (let i = 0; i < 100 && W.WealthSuite.store.get('portfolio.totalValue') !== null; i++) await sleep(200);
+    ok('T9 tracker nulls orphan', W.WealthSuite.store.get('portfolio.totalValue') === null, String(W.WealthSuite.store.get('portfolio.totalValue')));
+    seed(HOLD);
+    W = await load('portfolio_tracker.html', 'root', 6000);
+    for (let i = 0; i < 100 && W.WealthSuite.store.get('portfolio.totalValue') !== 15000; i++) await sleep(200);
+    ok('T9b tracker keeps real total', W.WealthSuite.store.get('portfolio.totalValue') === 15000, String(W.WealthSuite.store.get('portfolio.totalValue')));
+    // ---- T10 settings radios + cross-document reload of the dashboard
+    seed(null); mode(null);
+    W = await load('settings.html', 'st-datamode');
+    ok('T10 radio sample checked', W.document.querySelector('#st-datamode input[value="sample"]').checked);
+    const rl = W.document.querySelector('#st-datamode input[value="local"]'); rl.click(); await sleep(200);
+    ok('T10 radio → localStorage local', localStorage.getItem('wealthSuite.dataMode') === 'local');
+    ok('T10 flash', /Local data only/.test(T(W, '#st-status')), T(W, '#st-status'));
+    W = await load('settings.html', 'st-datamode');
+    ok('T10 radio local persisted', W.document.querySelector('#st-datamode input[value="local"]').checked);
+    // dashboard visible, mode flips in another document → reload
+    mode(null);
+    W = await load('index.html', 'ws-sample-note');
+    ok('T10 dash sample first', T(W, '[data-ws-metric="netWorth"] .ws-kpi__big') === '$3.25M');
+    W.__marker = 1; localStorage.setItem('wealthSuite.dataMode', 'local'); await sleep(2500);
+    W = fr.contentWindow;
+    ok('T10 dash reloaded to null', !W.__marker && T(W, '[data-ws-metric="netWorth"] .ws-kpi__big') === '—', T(W, '[data-ws-metric="netWorth"] .ws-kpi__big'));
+    // tool open → deferred reload on return to dashboard
+    W.location.hash = '#settings.html'; await sleep(800);
+    W.__marker = 2; localStorage.setItem('wealthSuite.dataMode', 'sample'); await sleep(500);
+    ok('T10 no reload while tool open', W.__marker === 2);
+    W.location.hash = ''; await sleep(2500); W = fr.contentWindow;
+    ok('T10 reload on return → sample', !W.__marker && T(W, '[data-ws-metric="netWorth"] .ws-kpi__big') === '$3.25M', T(W, '[data-ws-metric="netWorth"] .ws-kpi__big'));
+  } catch (e) { log('HARNESS ERROR ' + (e && e.stack || e)); }
+  log('DONE');
+})();
+</script>

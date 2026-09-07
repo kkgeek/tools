@@ -164,7 +164,7 @@ body{font-family:'Inter',-apple-system,'Helvetica Neue',Arial,sans-serif;backgro
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"><link rel="stylesheet" href="assets/suite.css?v=6"><link rel="stylesheet" href="assets/theme.css?v=1">
 <script>(function(){try{var p=localStorage.getItem('wealthSuite.themePreference');if(!['system','light','dark'].includes(p))p='system';var r=p==='system'?(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'):p;document.documentElement.setAttribute('data-theme',r);document.documentElement.setAttribute('data-theme-pref',p);}catch(e){}})();</script>
 <script src="assets/suite-state.js?v=8" defer></script>
-<script src="assets/suite.js?v=15" defer></script>
+<script src="assets/suite.js?v=16" defer></script>
 </head>
 <body>
 
@@ -334,6 +334,23 @@ body{font-family:'Inter',-apple-system,'Helvetica Neue',Arial,sans-serif;backgro
   }
   function q(k) { return document.querySelector('[data-est="' + k + '"]'); }
   function setText(k, t) { var el = q(k); if (el) el.textContent = t; }
+  function isLocal() {
+    try {
+      var WS = window.WealthSuite;
+      return WS && WS.isLocalData ? WS.isLocalData() : localStorage.getItem('wealthSuite.dataMode') === 'local';
+    } catch (e) { return false; }
+  }
+  // Local-data mode with nothing to size the estate from: null every
+  // figure instead of leaving the illustrative $3.5M sample in place.
+  function renderNull() {
+    setText('subtitle', 'WA household · community property · no data yet — add assets in the Data Hub');
+    ['hdr-fedex', 'hdr-watax', 'fed-combined', 'estate-1', 'fedtax', 'estate-2', 'waexcess', 'watax',
+     'you-wa', 'you-nv', 'you-delta', 'you-rec', 'ages'].forEach(function (k) { setText(k, '—'); });
+    setText('you-label', '— ← you');
+    setText('fed-note', 'No data yet. Add your portfolio, other assets and liabilities in the Data Hub to size your estate against the federal exemption.');
+    var hdrTax = q('hdr-watax'); if (hdrTax) hdrTax.style.color = '';
+    ['fedtax', 'estate-2', 'waexcess', 'watax'].forEach(function (k) { var el = q(k); if (el) el.className = 'sc-v'; });
+  }
 
   function render(store) {
     var s = store.export();
@@ -344,10 +361,20 @@ body{font-family:'Inter',-apple-system,'Helvetica Neue',Arial,sans-serif;backgro
     var portfolioVal = Number(s.portfolio && s.portfolio.totalValue) ||
       holdings.reduce(function (t, h) { var per = Number(h.currentPrice) > 0 ? Number(h.currentPrice) : (Number(h.costBasis) || 0); return t + per * (Number(h.shares) || 0); }, 0);
     var otherAssets = (s.otherAssets || []).reduce(function (t, a) { return t + (Number(a.value) || 0); }, 0);
-    var retire = Number(s.retirement && s.retirement.balances && s.retirement.balances.total) || 0;
+    // Retirement: tax-advantaged holdings are already inside portfolioVal
+    // (never added twice); the legacy retirement.balances.total scalar
+    // only counts when no such holdings exist — same rule as the
+    // dashboard KPI and net_worth.html.
+    var WS = window.WealthSuite;
+    var retireHold = (WS && WS.holdingsByTreatment) ? WS.holdingsByTreatment(s).retirement : 0;
+    var retireBal = Number(s.retirement && s.retirement.balances && s.retirement.balances.total) || 0;
+    var retire = retireHold > 0 ? 0 : retireBal;
     var liabItems = (s.liabilities && s.liabilities.items) || [];
     var liab = Number(s.liabilities && s.liabilities.total) || liabItems.reduce(function (t, l) { return t + (Number(l.balance) || 0); }, 0);
-    if (!(portfolioVal > 0 || otherAssets > 0 || retire > 0)) return;   // no data — keep the sample
+    if (!(portfolioVal > 0 || otherAssets > 0 || retireBal > 0)) {   // no data — keep the sample (local mode: null it)
+      if (isLocal()) renderNull();
+      return;
+    }
     var estate = Math.max(0, portfolioVal + otherAssets + retire - liab);
 
     var mfj = !s.household || s.household.filingStatus !== 'single';
@@ -432,6 +459,9 @@ body{font-family:'Inter',-apple-system,'Helvetica Neue',Arial,sans-serif;backgro
     if (!store) { setTimeout(init, 60); return; }
     render(store);
     store.subscribe('', function () { render(store); });
+    // Data mode flipped in Settings / another tab: reload so the sample
+    // copy comes back verbatim (it can't be rebuilt in place).
+    window.addEventListener('storage', function (e) { if (e.key === 'wealthSuite.dataMode') location.reload(); });
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
   else init();

@@ -758,7 +758,9 @@
         if (on) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current');
       });
     }
+    var pendingReload = false; // set when the data mode changed while a tool was open
     function showDashboard() {
+      if (pendingReload) { pendingReload = false; location.reload(); return; }
       if (frame) { frame.hidden = true; frame.removeAttribute('src'); }
       if (dashView) dashView.hidden = false;
       if (content) content.classList.remove('is-tool');
@@ -847,7 +849,9 @@
       var el = document.getElementById('ws-tax-alert');
       if (!el) return;
       var a = (s && s.preferences && s.preferences.alerts) || {};
-      el.style.display = (a.quarterlyTax === false || taxDismissed) ? 'none' : '';
+      // The banner's figure is a placeholder (no computed source yet) →
+      // local-data mode hides it outright.
+      el.style.display = (a.quarterlyTax === false || taxDismissed || isLocal()) ? 'none' : '';
     }
 
     // ---- Performance table ----
@@ -897,12 +901,25 @@
         });
         body.appendChild(row);
       });
-      var basisStr = fmtMoney(basis);
+      var basisStr = basis > 0 ? fmtMoney(basis) : '—';
       var pb = document.getElementById('ws-perf-basis'); if (pb) pb.textContent = basisStr;
       Array.prototype.forEach.call(document.querySelectorAll('.ws-perf-basis2'), function (el) { el.textContent = basisStr; });
     }
-    // initial sample (mockup rates)
+    // Null state (local-data mode): every cell "—", basis "—"
+    function nullPerfTable(reason) {
+      var rows = [
+        { name: 'Your Portfolio',    color: 'var(--primary)', you: true },
+        { name: 'S&P 500',           color: 'var(--pos)',     you: false },
+        { name: 'Total US Market',   color: 'var(--cat2)',    you: false },
+        { name: 'Total Intl Market', color: 'var(--warn)',    you: false }
+      ].map(function (r) { r.cells = [null, null, null, null, null]; return r; });
+      renderPerfTable(rows, null);
+      var note = document.querySelector('[data-ws-metric="performance"] .ws-cardsub');
+      if (note) note.textContent = reason || 'No holdings yet — annualized returns vs benchmarks appear once you add positions in the Data Hub or Portfolio Tracker';
+    }
+    // initial sample (mockup rates) — or the null table in local-data mode
     (function () {
+      if (isLocal()) { nullPerfTable(); return; }
       function cellsFromRates(rates) {
         return PERF_PERIODS.map(function (p, i) { var ann = rates[i] / 100; return { ann: ann, factor: Math.pow(1 + ann, p.years) }; });
       }
@@ -1008,7 +1025,8 @@
     }
     var perfBusy = false, perfLive = false;
     async function refreshPerformance(holdings, basis) {
-      if (perfBusy || perfLive || !holdings.length || !(basis > 0)) return;
+      if (perfBusy || perfLive) return;
+      if (!holdings.length || !(basis > 0)) { if (isLocal()) nullPerfTable(); return; }
       perfBusy = true;
       try {
         function hv(h) { var per = Number(h.currentPrice) > 0 ? Number(h.currentPrice) : (Number(h.costBasis) || 0); return per * (Number(h.shares) || 0); }
@@ -1017,11 +1035,14 @@
         holdings.forEach(function (h) { if (h.ticker) byTicker[h.ticker] = (byTicker[h.ticker] || 0) + hv(h); });
         var top = Object.keys(byTicker).sort(function (a, b) { return byTicker[b] - byTicker[a]; }).slice(0, 8)
           .filter(function (t) { return byTicker[t] > 0; });
-        if (!top.length) return;
+        if (!top.length) { if (isLocal()) nullPerfTable(); return; }
         var all = top.concat(PERF_BENCH.map(function (b) { return b.t; }));
         var series = {};
         await Promise.all(all.map(function (t) { return fetchSeries(t).then(function (s) { series[t] = s; }); }));
-        if (!PERF_BENCH.some(function (b) { return series[b.t]; }) && !top.some(function (t) { return series[t]; })) return; // total outage → keep sample
+        if (!PERF_BENCH.some(function (b) { return series[b.t]; }) && !top.some(function (t) { return series[t]; })) { // total outage → keep sample (local mode: say so)
+          if (isLocal()) nullPerfTable('Quotes unavailable right now — returns vs benchmarks appear when the price feed is reachable');
+          return;
+        }
 
         // Per-lot view: each holding contributes only from its purchaseDate
         // (no date = held for the whole period — the pre-purchase-date
@@ -1082,7 +1103,7 @@
           return { ann: Math.pow(factor, 1 / span) - 1, factor: factor, windowStart: firstTs };
         }
         var youCells = PERF_PERIODS.map(twrCell);
-        if (!youCells.some(Boolean)) return;
+        if (!youCells.some(Boolean)) { if (isLocal()) nullPerfTable('Not enough price history yet for your holdings — returns appear once a full month has elapsed'); return; }
         var rows = [{ name: 'Your Portfolio', color: 'var(--primary)', you: true, cells: youCells }];
         PERF_BENCH.forEach(function (b) {
           rows.push({
@@ -1101,7 +1122,7 @@
           ? 'Annualized return since purchase — holdings enter at their purchase date, benchmarks over the same window · on <span id="ws-perf-basis">' + fmtMoney(basis) + '</span> invested · dividends included'
           : 'Annualized return of your current holdings mix vs benchmarks · on <span id="ws-perf-basis">' + fmtMoney(basis) + '</span> invested · dividends included · add purchase dates in the Data Hub or Tracker for since-purchase returns');
         perfLive = true;
-      } catch (e) { /* keep sample */ }
+      } catch (e) { if (isLocal()) nullPerfTable('Quotes unavailable right now — returns vs benchmarks appear when the price feed is reachable'); }
       finally { perfBusy = false; }
     }
 
@@ -1161,6 +1182,51 @@
     }
     function escHtml(x) { return String(x == null ? '' : x).replace(/[&<>"]/g, function (c) { return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]; }); }
     function metricEl(m) { return document.querySelector('[data-ws-metric="' + m + '"]'); }
+    // Settings → Data Controls "Empty-state display". 'local' = never show
+    // the mockup sample: every gated card renders "—"/empty instead.
+    // Device-local key shared with suite.js getDataMode() (index.html
+    // doesn't load suite.js, so the read is replicated inline).
+    var DATA_MODE_KEY = 'wealthSuite.dataMode';
+    function isLocal() { try { return localStorage.getItem(DATA_MODE_KEY) === 'local'; } catch (e) { return false; } }
+    // Holdings valued by account tax treatment — inline copy of
+    // WealthSuite.holdingsByTreatment (suite.js): registry lookup by
+    // account name → taxTreatment → type → name guess. `retirement` =
+    // taxFree + taxDeferred; those holdings are already inside
+    // portfolio.totalValue, so the net-worth formula must not add
+    // retirement.balances.total on top of them.
+    function guessTreatment(name) {
+      var n = String(name || '').toLowerCase();
+      if (/roth/.test(n) || /hsa/.test(n)) return 'taxFree';
+      if (/tax[\s._-]*free|tax[\s._-]*exempt|529/.test(n)) return 'taxFree';
+      if (/401|403|457|ira|trad|sep\b|pension|tax[\s._-]*deferred|deferred/.test(n)) return 'taxDeferred';
+      return 'taxable';
+    }
+    function normTreatment(v) {
+      var n = String(v || '').toLowerCase().replace(/[^a-z]/g, '');
+      if (n === 'taxfree' || n === 'taxexempt' || n === 'roth' || n === 'hsa') return 'taxFree';
+      if (n === 'taxdeferred' || n === 'traditional') return 'taxDeferred';
+      if (n === 'taxable' || n === 'cash') return 'taxable';
+      return null;
+    }
+    function holdingsByTreatment(s) {
+      var out = { taxable: 0, taxFree: 0, taxDeferred: 0, unassigned: 0, retirement: 0, total: 0 };
+      var key = function (n) { return String(n || '').trim().toLowerCase(); };
+      var reg = {};
+      ((s && s.accounts) || []).forEach(function (a) {
+        if (!a || !a.name) return;
+        reg[key(a.name)] = normTreatment(a.taxTreatment) || normTreatment(a.type) || guessTreatment(a.name);
+      });
+      ((s && s.portfolio && s.portfolio.holdings) || []).forEach(function (h) {
+        if (!h) return;
+        var per = Number(h.currentPrice) > 0 ? Number(h.currentPrice) : (Number(h.costBasis) || 0);
+        var v = per * (Number(h.shares) || 0);
+        var k = key(h.account);
+        out[!k ? 'unassigned' : (reg[k] || guessTreatment(h.account))] += v;
+        out.total += v;
+      });
+      out.retirement = out.taxFree + out.taxDeferred;
+      return out;
+    }
     function refreshKPIs() {
       try {
         var store = window.WealthSuite && window.WealthSuite.store;
@@ -1173,10 +1239,18 @@
         var oaList = (s.otherAssets) || [];
         var otherAssets = oaList.reduce(function (t, a) { return t + (Number(a.value) || 0); }, 0);
         var homeVal = oaList.reduce(function (t, a) { return t + (a.category === 'realEstate' ? (Number(a.value) || 0) : 0); }, 0);
-        var retire = Number(s.retirement && s.retirement.balances && s.retirement.balances.total) || 0;
+        // Retirement bucket: tax-advantaged holdings when the tracker/hub
+        // carry them (already inside portfolioVal → never added again),
+        // else the legacy retirement.balances.total scalar (RMD slider /
+        // tax paths), which IS additive. Same rule as net_worth.html and
+        // estate_plan.html.
+        var retireHold = holdingsByTreatment(s).retirement;
+        var retireBal = Number(s.retirement && s.retirement.balances && s.retirement.balances.total) || 0;
+        var retire = retireHold > 0 ? retireHold : retireBal;
+        var retireExtra = retireHold > 0 ? 0 : retireBal;
         var liabItems = (s.liabilities && s.liabilities.items) || [];
         var liab = Number(s.liabilities && s.liabilities.total) || liabItems.reduce(function (t, l) { return t + (Number(l.balance) || 0); }, 0);
-        var netWorth = portfolioVal + otherAssets + retire - liab;
+        var netWorth = portfolioVal + otherAssets + retireExtra - liab;
 
         var tx = (s.expenses && s.expenses.transactions) || [];
         var d0 = new Date(); var ym = d0.getFullYear() + '-' + String(d0.getMonth() + 1).padStart(2, '0');
@@ -1192,9 +1266,13 @@
 
         applyAlertPrefs(s);
 
-        var hasData = holdings.length > 0 || otherAssets > 0 || liab > 0 || portfolioVal > 0 || monthSpend > 0;
+        var hasData = holdings.length > 0 || otherAssets > 0 || liab > 0 || portfolioVal > 0 || monthSpend > 0 || retireBal > 0;
         var note = document.getElementById('ws-sample-note');
-        if (!hasData) { if (note) { note.textContent = 'sample figures — connect accounts in the Data Hub'; note.style.color = 'var(--warn)'; } return; }
+        if (!hasData) {
+          if (isLocal()) { renderNullAll(); return; }
+          if (note) { note.textContent = 'sample figures — connect accounts in the Data Hub'; note.style.color = 'var(--warn)'; }
+          return;
+        }
         if (note) {
           // Stale-data alert (Settings): flag when the store hasn't been
           // touched in preferences.alerts.staleDays (default 30).
@@ -1212,7 +1290,7 @@
         if (nw) {
           nw.querySelector('.ws-kpi__big').textContent = money(netWorth);
           nw.querySelector('.ws-kpi__sub').textContent = full(netWorth);
-          nw.querySelector('.ws-kpi__foot').innerHTML = '<span class="ws-hint">Assets − liabilities</span><span class="ws-hint">' + money(portfolioVal + otherAssets + retire) + ' assets</span>';
+          nw.querySelector('.ws-kpi__foot').innerHTML = '<span class="ws-hint">Assets − liabilities</span><span class="ws-hint">' + money(portfolioVal + otherAssets + retireExtra) + ' assets</span>';
         }
         var pf = metricEl('portfolio');
         if (pf) {
@@ -1221,7 +1299,8 @@
           pf.querySelector('.ws-kpi__foot').innerHTML = '<span class="ws-hint">' + holdings.length + ' holding' + (holdings.length === 1 ? '' : 's') + '</span><span class="ws-hint">Portfolio Tracker</span>';
         }
         var sp = metricEl('monthlySpending');
-        if (sp) {
+        if (sp && isLocal() && !tx.length) nullSpendingTile(); // no transactions at all → null, not "$0"
+        else if (sp) {
           sp.querySelector('.ws-kpi__big').textContent = full(monthSpend);
           var pct = budget ? Math.min(100, monthSpend / budget * 100) : 0;
           var hint = sp.querySelector('.ws-hint'); if (hint) hint.textContent = budget ? ('of ' + full(budget) + ' budget · ' + pct.toFixed(1) + '%') : 'this month';
@@ -1236,7 +1315,7 @@
         ensurePriceHist(holdings.map(function (h) { return h.ticker; }).filter(function (t, i, a) { return t && a.indexOf(t) === i; }));
         renderNWChart();
         renderAllocation(holdings, portfolioVal);
-        renderRetirement(s, portfolioVal, retire, budget);
+        renderRetirement(s, portfolioVal, retireExtra, budget);
         renderSpending(s, tx, ym, monthSpend, budget);
         refreshPerformance(holdings, portfolioVal); // async; keeps sample on outage
       } catch (e) {}
@@ -1379,7 +1458,7 @@
     })();
     function renderNWChart() {
       var holdings = nwHoldings.filter(function (h) { return h.ticker && Number(h.shares) > 0; });
-      if (!holdings.length || !(nwTodayPV > 0)) return; // keep illustrative sample
+      if (!holdings.length || !(nwTodayPV > 0)) { if (isLocal()) nullNWChart(); return; } // keep illustrative sample
       var ph = readPH();
       var now = Date.now();
       var dated = holdings.map(function (h) {
@@ -1492,6 +1571,7 @@
       var co = document.getElementById('ws-nw-callout'); if (co) co.textContent = full(nwTodayNW);
       var de = document.getElementById('ws-nw-delta');
       if (de) {
+        de.style.display = '';
         de.innerHTML = '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><polyline points="' + (delta >= 0 ? '18 15 12 9 6 15' : '6 9 12 15 18 9') + '"></polyline></svg>' +
           (delta >= 0 ? '+' : '−') + money(Math.abs(delta)) + ' (' + (pctD >= 0 ? '+' : '') + pctD.toFixed(1) + '%) this period';
         de.style.background = delta >= 0 ? 'var(--pos-weak)' : 'var(--neg-weak)';
@@ -1521,14 +1601,14 @@
       { k: 'other',  label: 'Other',       color: 'var(--cat5)' }
     ];
     function renderAllocation(holdings, totalVal) {
-      if (!holdings.length || !(totalVal > 0)) return; // keep sample
+      if (!holdings.length || !(totalVal > 0)) { if (isLocal()) nullAllocation(); return; } // keep sample
       function hv(h) { var per = Number(h.currentPrice) > 0 ? Number(h.currentPrice) : (Number(h.costBasis) || 0); return per * (Number(h.shares) || 0); }
       var slices = CLS.map(function (c) {
         var v = holdings.filter(function (h) { return (h.assetClass || 'other') === c.k; }).reduce(function (t, h) { return t + hv(h); }, 0);
         return { label: c.label, color: c.color, v: v };
       }).filter(function (x) { return x.v > 0; });
       var total = slices.reduce(function (t, x) { return t + x.v; }, 0);
-      if (!(total > 0)) return;
+      if (!(total > 0)) { if (isLocal()) nullAllocation(); return; }
       var sub = document.getElementById('ws-alloc-sub');
       if (sub) sub.textContent = money(total) + ' · ' + slices.length + ' asset class' + (slices.length === 1 ? '' : 'es');
       // flat donut (dynamic data can't reuse the fixed 3-D mockup slices)
@@ -1555,7 +1635,9 @@
     // each category's budgetMonthly (Expense Tracker sign convention:
     // negative amount = spend, positive = refund/credit; netted). ----
     function renderSpending(s, tx, ym, monthSpend, budget) {
+      var monthName = new Date().toLocaleDateString('en-US', { month: 'long' });
       if (!(monthSpend > 0)) { // keep sample until this month has spend — but say so
+        if (isLocal()) { nullSpending('No ' + monthName + ' transactions yet — import them in the Expense Tracker or Data Hub'); return; }
         var subS = document.getElementById('ws-spend-sub');
         if (subS) subS.textContent = 'Sample — no ' + new Date().toLocaleDateString('en-US', { month: 'long' }) + ' transactions yet; import them in the Expense Tracker or Data Hub';
         var badgeS = document.getElementById('ws-spend-badge');
@@ -1579,7 +1661,7 @@
       });
       rows = rows.filter(function (r) { return r.spent > 0 || r.budget > 0; })
                  .sort(function (a, b) { return b.spent - a.spent; }).slice(0, 5);
-      if (!rows.length) return;
+      if (!rows.length) { if (isLocal()) nullSpending('No ' + monthName + ' transactions yet — import them in the Expense Tracker or Data Hub'); return; }
       var maxSpent = rows.reduce(function (m, r) { return Math.max(m, r.spent); }, 1);
       var host = document.getElementById('ws-spend-rows');
       if (host) host.innerHTML = rows.map(function (r, i) {
@@ -1655,15 +1737,18 @@
         if (ms.length) expenses = Math.round(ms.reduce(function (a, b) { return a + b; }, 0) / ms.length * 12);
       }
       if (!curAge || !retAge || retAge <= curAge || !(startBal > 0) || !(expenses > 0)) {
+        var miss = [];
+        if (!curAge) miss.push('household ages');
+        if (!retAge || (curAge && retAge <= curAge)) miss.push('retirement age');
+        if (!(startBal > 0)) miss.push('portfolio balance');
+        if (!(expenses > 0)) miss.push('annual expenses');
+        // local-data mode: no sample at all — null the card + tile and
+        // name the missing inputs
+        if (isLocal()) { nullRetirement(miss.join(', ')); return; }
         // keep the sample chart, but make the sample state unmistakable and
         // say WHY it isn't live yet (only once the store has any data —
         // a fully empty store stays pure sample)
         if (s.meta && s.meta.lastUpdated != null) {
-          var miss = [];
-          if (!curAge) miss.push('household ages');
-          if (!retAge || (curAge && retAge <= curAge)) miss.push('retirement age');
-          if (!(startBal > 0)) miss.push('portfolio balance');
-          if (!(expenses > 0)) miss.push('annual expenses');
           var subG = document.getElementById('ws-ret-sub');
           if (subG && miss.length) subG.textContent = 'Sample — add ' + miss.join(' + ') + ' in Settings / Retirement Plan to go live';
           var badgeG = document.getElementById('ws-ret-badge');
@@ -1802,6 +1887,97 @@
       svg.style.cursor = 'crosshair';
       svg.style.touchAction = 'none';
     })();
+    // ---- Null states (Settings → "Local data only"): what each card
+    // shows instead of the mockup sample when the store lacks the data
+    // it needs. Live renders always overwrite these. ----
+    var NULL_GRID = '<line x1="34" y1="34" x2="648" y2="34" style="stroke:var(--border);" stroke-width="1"></line><line x1="34" y1="73" x2="648" y2="73" style="stroke:var(--border);" stroke-width="1"></line><line x1="34" y1="111" x2="648" y2="111" style="stroke:var(--border);" stroke-width="1"></line><line x1="34" y1="150" x2="648" y2="150" style="stroke:var(--border);" stroke-width="1"></line>';
+    function nullReadiness(missing) {
+      var rr = metricEl('retirementReadiness'); if (!rr) return;
+      rr.querySelector('.ws-kpi__big').textContent = '—';
+      var hints = rr.querySelectorAll('.ws-hint'); if (hints[0]) hints[0].textContent = 'Needs ' + (missing || 'household ages, retirement age, balance, annual spending');
+      var mi = rr.querySelector('.ws-meter > i'); if (mi) { mi.style.width = '0%'; mi.style.background = ''; }
+      rr.querySelector('.ws-kpi__foot').innerHTML = '<span style="font-size:11px;color:var(--text-3);font-weight:500;">No data</span><span class="ws-hint">Settings → Household</span>';
+    }
+    function nullSpendingTile() {
+      var sp = metricEl('monthlySpending'); if (!sp) return;
+      sp.querySelector('.ws-kpi__big').textContent = '—';
+      var hint = sp.querySelector('.ws-hint'); if (hint) hint.textContent = 'no transactions yet';
+      var meter = sp.querySelector('.ws-meter > i'); if (meter) meter.style.width = '0%';
+      sp.querySelector('.ws-kpi__foot').innerHTML = '<span style="font-size:11px;color:var(--text-3);font-weight:500;">No data</span><span class="ws-hint">Expense Tracker</span>';
+    }
+    function nullKPIs() {
+      ['netWorth', 'portfolio'].forEach(function (m) {
+        var el = metricEl(m); if (!el) return;
+        el.querySelector('.ws-kpi__big').textContent = '—';
+        el.querySelector('.ws-kpi__sub').textContent = 'No data';
+        el.querySelector('.ws-kpi__foot').innerHTML = '<span class="ws-hint">Add ' + (m === 'portfolio' ? 'holdings' : 'accounts') + ' in the Data Hub</span>';
+      });
+      nullReadiness();
+      nullSpendingTile();
+    }
+    function nullNWChart() {
+      var svg = document.getElementById('ws-nw-svg');
+      if (svg) svg.innerHTML = NULL_GRID + '<text x="341" y="96" text-anchor="middle" font-size="13" style="fill:var(--text-3);" font-family="Roboto,sans-serif">No holdings yet — add positions in the Data Hub or Portfolio Tracker</text>';
+      var mrow = document.getElementById('ws-nw-months'); if (mrow) mrow.innerHTML = '';
+      var co = document.getElementById('ws-nw-callout'); if (co) co.textContent = '—';
+      var de = document.getElementById('ws-nw-delta'); if (de) de.style.display = 'none';
+      var lg = document.getElementById('ws-nw-legend');
+      if (lg) lg.innerHTML = [['var(--primary)', 'Portfolio'], ['var(--cat3)', 'Retirement'], ['var(--cat4)', 'Home'], ['var(--cat2)', 'Net Worth today']].map(function (x) {
+        return '<div class="ws-legend__item"><div class="ws-legend__dash" style="background:' + x[0] + ';"></div>' + x[1] + '<span class="ws-legend__val">—</span></div>';
+      }).join('');
+      var subEl = document.getElementById('ws-nw-sub'); if (subEl) subEl.textContent = 'No data · positions × market price once you add holdings';
+      nwHover = null;
+    }
+    function nullAllocation() {
+      var sub = document.getElementById('ws-alloc-sub'); if (sub) sub.textContent = 'No holdings yet';
+      var pie = document.getElementById('ws-alloc-pie');
+      if (pie) pie.innerHTML = '<svg viewBox="0 0 200 150" style="width:186px; height:140px;"><circle cx="100" cy="75" r="52" fill="none" style="stroke:var(--surface-2);" stroke-width="26"></circle><text x="100" y="81" text-anchor="middle" style="fill:var(--text-3);" font-size="17" font-weight="500" font-family="Roboto,sans-serif">—</text></svg>';
+      var lg = document.getElementById('ws-alloc-legend');
+      if (lg) lg.innerHTML = '<div class="ws-alloc-row"><div class="ws-alloc-name" style="color:var(--text-3);">Add positions in the Data Hub or Portfolio Tracker</div><div class="ws-alloc-vals"><span class="ws-alloc-dollar">—</span></div></div>';
+    }
+    function nullRetirement(missing) {
+      var sub = document.getElementById('ws-ret-sub'); if (sub) sub.textContent = 'No data — add ' + (missing || 'household ages, retirement age, balance, annual spending') + ' in Settings / Data Hub';
+      var badge = document.getElementById('ws-ret-badge');
+      if (badge) { badge.textContent = 'No data'; badge.style.background = 'var(--surface-2)'; badge.style.color = 'var(--text-2)'; }
+      var stats = document.getElementById('ws-ret-stats');
+      if (stats) stats.innerHTML = ['Success rate', 'Median at 85', 'Target retire'].map(function (l) {
+        return '<div class="ws-stat" style="background:var(--surface-2);"><div class="ws-stat__big" style="color:var(--text-3);">—</div><div class="ws-stat__label">' + l + '</div></div>';
+      }).join('');
+      var svg = document.getElementById('ws-ret-svg');
+      if (svg) { svg.setAttribute('viewBox', '0 0 660 128'); svg.style.height = '128px'; svg.innerHTML = '<line x1="24" y1="116" x2="646" y2="116" style="stroke:var(--border);" stroke-width="1"></line><text x="335" y="66" text-anchor="middle" font-size="13" style="fill:var(--text-3);" font-family="Roboto,sans-serif">No data yet</text>'; }
+      retHover = null;
+      nullReadiness(missing);
+    }
+    function nullSpending(note) {
+      var sub = document.getElementById('ws-spend-sub'); if (sub) sub.textContent = note || 'No transactions yet — import them in the Expense Tracker or Data Hub';
+      var badge = document.getElementById('ws-spend-badge');
+      if (badge) { badge.textContent = 'No data'; badge.style.background = 'var(--surface-2)'; badge.style.color = 'var(--text-2)'; }
+      var host = document.getElementById('ws-spend-rows');
+      if (host) host.innerHTML = '<div class="ws-budget-row" style="margin-bottom:0;"><div class="ws-budget-top"><span class="ws-budget-name" style="color:var(--text-3);">No categories to show</span><div class="ws-budget-vals"><span class="ws-budget-spent">—</span></div></div><div class="ws-meter" style="margin-bottom:0;"><i style="width:0%;"></i></div></div>';
+      var totalEl = document.getElementById('ws-spend-total');
+      if (totalEl) totalEl.innerHTML = '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:7px;"><span style="font-size:12.5px; font-weight:500; color:var(--text);">Total</span><span style="font-size:13px; font-family:\'Roboto Mono\',monospace; font-weight:500; color:var(--text-3);">—</span></div><div class="ws-meter" style="height:8px; border-radius:4px; margin-bottom:0;"><i style="width:0%; border-radius:4px;"></i></div>';
+    }
+    function renderNullAll() {
+      var note = document.getElementById('ws-sample-note');
+      if (note) { note.textContent = 'no data yet — add accounts in the Data Hub'; note.style.color = 'var(--text-3)'; }
+      nullKPIs(); nullNWChart(); nullAllocation(); nullPerfTable(); nullRetirement(); nullSpending();
+      applyAlertPrefs(null);
+      var foot = document.querySelector('.suite-footer span:last-child');
+      if (foot) foot.textContent = 'Data Hub is the single source of truth · local data only (no sample figures)';
+    }
+    // Local-data mode paints the null state before the store even loads
+    // (and stays if suite-state.js never attaches); a live store overwrites.
+    if (isLocal()) renderNullAll();
+    // Mode flipped in another document (Settings in the shell iframe or
+    // another tab): the mockup sample can't be rebuilt in place, so reload
+    // the dashboard — immediately when visible, else when it's shown next.
+    var dataModeAtLoad = isLocal();
+    window.addEventListener('storage', function (e) {
+      if (e.key !== DATA_MODE_KEY) return;
+      if (isLocal() === dataModeAtLoad) { pendingReload = false; return; }
+      if (dashView && !dashView.hidden) location.reload(); else pendingReload = true;
+    });
+
     function refreshAll() { refreshProfile(); refreshKPIs(); }
 
     // suite-state.js is a defer script that runs after this inline one, so

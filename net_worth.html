@@ -74,6 +74,7 @@ body{font-family:'Inter',-apple-system,'Helvetica Neue',Arial,sans-serif;backgro
 .arow-l{color:var(--muted)}
 .arow-v{font-weight:600}
 .arow-v.from-store{color:var(--blue-t)}
+.arow-note{display:block;font-size:10.5px;color:var(--muted);margin-top:1px;opacity:.85}
 
 /* Editable asset inputs */
 .ainput-row{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center;padding:7px 0;border-bottom:1px solid var(--border)}
@@ -133,7 +134,7 @@ body{font-family:'Inter',-apple-system,'Helvetica Neue',Arial,sans-serif;backgro
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"><link rel="stylesheet" href="assets/suite.css?v=6"><link rel="stylesheet" href="assets/theme.css?v=1">
 <script>(function(){try{var p=localStorage.getItem('wealthSuite.themePreference');if(!['system','light','dark'].includes(p))p='system';var r=p==='system'?(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'):p;document.documentElement.setAttribute('data-theme',r);document.documentElement.setAttribute('data-theme-pref',p);}catch(e){}})();</script>
 <script src="assets/suite-state.js?v=8" defer></script>
-<script src="assets/suite.js?v=15" defer></script>
+<script src="assets/suite.js?v=16" defer></script>
 <script src="assets/adapters/networth.js?v=1" defer></script>
 </head>
 <body>
@@ -152,11 +153,11 @@ body{font-family:'Inter',-apple-system,'Helvetica Neue',Arial,sans-serif;backgro
       <div class="card-t card-t--icon"><svg class="card-ico" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2z"></path><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"></path><path d="M2 12h20"></path><circle cx="12" cy="14" r="1.6" fill="currentColor" stroke="none"></circle></svg>Assets</div>
 
       <div class="arow">
-        <span class="arow-l"><a class="arow-link" href="portfolio_tracker.html" onclick="return nwGo(this)" title="Open the Portfolio Tracker">Stock Portfolio</a></span>
+        <span class="arow-l"><a class="arow-link" href="portfolio_tracker.html" onclick="return nwGo(this)" title="Open the Portfolio Tracker">Stock Portfolio</a><span class="arow-note" id="aPortfolioNote" hidden>excl. retirement accounts</span></span>
         <span class="arow-v from-store" id="aPortfolio">—</span>
       </div>
       <div class="arow">
-        <span class="arow-l"><a class="arow-link" href="portfolio_tracker.html" onclick="return nwGo(this)" title="Open the Portfolio Tracker">Retirement accounts</a></span>
+        <span class="arow-l"><a class="arow-link" href="portfolio_tracker.html" onclick="return nwGo(this)" title="Open the Portfolio Tracker">Retirement accounts</a><span class="arow-note" id="aRetirementNote" hidden>Tax Deferred + Tax Free holdings</span></span>
         <span class="arow-v from-store" id="aRetirement">—</span>
       </div>
 
@@ -248,7 +249,23 @@ var TYPE_COLORS = { mortgage: '#2563EB', auto: '#7C3AED', student: '#0891B2', cr
 
 // ── State ────────────────────────────────────────────────────────────────────
 var nwChart = null;
-var storePortfolio = null, storeRetirement = null;
+var storePortfolio = null, storeRetirement = null, retireFromHoldings = false;
+
+// Store-fed asset rows. "Retirement accounts" = holdings whose account
+// resolves to Tax Deferred / Tax Free (WealthSuite.holdingsByTreatment —
+// registry → type → name guess, the tracker's tile chain); when none
+// exist it falls back to the legacy retirement.balances.total scalar.
+// "Stock Portfolio" = portfolio.totalValue MINUS those retirement
+// holdings (totalValue already includes them — no double count).
+function deriveStoreAssets(s) {
+  var WS = window.WealthSuite;
+  var total = (s.portfolio && Number(s.portfolio.totalValue) > 0) ? Number(s.portfolio.totalValue) : null;
+  var retHold = (WS && WS.holdingsByTreatment) ? WS.holdingsByTreatment(s).retirement : 0;
+  var bal = (s.retirement && Number(s.retirement.balances && s.retirement.balances.total) > 0) ? Number(s.retirement.balances.total) : null;
+  retireFromHoldings = retHold > 0;
+  storeRetirement = retireFromHoldings ? retHold : bal;
+  storePortfolio = total != null ? (Math.max(0, total - (retireFromHoldings ? retHold : 0)) || null) : null;
+}
 
 function getStore() { return window.WealthSuite && window.WealthSuite.store; }
 
@@ -256,8 +273,7 @@ function loadFromStore() {
   var store = getStore();
   if (!store) return;
   var s = store.export();
-  storePortfolio  = (s.portfolio  && Number(s.portfolio.totalValue) > 0)  ? Number(s.portfolio.totalValue)       : null;
-  storeRetirement = (s.retirement && Number(s.retirement.balances && s.retirement.balances.total) > 0) ? Number(s.retirement.balances.total) : null;
+  deriveStoreAssets(s);
 
   // Manual assets
   var a = s.assets || {};
@@ -395,6 +411,8 @@ function updateAll() {
   // Asset panel
   document.getElementById('aPortfolio').textContent  = storePortfolio  ? fmtM(storePortfolio)  : '—';
   document.getElementById('aRetirement').textContent = storeRetirement ? fmtM(storeRetirement) : '—';
+  document.getElementById('aPortfolioNote').hidden  = !retireFromHoldings;
+  document.getElementById('aRetirementNote').hidden = !retireFromHoldings;
   document.getElementById('totalAssetsDisplay').textContent = ta > 0 ? fmtM(ta) : '—';
 
   // Liability panel
@@ -525,13 +543,10 @@ window.addEventListener('DOMContentLoaded', function() {
     if (window.WealthSuite && window.WealthSuite.store) {
       clearInterval(poll);
       loadFromStore();
-      // Subscribe to cross-tool updates (e.g. Portfolio Tracker refreshes portfolio value)
-      window.WealthSuite.store.subscribe('portfolio.totalValue', function(v) {
-        storePortfolio = (v != null && Number(v) > 0) ? Number(v) : null;
-        updateAll();
-      });
-      window.WealthSuite.store.subscribe('retirement.balances.total', function(v) {
-        storeRetirement = (v != null && Number(v) > 0) ? Number(v) : null;
+      // Subscribe to cross-tool updates (Portfolio Tracker / Data Hub
+      // holdings, accounts registry, totalValue, retirement balances)
+      window.WealthSuite.store.subscribe('', function() {
+        deriveStoreAssets(window.WealthSuite.store.export());
         updateAll();
       });
     }

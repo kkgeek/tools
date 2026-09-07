@@ -361,6 +361,67 @@
     } catch (e) { return null; }
   }
 
+  // ---------- Data mode (Settings → Data Controls) ----------
+  // 'sample' (default): pages substitute illustrative figures wherever the
+  // store has no data. 'local': never show samples — every store-driven
+  // surface renders "—" / empty until real data exists. Device-local
+  // (like theme/accent) so it survives store.reset() and export/import.
+  const DATA_MODE_KEY = 'wealthSuite.dataMode';
+  function getDataMode() {
+    try { return localStorage.getItem(DATA_MODE_KEY) === 'local' ? 'local' : 'sample'; } catch (e) { return 'sample'; }
+  }
+  function setDataMode(m) {
+    try { localStorage.setItem(DATA_MODE_KEY, m === 'local' ? 'local' : 'sample'); } catch (e) {}
+  }
+  function isLocalData() { return getDataMode() === 'local'; }
+
+  // ---------- Holdings valued by account tax treatment ----------
+  // Same resolution chain as the Portfolio Tracker's tile row: registry
+  // lookup by account name (case/whitespace-insensitive) → taxTreatment →
+  // type → name-based guess. Unregistered names fall back to the guess.
+  // Values: (currentPrice || costBasis) × shares (costBasis is PER-SHARE).
+  // `retirement` = taxFree + taxDeferred — what the Net Worth "Retirement
+  // accounts" row and the dashboard net-worth formula use so those
+  // holdings are never counted twice against portfolio.totalValue.
+  function guessTreatment(name) {
+    var n = String(name || '').toLowerCase();
+    if (/roth/.test(n) || /hsa/.test(n)) return 'taxFree';
+    if (/tax[\s._-]*free|tax[\s._-]*exempt|529/.test(n)) return 'taxFree';
+    if (/401|403|457|ira|trad|sep\b|pension|tax[\s._-]*deferred|deferred/.test(n)) return 'taxDeferred';
+    return 'taxable';
+  }
+  function normTreatment(v) {
+    var n = String(v || '').toLowerCase().replace(/[^a-z]/g, '');
+    if (n === 'taxfree' || n === 'taxexempt' || n === 'roth' || n === 'hsa') return 'taxFree';
+    if (n === 'taxdeferred' || n === 'traditional') return 'taxDeferred';
+    if (n === 'taxable' || n === 'cash') return 'taxable';
+    return null;
+  }
+  function holdingsByTreatment(state) {
+    var s = state;
+    if (!s) { try { s = window.WealthSuite.store.export(); } catch (e) { s = {}; } }
+    var out = { taxable: 0, taxFree: 0, taxDeferred: 0, unassigned: 0, retirement: 0, total: 0 };
+    var holdings = (s && s.portfolio && s.portfolio.holdings) || [];
+    var accounts = (s && s.accounts) || [];
+    var key = function (n) { return String(n || '').trim().toLowerCase(); };
+    var reg = {};
+    accounts.forEach(function (a) {
+      if (!a || !a.name) return;
+      reg[key(a.name)] = normTreatment(a.taxTreatment) || normTreatment(a.type) || guessTreatment(a.name);
+    });
+    holdings.forEach(function (h) {
+      if (!h) return;
+      var per = Number(h.currentPrice) > 0 ? Number(h.currentPrice) : (Number(h.costBasis) || 0);
+      var v = per * (Number(h.shares) || 0);
+      var k = key(h.account);
+      var t = !k ? 'unassigned' : (reg[k] || guessTreatment(h.account));
+      out[t] += v;
+      out.total += v;
+    });
+    out.retirement = out.taxFree + out.taxDeferred;
+    return out;
+  }
+
   // ---------- Shared household banner ----------
   // Adapters call WealthSuite.renderHouseholdBanner(opts) instead of
   // reimplementing the create/update logic themselves.
@@ -463,5 +524,10 @@
     renderHouseholdBanner,
     fmtMoney,
     activeScenario,
+    getDataMode,
+    setDataMode,
+    isLocalData,
+    holdingsByTreatment,
+    DATA_MODE_KEY,
   });
 })();

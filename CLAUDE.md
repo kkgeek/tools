@@ -984,6 +984,81 @@ Phase 13aa (Net Worth tracker — Assets card polish; user-reported):
   active nav "Portfolio Tracker", frame src swapped; standalone click →
   `/portfolio_tracker.html`, harness hash untouched.
 
+Phase 13ab (backlog items 2 + 3, plus the sample/local data-mode toggle):
+- **Data mode toggle** — Settings → Data Controls → "Empty-state display"
+  radio: **Sample figures** (default; the mockup/illustrative placeholders
+  stand in wherever the store lacks data) vs **Local data only** (every
+  store-driven surface renders "—"/empty instead). Stored DEVICE-LOCAL at
+  `localStorage['wealthSuite.dataMode']` ('local' | anything else =
+  sample) — like theme/accent, so it survives store.reset() and isn't in
+  export/import. `assets/suite.js?v=16` (ALL tool pages + hub +
+  settings): `WealthSuite.getDataMode/setDataMode/isLocalData` +
+  `DATA_MODE_KEY`. index.html doesn't load suite.js → `isLocal()` reads
+  the key inline.
+  - `index.html`: null renderers per card (`nullKPIs/nullNWChart/
+    nullAllocation/nullPerfTable/nullRetirement/nullSpending`,
+    `renderNullAll`). Local mode paints the null state at parse time
+    (before suite-state.js attaches) and EVERY "keep sample" early-return
+    now branches to its null renderer — so partial data nulls only the
+    gated cards (e.g. holdings but no ages → live KPIs, "No data — add
+    household ages, retirement age, annual expenses…" retirement card,
+    "No <Month> transactions yet" spending card, "—" spending tile when
+    there are no transactions at all). The Q2 tax banner is a placeholder
+    figure → hidden in local mode. Performance table: null at boot, null
+    on outage ("Quotes unavailable right now…"), live on success.
+  - Mode flips happen in another document (Settings in the shell iframe,
+    or another tab) → `storage` listener: the dashboard **reloads** (the
+    mockup can't be rebuilt in place) — immediately if visible, else
+    deferred to the next `showDashboard()` via `pendingReload`.
+    estate_plan.html + the retirement adapter reload on the same event.
+  - `estate_plan.html`: `renderNull()` (every `data-est` → "—", subtitle
+    "no data yet"). `assets/adapters/retirement.js?v=8`: `renderNullState`
+    (header stats/tiles/tiers/roadmap → "—", subtitle) + partial nulls
+    (`nullPortfolioFigures/nullSpendFigures/nullRoadmap`); `_nullMode`
+    makes the patched `calcPortfolio` return empty series and `runMC`
+    `{paths:[[]]}` so the projection/MC charts render empty (mc-rate "—")
+    instead of the tool's $2.25M/$90k sample. Net Worth + Data Hub were
+    already null-by-default.
+  - NOT covered (calculator-style tools whose defaults are inputs, not
+    sample data): Tax Estimator, Roth, Monte Carlo, Social Security,
+    Asset Calc, Portfolio Review, Golden φ. Backlog item.
+- **Backlog item 2 — orphaned `portfolio.totalValue`**: `data_hub.html`
+  health strip's 4th card flags `totalValue > 0 && holdings.length === 0`
+  ("$N · 0 holdings", warn style, `#dh-orphan`) with a **Recompute from
+  holdings** button → the hub's `recompute()` (writes `total || null`) —
+  takes precedence over the expense-staleness card. Companion:
+  `portfolio_tracker.html` sync now ALWAYS writes `portfolio.totalValue`
+  (`totalValue > 0 ? totalValue : null`), so deleting the last position —
+  or simply mounting the tracker over an orphaned scalar — clears it.
+- **Backlog item 3 — Retirement accounts from tax-advantaged holdings**:
+  new `WealthSuite.holdingsByTreatment(state)` (suite.js) values every
+  holding at (currentPrice||costBasis)×shares and buckets it by the
+  tracker's resolution chain (registry name lookup, case/space-
+  insensitive → taxTreatment → type → name guess) → `{taxable, taxFree,
+  taxDeferred, unassigned, retirement (= taxFree+taxDeferred), total}`.
+  **Double-count rule (all three consumers):** retirement-account
+  holdings are ALREADY inside `portfolio.totalValue`, so when
+  `retirement > 0` the legacy `retirement.balances.total` scalar is
+  ignored (`retireExtra = 0`); when no such holdings exist the scalar is
+  additive as before.
+  - `net_worth.html`: "Retirement accounts" = holdingsByTreatment().
+    retirement (fallback: balances.total); "Stock Portfolio" = totalValue
+    − retirement holdings; sub-notes ("excl. retirement accounts" / "Tax
+    Deferred + Tax Free holdings") show only in the holdings-derived
+    case. Subscribes to the whole store now (`subscribe('')`) so registry
+    edits / holdings changes re-derive live.
+  - `index.html` (inline copy of the helper — no suite.js) KPI net
+    worth, "assets" hint, readiness starting balance, NW-chart legend
+    "Retirement" bucket; `estate_plan.html` estate size — same rule.
+- Verified via the verify-skill harness (60 assertions): sample vs local
+  dashboard (empty + partial stores), legacy-scalar-only still additive,
+  Net Worth $10,000/$5,000 split reacting to a registry edit, estate
+  $15k, retirement tool null/partial/sample-restore, hub orphan card →
+  Recompute → null → "All fresh", tracker nulls an orphan on mount and
+  keeps a real total, Settings radios persist, dashboard reloads on a
+  cross-document mode flip (immediately when visible, deferred while a
+  tool is open).
+
 ## Constraints to preserve
 
 - **Zero build step.** No Vite/Webpack until scope demands it.
