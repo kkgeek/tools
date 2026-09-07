@@ -63,6 +63,10 @@ body{font-family:'Inter',-apple-system,'Helvetica Neue',Arial,sans-serif;backgro
 .card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px 18px;margin-bottom:14px}
 .card-t{font-size:13px;font-weight:700;margin-bottom:12px;color:var(--text)}
 .card-sub{font-size:11px;color:var(--muted);font-weight:400;margin-left:6px}
+.card-t--icon{display:flex;align-items:center;gap:7px}
+.card-ico{color:var(--blue-t);flex-shrink:0}
+.arow-link{color:inherit;text-decoration:none;border-bottom:1px dotted currentColor}
+.arow-link:hover,.arow-link:focus-visible{color:var(--blue-t);border-bottom-style:solid;outline:none}
 
 /* Asset rows (read-only) */
 .arow{display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid var(--border);font-size:13px}
@@ -145,14 +149,14 @@ body{font-family:'Inter',-apple-system,'Helvetica Neue',Arial,sans-serif;backgro
 
     <!-- ASSETS -->
     <div class="card">
-      <div class="card-t">Assets <span class="card-sub">— portfolio &amp; retirement from tools</span></div>
+      <div class="card-t card-t--icon"><svg class="card-ico" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2z"></path><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"></path><path d="M2 12h20"></path><circle cx="12" cy="14" r="1.6" fill="currentColor" stroke="none"></circle></svg>Assets</div>
 
       <div class="arow">
-        <span class="arow-l">Portfolio (Tracker / Review)</span>
+        <span class="arow-l"><a class="arow-link" href="portfolio_tracker.html" onclick="return nwGo(this)" title="Open the Portfolio Tracker">Stock Portfolio</a></span>
         <span class="arow-v from-store" id="aPortfolio">—</span>
       </div>
       <div class="arow">
-        <span class="arow-l">Retirement accounts</span>
+        <span class="arow-l"><a class="arow-link" href="portfolio_tracker.html" onclick="return nwGo(this)" title="Open the Portfolio Tracker">Retirement accounts</a></span>
         <span class="arow-v from-store" id="aRetirement">—</span>
       </div>
 
@@ -268,6 +272,18 @@ function loadFromStore() {
 }
 
 // ── Asset helpers ─────────────────────────────────────────────────────────────
+// Cross-tool link: inside the shell (iframe) drive the parent's hash router
+// so the sidebar stays in sync; standalone, fall through to the plain href.
+function nwGo(a) {
+  try {
+    var p = window.parent;
+    if (p && p !== window && p.document && p.document.getElementById('ws-frame')) {
+      p.location.hash = '#' + a.getAttribute('href');
+      return false;
+    }
+  } catch (e) { /* cross-origin parent → plain navigation */ }
+  return true;
+}
 function manualAssets() {
   return {
     realEstate: parseNum('aRealEstate'),

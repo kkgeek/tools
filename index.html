@@ -126,6 +126,7 @@
     .ws-content { flex: 1; display: flex; flex-direction: column; overflow-y: auto; padding: 24px 28px 40px; animation: ws-fade .4s ease; }
     .ws-content.is-tool { padding: 0; overflow: hidden; }
     .ws-frame { flex: 1 1 auto; width: 100%; height: 100%; border: 0; background: var(--surface); display: block; }
+    .ws-frame[hidden] { display: none; } /* class display:block otherwise beats the UA [hidden] rule → blank frame under the dashboard */
     @keyframes ws-fade { from { opacity: 0; } to { opacity: 1; } }
     @keyframes ws-draw { from { stroke-dashoffset: 900; } to { stroke-dashoffset: 0; } }
     @keyframes ws-pulse { 0%,100% { opacity: .4; } 50% { opacity: 1; } }
@@ -602,9 +603,9 @@
             <div class="ws-cardhead">
               <div>
                 <div class="ws-cardtitle">Spending vs Budget</div>
-                <div class="ws-cardsub" id="ws-spend-sub">This month · Auto-categorized</div>
+                <div class="ws-cardsub" id="ws-spend-sub">Sample — import transactions in the Expense Tracker to go live</div>
               </div>
-              <div id="ws-spend-badge" style="padding:5px 11px; background:var(--pos-weak); border-radius:20px; font-size:11px; font-weight:500; color:var(--pos); flex-shrink:0;">$11,580 left</div>
+              <div id="ws-spend-badge" style="padding:5px 11px; background:var(--surface-2); border-radius:20px; font-size:11px; font-weight:500; color:var(--text-2); flex-shrink:0;">Sample</div>
             </div>
             <div style="margin-bottom:16px;" id="ws-spend-rows">
               <div class="ws-budget-row">
@@ -1554,7 +1555,13 @@
     // each category's budgetMonthly (Expense Tracker sign convention:
     // negative amount = spend, positive = refund/credit; netted). ----
     function renderSpending(s, tx, ym, monthSpend, budget) {
-      if (!(monthSpend > 0)) return; // keep sample until this month has spend
+      if (!(monthSpend > 0)) { // keep sample until this month has spend — but say so
+        var subS = document.getElementById('ws-spend-sub');
+        if (subS) subS.textContent = 'Sample — no ' + new Date().toLocaleDateString('en-US', { month: 'long' }) + ' transactions yet; import them in the Expense Tracker or Data Hub';
+        var badgeS = document.getElementById('ws-spend-badge');
+        if (badgeS) { badgeS.textContent = 'Sample'; badgeS.style.background = 'var(--surface-2)'; badgeS.style.color = 'var(--text-2)'; }
+        return;
+      }
       var cats = (s.expenses && s.expenses.categories) || [];
       var byCat = {};
       tx.forEach(function (r) {

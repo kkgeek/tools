@@ -2,7 +2,7 @@
 
 A one-stop personal finance hub that runs **entirely in your browser**. No accounts, no tracking, no upload — your data lives in your browser's local storage and only goes anywhere if you choose to export it.
 
-The suite bundles eleven specialised tools behind a unified dashboard. Once you enter your numbers in one tool, every other tool sees the same household automatically.
+The suite bundles twelve specialised tools inside one **app shell** — a collapsible sidebar, a top bar, and a hash router that opens every tool in the same window (no page reloads). A **Data Hub** page is the single source of truth: enter your accounts, holdings, and assets once there and every tool reads from the same store.
 
 **Live site:** <https://kkgeek.github.io/tools/>
 
@@ -10,55 +10,61 @@ The suite bundles eleven specialised tools behind a unified dashboard. Once you 
 
 ## What's in the suite
 
-| Module | What it's for |
+### The shell
+
+| Page | What it's for |
 |---|---|
-| **Dashboard** | Central command centre: household snapshot, Quick Entry panel, named scenarios, Export/Import/Reset |
-| **Tax Estimator** | Federal + WA state tax for 2024–2041. AMT, LTCG, NIIT, RSU supplemental gap, quarterly payments. Primary data-entry point for the household. |
-| **Asset & Cap-Gains Calc** | Capital-gains scenarios with 2024–2026 bracket data and D3 visualisations. What-if mode — pull household numbers in with one click. |
-| **Retirement Master Plan** | Long-horizon projections, RMD calculator with bracket visualisation, 3-year buffer sizing, Roth + Social Security strategy. |
-| **Portfolio Review** | Concentration risk and target allocation on a 140-position portfolio. Populates the dashboard's portfolio tile. |
+| **Dashboard** | Home screen: net worth, portfolio, retirement readiness, spending vs. budget, and performance-vs-benchmarks, all computed live from your data. |
+| **Data Hub** | **All data entry.** Brokerage CSV import, live price refresh, accounts registry (with tax treatment), other assets, liabilities, expense CSV import, full JSON backup. |
+| **Settings** | Household profile, named scenarios, tax profile, appearance (theme/accent/currency), alerts, data controls. |
+
+### The tools
+
+| Tool | What it's for |
+|---|---|
+| **Tax Estimator** | Federal + WA state tax for 2024–2041. AMT, LTCG, NIIT, RSU supplemental gap, quarterly payments. The most detailed data-entry tool for household/income info. |
+| **Asset & Cap-Gains Calc** | Capital-gains scenarios with 2024–2026 bracket data and D3 visualisations. "Apply" button pulls your household numbers in with one click. |
+| **Retirement Master Plan** | Long-horizon projections, RMD calculator, 3-year buffer sizing, Roth + Social Security strategy. |
+| **Estate Plan** | Federal (OBBBA) and WA estate tax, trust strategy, beneficiary audit — split out from the Retirement tool into its own page. |
+| **Portfolio Review** | Concentration risk and target allocation. |
 | **Golden φ Portfolio** | Phi-derived allocation (1 : 0.618 : 0.382) with 15-year projection and sequence-of-returns stress test. |
 | **Roth Conversion Planner** | Year-by-year conversion schedule filling your chosen bracket ceiling; Roth vs. traditional balance comparison. |
-| **Portfolio Tracker** | Brokerage CSV import, live Yahoo Finance prices, D3 allocation donut and 15-year projection. |
+| **Portfolio Tracker** | Live Yahoo Finance prices, brokerage CSV import with purchase dates, account/tax-treatment tiles, allocation donut, projections. |
+| **Expense Tracker** | Bank CSV import (Chase/Amex/Citi/generic), auto-categorisation, budgets, trends. |
 | **Social Security Estimator** | Claiming-age slider 62–70, break-even vs. maximum-credit analysis, cumulative lifetime benefit chart. |
-| **Net Worth Tracker** | Assets from the store plus manual entries; liabilities table; net worth = assets − liabilities. |
+| **Net Worth Tracker** | Assets from the Data Hub plus manual entries; liabilities table; net worth = assets − liabilities. |
 | **Monte Carlo Projections** | 1,000 market simulations, p10/p25/p50/p75/p90 fan chart, probability of success, hover tooltip with per-percentile values. |
 
 ---
 
 ## First run — what you see
 
-Open the site and you land on the dashboard.
+Open the site and you land on the Dashboard: a collapsible sidebar on the left (Track / Plan / Optimization Tools sections), a top bar with a household chip, and a row of KPI tiles below.
+
+With no data yet, every panel shows **illustrative sample figures** — a "Sample" badge and a note on each card tells you which store fields are missing. Nothing on this page is your real data until you add some, which happens in the Data Hub.
+
+*(Note: the dashboard screenshots below predate the Release 5 app-shell rebuild — the sidebar/Data Hub/Settings layout described in this guide reflects the current site; only the surrounding chrome in these images is out of date.)*
 
 ![Dashboard — first run, empty state](screenshots/00-dashboard-empty.png)
 
-The **Snapshot** card says "No household data yet." Below it are the **Scenarios** chips, the collapsible **Quick Entry** panel, and the **Modules** grid.
-
-The header chips on the right (`Export JSON`, `Export CSV`, `Print Snapshot`, `Import JSON`, `Reset`) are how you move data in and out — see [Backups & sharing](#backups--sharing) below.
-
 ---
 
-## A 5-minute walkthrough
+## A walkthrough
 
-### Option A — Quick Entry on the dashboard
+### 1. Enter your data in the Data Hub
 
-The fastest path: fill in the **Quick Entry** panel directly on the dashboard without opening any tool.
+Click **Data Hub** in the sidebar (or the Data Hub promo card near the sidebar's footer). This is where all data entry happens:
 
-![Dashboard with Quick Entry panel open](screenshots/00-dashboard.png)
+- **Import Stock Assets** — drag/drop or paste a CSV from Fidelity, Schwab, Vanguard, or a generic 3-column format. Columns auto-map (ticker, shares, cost basis, account, purchase date); use "Edit mapping" if the auto-detection guesses wrong. The preview shows New/Update status per row before you commit.
+- **Accounts Registry** — add each brokerage/retirement account and tag it Taxable, Tax Free, or Tax Deferred. Imported holdings link to these by account name, and the Portfolio Tracker uses the tagging to total your taxable vs. tax-advantaged balances.
+- **Other Assets & Liabilities** — home value, other real estate, mortgages, loans, credit cards.
+- **Refresh Prices** — pull live quotes for everything you've imported (shared 15-minute cache with the Portfolio Tracker).
+- **Expense Import** — drop a bank CSV to seed the Expense Tracker (or use the link-out to import from inside that tool instead).
+- **Export Backup** — downloads a full JSON snapshot of your data. Use it to move between devices or back up before a Reset.
 
-The panel has four inline sections:
-- **Household** — filing status, spouse names, ages
-- **Income** — salary, bonus, RSU vests for each spouse
-- **Retirement** — target retire age, annual expenses, growth assumption, retirement balance
-- **Portfolio** — total portfolio value
+### 2. Fill in your household in the Tax Estimator
 
-Every field writes to the suite store on blur. The Snapshot tiles update immediately.
-
----
-
-### Option B — Enter your household in the Tax Estimator
-
-Click the **Tax** link in the topbar. The Tax Estimator is the suite's primary data-entry tool and has the most detailed inputs.
+Click **Tax Estimator** in the sidebar — it's the suite's most detailed data-entry tool.
 
 ![Tax Estimator with household data](screenshots/02-tax-estimator.png)
 
@@ -69,29 +75,37 @@ What to fill in:
 - **Capital Gains** — short-term and long-term, household total.
 - **Deductions** — standard or itemised (mortgage interest, SALT, charitable).
 
-Every keystroke is auto-saved to `localStorage`. The **Calculate Tax** button shows your total liability with bracket breakdown, AMT / NIIT detection, and quarterly-payment suggestions. As you type, the adapter mirrors your household into the suite store — the dashboard Snapshot updates within a second.
+Every keystroke auto-saves to `localStorage`. The **Calculate Tax** button shows your total liability with bracket breakdown, AMT / NIIT detection, and quarterly-payment suggestions. As you type, the adapter mirrors your household into the suite store — the dashboard updates within a second.
 
----
+### 3. Set your profile and preferences in Settings
 
-### 2. Check the dashboard
+Click **Settings** in the sidebar:
 
-Click **Dashboard** in the topbar. The five Snapshot tiles now reflect what you entered:
+- **Household Profile** — per-spouse birth year and target retire age, plus **annual spending in retirement** and **expected growth %/yr** — these last two are what unlock the dashboard's Retirement Planning card.
+- **Scenarios** — create named what-if scenarios (e.g. "Retire at 55") and switch the active one; it overrides the target retire age everywhere (Retirement Planner, Roth Planner, Monte Carlo, dashboard).
+- **Tax Profile** — filing status, federal bracket, WA cap-gains excise.
+- **Appearance** — theme (light/dark/auto), accent color, currency display format, sidebar default (expanded/collapsed).
+- **Alerts** — toggle the quarterly-tax banner, set the stale-data threshold.
+- **Data Controls** — Export JSON, Reset (two-click confirm), and "Clear chart caches" if a dashboard chart ever looks wrong.
 
-![Dashboard with populated snapshot tiles](screenshots/01-dashboard.png)
+### 4. Check the dashboard
 
-- **Household** — names, filing status, state
-- **Projected income** — salary + bonus + RSU + capital gains (both spouses)
-- **Retirement contributions** — 401(k) + IRA + HSA this year
-- **Retirement balance** — set later in the Retirement Planner
-- **Portfolio value** — set later via Portfolio Review or Portfolio Tracker
+Click **Dashboard** in the sidebar. Every panel now computes from your real data instead of showing samples:
 
-The "Last updated by …" line tells you which tool most recently touched the store.
+![Dashboard with populated data](screenshots/01-dashboard.png)
 
----
+- **KPI tiles** — Total Net Worth, Investment Portfolio, Retirement Readiness, Monthly Spending
+- **Net Worth Growth chart** — reconstructed from your holdings' actual price history (not a running log — it recomputes what your portfolio was worth at each past date), with a hover crosshair showing the exact value and date
+- **Asset Allocation donut** — your holdings grouped by asset class
+- **Retirement Planning card** — a 1,000-path Monte Carlo fan chart (p10/p50/p90) with a hover crosshair for age + percentile values
+- **Spending vs Budget** — this month's spend by category vs. your Expense Tracker budgets
+- **Performance table** — your holdings' actual since-purchase returns against S&P 500 / VTI / VXUS benchmarks over the same window
 
-### 3. Open Retirement Master Plan
+A card only shows real numbers once its required inputs exist — until then it stays on the illustrative sample with a note on what's missing.
 
-Click **Retirement** in the topbar.
+### 5. Open Retirement Master Plan
+
+Click **Retirement** in the sidebar.
 
 ![Retirement Master Plan with household banner](screenshots/03-retirement.png)
 
@@ -99,46 +113,46 @@ A small all-caps banner under the page title confirms the household context. Bro
 
 - **Overview** — readiness scorecard, 8-tile diagnostic
 - **3-yr buffer** — sequence-of-returns risk sizing
-- **Projection** — bull / base / stress portfolio paths; starting balance seeded from `portfolio.totalValue + retirement.balances.total`
+- **Projection** — bull / base / stress portfolio paths; starting balance seeded from `portfolio.totalValue + retirement.balances.total` plus projected future contributions
 - **Roth + SS** — claim-age strategy + cumulative SS benefit
-- **Tax strategy / Estate plan / Timeline** — narrative planning reports
-- **RMD calculator** — drag the slider to model your traditional-IRA balance at age 73. The dashboard's "Retirement balance" tile mirrors the slider in real time.
+- **Tax strategy / Timeline** — narrative planning reports
+- **RMD calculator** — drag the slider to model your traditional-IRA balance at age 73.
 
----
+Estate planning has its own dedicated page now — see step 6.
 
-### 4. Open Portfolio Review
+### 6. Open Estate Plan
 
-Click **Portfolio** in the topbar.
+Click **Estate Plan** in the sidebar.
+
+Estate size, WA graduated estate tax over the $3M exclusion, and federal estate tax over the OBBBA thresholds ($30M MFJ / $15M single) all compute live from your net worth once you've entered enough data. A WA-vs-Nevada domicile comparison table and ILIT/trust strategy notes round it out.
+
+### 7. Open Portfolio Review
+
+Click **Portfolio Review** in the sidebar.
 
 ![Portfolio Review](screenshots/04-portfolio.png)
 
-Visiting this page parses the portfolio total from the page header and writes it to `portfolio.totalValue` in the suite store, which populates the dashboard's Portfolio tile and feeds the Asset Calculator's Apply button.
+Visiting this page parses the portfolio total from the page header and writes it to `portfolio.totalValue` in the suite store, feeding the dashboard's portfolio tile and the Asset Calculator's Apply button. (If you've already imported holdings via the Data Hub or Portfolio Tracker, this is a secondary, read-only source.)
 
----
+### 8. Open the Asset & Cap-Gains Calculator
 
-### 5. Open the Asset & Cap-Gains Calculator
-
-Click **Assets** in the topbar.
+Click **Assets** in the sidebar.
 
 ![Asset Calculator with Apply banner](screenshots/05-asset-calc.png)
 
 Two tabs — **Tax Calculator** and **Asset Allocation** — each with an "Apply" banner showing the suite's household data. Click **Apply** to pre-fill the form from your household, then tweak any field for what-if scenarios.
 
----
+### 9. Golden φ Portfolio
 
-### 6. Golden φ Portfolio
-
-Click **Golden φ** in the topbar.
+Click **Golden φ** in the sidebar.
 
 ![Golden φ Portfolio Dashboard](screenshots/06-golden-phi.png)
 
-The dashboard seeds the investment amount from `portfolio.totalValue` and the withdrawal rate from `annualExpenses / totalValue` automatically. The projection and stress-test charts update to reflect your real numbers.
+Seeds the investment amount from `portfolio.totalValue` and the withdrawal rate from `annualExpenses / totalValue` automatically. The projection and stress-test charts update to reflect your real numbers.
 
----
+### 10. Roth Conversion Planner
 
-### 7. Roth Conversion Planner
-
-Click **Roth** in the topbar.
+Click **Roth** in the sidebar.
 
 ![Roth Conversion Planner](screenshots/07-roth-conversion.png)
 
@@ -146,21 +160,23 @@ Choose a bracket ceiling (e.g. "22% — balanced"), set your traditional and Rot
 - Year-by-year: age, amount converted, bracket used, tax owed
 - Side-by-side: Roth balance after conversions vs. traditional balance with RMDs
 
----
+### 11. Portfolio Tracker
 
-### 8. Portfolio Tracker
-
-Click **Tracker** in the topbar.
+Click **Tracker** in the sidebar.
 
 ![Portfolio Tracker](screenshots/08-portfolio-tracker.png)
 
-Import a CSV from Fidelity, Schwab, Vanguard, or a generic 3-column format. Prices refresh from Yahoo Finance (cached 15 min). The tracker writes `portfolio.totalValue` and allocation percentages back to the suite store so other tools see live holdings data.
+Import a CSV from Fidelity, Schwab, Vanguard, or a generic 3-column format — the same importer logic as the Data Hub, including purchase dates and account names. Prices refresh from Yahoo Finance (cached 15 min). Once you've tagged accounts by tax treatment in the Data Hub (or here directly), a second tile row shows your Taxable / Tax Free / Tax Deferred totals.
 
----
+### 12. Expense Tracker
 
-### 9. Social Security Estimator
+Click **Expenses** in the sidebar.
 
-Click **SS** in the topbar.
+Import a bank CSV (Chase, Amex, Citi, or generic) — the importer auto-categorises transactions using keyword rules and any merchants you've manually categorised before. Set monthly budgets per category; the dashboard's Spending vs Budget card and the Retirement Planner's "adopt actual spend" pill both read from this.
+
+### 13. Social Security Estimator
+
+Click **SS** in the sidebar.
 
 ![Social Security Estimator](screenshots/09-social-security.png)
 
@@ -171,89 +187,62 @@ Drag the claiming-age slider from 62 to 70. The KPI tiles update live:
 - Cumulative lifetime total to your chart-end age
 - Combined household total (if spouse fields are filled)
 
-The cumulative benefit chart shows lines for 62, 64, FRA, 70, and your selected age so you can see the crossover (break-even) visually.
+### 14. Net Worth Tracker
 
----
-
-### 10. Net Worth Tracker
-
-Click **Net Worth** in the topbar.
+Click **Net Worth** in the sidebar.
 
 ![Net Worth Tracker](screenshots/10-net-worth.png)
 
-- **Assets (left)** — portfolio value and retirement balances are pulled from the store automatically. Add home value, other real estate, and other assets manually.
-- **Liabilities (right)** — add any number of debts with name, type, balance, rate, and monthly payment.
-- The summary card at the bottom shows Total Assets − Total Liabilities = **Net Worth**.
+- **Assets (left)** — portfolio value, retirement balances, and other assets are pulled from the Data Hub automatically.
+- **Liabilities (right)** — mortgages and loans you added in the Data Hub, or add them here directly.
+- The summary card shows Total Assets − Total Liabilities = **Net Worth**.
 
----
+### 15. Monte Carlo Retirement Projections
 
-### 11. Monte Carlo Retirement Projections
-
-Click **Monte Carlo** in the topbar.
+Click **Monte Carlo** in the sidebar.
 
 ![Monte Carlo Retirement Projections](screenshots/11-monte-carlo.png)
 
-Starting balance, withdrawal, current age, and retire age are seeded from the suite store. Click any input to adjust, then the simulation reruns (180 ms debounce, 1,000 paths).
-
-The **fan chart** shows five percentile bands at every age from now to your end age. Hover anywhere on the chart to snap a crosshair to that age and see the p10 / p25 / p50 / p75 / p90 portfolio values in a floating tooltip.
-
-The **KPI tiles** summarise the distribution:
-- **Probability of success** — % of paths where money lasts to end age
-- **Median final balance** — p50 portfolio at end age
-- **Worst 10% balance** — p10 portfolio at end age (how bad the bad scenarios end)
-- **p10 Survival age** — if p10 hits $0 before end age, this is when
-
----
-
-## Named Scenarios
-
-The **Scenarios** row on the dashboard lets you model different retirement ages in one click.
-
-Default chips: **Retire at 55**, **Retire at 60**, **Retire at 65**. Clicking a chip writes `retirement.plan.targetRetireAge` to the store, updating years-to-retire across the Retirement Planner, Monte Carlo, and Golden φ tools automatically.
+Starting balance, withdrawal, current age, and retire age are seeded from the suite store — this page is read-only with respect to the store (edits here don't write back; use Settings to change your actual plan). The **fan chart** shows five percentile bands from now to your end age with a hover crosshair. **KPI tiles**: probability of success, median final balance, worst-10% balance, and p10 survival age.
 
 ---
 
 ## Backups & sharing
 
-Five buttons next to the **Snapshot** title on the dashboard:
+- **Data Hub → Export Backup** — downloads a full JSON snapshot of everything: household, income, holdings, accounts, liabilities, expenses, preferences. Use it to move between devices or back up before a Reset.
+- **Settings → Data Controls** — Export JSON (same backup), a two-click-to-confirm Reset, and "Clear chart caches" (wipes cached price history/legacy snapshots without touching your actual data — use if a dashboard chart looks wrong).
+- To restore a backup, use the Data Hub's import — pick a previously exported file.
 
-| Button | What it does |
-|---|---|
-| **Export JSON** | Downloads `wealth-suite-export-YYYY-MM-DD.json` — full state backup. Use to move between machines, share a scenario, or back up before Reset. |
-| **Export CSV ▾** | Dropdown: Income CSV / Retirement CSV / Portfolio CSV. Spreadsheet-ready slices of your data. |
-| **Print Snapshot** | Opens a print-optimised single-page household summary in a new tab. |
-| **Import JSON** | Pick a file you previously exported. Confirm dialog before overwriting. |
-| **Reset** | Wipes the snapshot and Tax Estimator saved inputs. Export first if you need to come back. Theme preference and IRS rates cache are kept. |
-
-**Cross-tab edit detection:** if you have the Tax Estimator open in one tab and import a snapshot in another, the Tax Estimator shows a yellow "data updated — Reload" banner. Click Reload to re-seed the form.
+(Per-section CSV export and the old "Print Snapshot" button from the pre-shell dashboard didn't survive the Release 5 rebuild; full JSON export/import is the current backup path.)
 
 ---
 
-## Theme
+## Theme & appearance
 
-The icon on the far right of the topbar cycles **system → light → dark**. Your preference is remembered across all tools and sessions.
+**Settings → Appearance** controls theme (light / dark / auto), accent color, currency display format, and whether the sidebar starts collapsed. Your choices are remembered across all tools and sessions, and apply live to every open tool.
 
 ---
 
 ## Tips & gotchas
 
-- **Tax Estimator is the most thorough data-entry tool.** Other tools can seed via Quick Entry, but Tax Estimator handles RSU supplemental withholding, itemised deductions, and AMT that the Quick Entry panel doesn't expose.
-- **Portfolio Tracker is the live portfolio source.** Once you import a CSV there, `portfolio.totalValue` reflects real holdings. Portfolio Review and Quick Entry manual entry become secondary.
-- **Asset Calculator clamps to 2024–2026 brackets.** If your store has `preferences.taxYear = 2030`, the Asset Calc uses 2026 data (its latest). The Tax Estimator itself supports 2024–2041.
-- **Net Worth schema is v2.** Snapshots exported before the Net Worth Tracker was added are automatically migrated on import.
+- **Tax Estimator is the most thorough data-entry tool.** The Data Hub covers holdings/accounts/assets/liabilities, but income, contributions, and deductions still live in the Tax Estimator.
+- **Portfolio Tracker and the Data Hub share one holdings list.** Import or edit in either place; both read/write `portfolio.holdings`.
+- **Asset Calculator clamps to 2024–2026 brackets.** If your store has a later tax year selected, the Asset Calc uses 2026 data (its latest). The Tax Estimator itself supports 2024–2041.
+- **Data schema is versioned (currently v5).** Backups exported by older versions of the suite migrate automatically on import.
 - **Monte Carlo results are not financial advice.** Normal-distribution returns don't capture fat tails, correlation breaks in crises, or sequence-of-returns risk beyond what the volatility parameter models.
 - **MFJ-only.** Married Filing Separately is not supported. WA-only for state tax.
-- **Privacy.** Nothing leaves your browser unless you click Export. The IRS-rates auto-sync only fetches a public JSON file from GitHub — no PII is ever sent.
+- **Privacy.** Nothing leaves your browser unless you click Export. Live price/quote fetches only send public ticker symbols, never account details.
 
 ---
 
 ## Troubleshooting
 
-- **Tile shows `—` even though I entered data.** That field is genuinely empty in the suite store. Check that the tool you used has an adapter (see README) and that you actually saved / blurred out of the field.
-- **The "Updated in [tool]" banner won't go away.** Click Reload in the banner — it re-seeds the active tool from the latest store contents.
-- **Portfolio Tracker shows "stale" badge on prices.** Yahoo Finance fetch failed; the last known price is being used. Check your network connection or try refreshing the page after 15 minutes (cache TTL).
-- **Data feels stale after Reset.** Reset only clears the snapshot and `taxSuiteInputs_v2`. IRS rates cache and theme are preserved by design. For a full clean slate, clear the entire site's `localStorage` in your browser's DevTools.
-- **Imported file rejected.** It must be a `wealth-suite-export-v1` or `v2` envelope or a raw state object with a `meta.version` field. Free-form JSON is not accepted.
+- **A card shows a "Sample" badge even though I entered data.** Hover or check the card's subtitle — it names the specific store field still missing (e.g. annual spending, retire age).
+- **Portfolio Tracker shows "stale" badge on prices.** Yahoo Finance fetch failed; the last known price is being used. Check your network connection, or use Refresh Prices again after the 15-minute cache expires.
+- **A dashboard chart looks wrong / stuck on old data.** Settings → Data Controls → "Clear chart caches", then revisit the Dashboard — it re-downloads price history in the background.
+- **Data feels stale after Reset.** Reset clears your entered data and device-local chart caches; theme and IRS rates cache are preserved by design. For a full clean slate, clear the entire site's `localStorage` in your browser's DevTools.
+- **Imported file rejected.** It must be a JSON file previously exported from the Data Hub or Settings. Free-form JSON is not accepted.
+- **The sidebar's Data Hub/Settings links seem unreachable on my phone.** Scroll down inside the open drawer — the footer scrolls with the nav list on short viewports.
 - **A page won't render.** The tools depend on CDN scripts (React, Tailwind, Chart.js, D3). If your network blocks `unpkg.com`, `cdnjs.cloudflare.com`, or `cdn.tailwindcss.com` (corporate firewall, ad-blocker), open DevTools → Network to see which fetch failed.
 
 ---
