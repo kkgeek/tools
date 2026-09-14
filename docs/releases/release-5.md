@@ -146,3 +146,27 @@ honestly-labeled sample explaining exactly which input is missing.
   title, "Stock Portfolio" rename, and both store-fed rows link to the
   Portfolio Tracker — routed through the shell's hash router when
   embedded (`nwGo()`, the pattern for future in-tool cross-links).
+
+## Purchase lots (13ad, 2026-09-14)
+- **Bug:** both CSV importers (Data Hub paste/drop and the Portfolio
+  Tracker file input) merged rows by ticker + account and overwrote
+  shares row by row, so a brokerage export with several lots of the same
+  stock kept only the LAST lot per account.
+- **Data model:** a position may now carry `holding.lots[]`
+  (`{id, shares, costBasis per-share, purchaseDate}`), present only when
+  there is more than one lot. The holding's flat `shares` / `costBasis`
+  / `purchaseDate` are always the aggregate (sum / value-weighted
+  average / earliest), so every existing consumer keeps working;
+  single-lot positions stay flat. Additive — no schema bump.
+- **Data Hub:** rows sharing ticker + account accumulate into one
+  position; the preview shows one line per position with an "N lots"
+  sublabel + tooltip and "from <earliest date>"; counts report positions
+  and lots. Re-importing the same file replaces the lots (snapshot
+  semantics, no doubling).
+- **Portfolio Tracker:** multi-lot rows get a ▸ toggle on the ticker
+  that expands an editable per-lot table (date, shares, cost, total
+  cost, market value, gain/loss, remove); the parent row shows read-only
+  aggregates ("avg", "from …"). Lot edits re-aggregate and sync; the add
+  form appends a lot when the ticker already exists in that account.
+- **Dashboard:** the Performance table and NW Growth chart enter each
+  lot at its own purchase date instead of the position's earliest date.
