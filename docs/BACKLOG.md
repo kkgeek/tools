@@ -1,7 +1,7 @@
 # Wealth Suite — Backlog
 
-*Updated 2026-09-14, after Phase 13ad (purchase lots: CSV rows sharing a
-ticker + account are kept as `holding.lots[]`; see CLAUDE.md Phase 13
+*Updated 2026-09-14, after Phase 13ae (Portfolio Tracker Material
+reskin + add-form on top + paginated holdings; see CLAUDE.md Phase 13
 log). This file is the resume point: pick the top
 unchecked item unless directed otherwise.*
 
@@ -60,6 +60,11 @@ unchecked item unless directed otherwise.*
   possible future use). Settings → Data Controls → "Clear chart caches"
   clears both.
 - Tracker doesn't live-subscribe to store changes while open (iframe remount covers the shell case).
+- **Portfolio Tracker no longer loads Tailwind / tw-reskin.css** (Phase
+  13ae) — its styles are the in-page `.pt-*` token stylesheet. Any new
+  tracker UI must use theme.css tokens, not Tailwind utilities (the
+  Tailwind CDN isn't on the page anymore). Holdings rows-per-page lives
+  at `localStorage['wealthSuite.trackerPageSize']` (50 | 100).
 
 ## Deferred indefinitely
 - Site Map page (sidebar "Review → Site Map" stays a "Soon" chip; spec: `Site Map.dc.html` in the design handoff bundle, archived at `/mnt/data/Code/wealth-suite-design-handoff-2026-09-07.tar.gz`) — deferred by user 2026-07-08
@@ -67,6 +72,13 @@ unchecked item unless directed otherwise.*
 - Cloudflare Pages + Access privacy migration (see memory: quote-infra-and-privacy-plan)
 
 ## Done recently (context for resuming)
+- Phase 13ae: Portfolio Tracker modernized to the Material token look
+  (page header, KPI tiles, primary tabs with keyboard nav, section
+  cards, outlined inputs; dark mode + accent via tokens; D3 charts
+  repaint on theme change), Tailwind dropped from the page; the
+  add-holding card now sits ABOVE the holdings table; holdings are
+  paginated 50 per page (100 selectable, persisted device-local) with a
+  Material pager footer.
 - Phase 13ad: purchase lots — both CSV importers grouped rows by ticker +
   account but overwrote shares row-by-row, so only the LAST lot of a
   ticker survived. Rows now accumulate into `holding.lots[]` with the

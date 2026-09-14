@@ -170,3 +170,21 @@ honestly-labeled sample explaining exactly which input is missing.
   form appends a lot when the ticker already exists in that account.
 - **Dashboard:** the Performance table and NW Growth chart enter each
   lot at its own purchase date instead of the position's earliest date.
+
+## Portfolio Tracker modernized (13ae, 2026-09-14)
+- **Material reskin:** the tracker's Tailwind utility markup was replaced
+  by an in-page token stylesheet (theme.css `--surface/--primary/--pos…`),
+  so the page follows light/dark and the Settings accent natively —
+  page header with pill buttons, KPI tiles in Roboto Mono, primary tabs
+  with an underline indicator + count chip + arrow-key navigation,
+  section cards, outlined inputs, right-aligned numeric columns. The
+  D3 donut and projection chart use token colours and repaint on theme
+  change. Tailwind and `tw-reskin.css` are no longer loaded here.
+- **Add holding on top:** the add-holding form is now the first card of
+  the Holdings tab (it used to sit in the table footer); same lot-append
+  behaviour, plus an "or import a CSV" shortcut.
+- **Pagination:** holdings show 50 rows per page by default, switchable
+  to 100 in the table footer (remembered on this device); first/prev/
+  next/last controls, "1–50 of N" range, page clamps when rows are
+  deleted, and adding a holding jumps to its page.
+

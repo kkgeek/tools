@@ -166,7 +166,7 @@ Click **Tracker** in the sidebar.
 
 ![Portfolio Tracker](screenshots/08-portfolio-tracker.png)
 
-Import a CSV from Fidelity, Schwab, Vanguard, or a generic 3-column format — the same importer logic as the Data Hub, including purchase dates and account names. Positions with several purchase lots show a ▸ toggle on the ticker that expands a per-lot table (date, shares, cost, gain/loss — each editable); the parent row shows the totals and the weighted-average cost. Adding a ticker you already hold in the same account appends a lot instead of a duplicate row. Prices refresh from Yahoo Finance (cached 15 min). Once you've tagged accounts by tax treatment in the Data Hub (or here directly), a second tile row shows your Taxable / Tax Free / Tax Deferred totals.
+The **Add holding** card sits at the top of the Holdings tab — enter a ticker, shares, cost, purchase date and account, or use **Import CSV** (Fidelity, Schwab, Vanguard, or a generic 3-column format — the same importer logic as the Data Hub, including purchase dates and account names). The holdings table below shows 50 positions per page (switch to 100 in the footer; the choice is remembered on this device). Positions with several purchase lots show a ▸ toggle on the ticker that expands a per-lot table (date, shares, cost, gain/loss — each editable); the parent row shows the totals and the weighted-average cost. Adding a ticker you already hold in the same account appends a lot instead of a duplicate row. Prices refresh from Yahoo Finance (cached 15 min). Once you've tagged accounts by tax treatment in the Data Hub (or here directly), a second tile row shows your Taxable / Tax Free / Tax Deferred totals.
 
 ### 12. Expense Tracker
 

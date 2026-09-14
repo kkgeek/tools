@@ -25,7 +25,7 @@ Personal-finance hub that runs **entirely in your browser**. Twelve tools live i
 | Tool | What it does |
 |---|---|
 | [Net Worth Tracker](https://kkgeek.github.io/tools/net_worth.html) | Assets from the hub + manual entries · liabilities · debt ratio |
-| [Portfolio Tracker](https://kkgeek.github.io/tools/portfolio_tracker.html) | Live prices (self-hosted quote proxy) · CSV import with purchase dates · expandable per-lot table for multi-lot positions · account + tax-treatment tiles (Taxable/Tax Free/Tax Deferred) · allocation donut · projections |
+| [Portfolio Tracker](https://kkgeek.github.io/tools/portfolio_tracker.html) | Live prices (self-hosted quote proxy) · CSV import with purchase dates · expandable per-lot table for multi-lot positions · paginated holdings (50/100 per page) · account + tax-treatment tiles (Taxable/Tax Free/Tax Deferred) · allocation donut · projections |
 | [Expense Tracker](https://kkgeek.github.io/tools/expenses.html) | Bank CSV import (Chase/Amex/Citi) · auto-categorisation · budgets · trends |
 | [Retirement Master Plan](https://kkgeek.github.io/tools/retirement_master_plan_2.html) | Long-horizon projection · RMD calculator · 3-year buffer · Roth + SS strategy |
 | [Estate Plan](https://kkgeek.github.io/tools/estate_plan.html) | Federal (OBBBA) + WA estate tax · trust strategy · beneficiary audit |
@@ -57,7 +57,7 @@ Personal-finance hub that runs **entirely in your browser**. Twelve tools live i
 - **App shell + iframe router** — `index.html` owns the sidebar/top bar; tools load in an iframe via hash routes so shell state never resets; every tool still works standalone
 - **Single-file tools** — each tool is one self-contained HTML file
 - **Central store** — `assets/suite-state.js` (schema v5) persists to `localStorage`, cross-tab sync via `storage` event; the Data Hub writes, tools read
-- **Design tokens** — `assets/theme.css` (light/dark palettes) + `assets/tw-reskin.css` (re-points Tailwind utilities); accent picker re-colors the whole suite
+- **Design tokens** — `assets/theme.css` (light/dark palettes) + `assets/tw-reskin.css` (re-points Tailwind utilities on the 4 Tailwind tools; the Portfolio Tracker uses token CSS directly); accent picker re-colors the whole suite
 - **Quotes** — Yahoo Finance via a self-hosted Cloudflare Worker proxy (`worker/`); only public ticker symbols leave the browser
 - **Privacy** — no personal data leaves the browser; no accounts, no analytics, no server
 
