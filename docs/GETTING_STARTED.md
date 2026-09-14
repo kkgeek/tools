@@ -55,7 +55,7 @@ With no data yet, every panel shows **illustrative sample figures** — a "Sampl
 
 Click **Data Hub** in the sidebar (or the Data Hub promo card near the sidebar's footer). This is where all data entry happens:
 
-- **Import Stock Assets** — drag/drop or paste a CSV from Fidelity, Schwab, Vanguard, or a generic 3-column format. Columns auto-map (ticker, shares, cost basis, account, purchase date); use "Edit mapping" if the auto-detection guesses wrong. The preview shows New/Update status per row before you commit.
+- **Import Stock Assets** — drag/drop or paste a CSV from Fidelity, Schwab, Vanguard, or a generic 3-column format. Columns auto-map (ticker, shares, cost basis, account, purchase date); use "Edit mapping" if the auto-detection guesses wrong. Each row is a purchase lot: rows that share a ticker and account name are combined into one position that keeps every lot. The preview shows one line per position (with a lot count) and New/Update status before you commit.
 - **Accounts Registry** — add each brokerage/retirement account and tag it Taxable, Tax Free, or Tax Deferred. Imported holdings link to these by account name, and the Portfolio Tracker uses the tagging to total your taxable vs. tax-advantaged balances.
 - **Other Assets & Liabilities** — home value, other real estate, mortgages, loans, credit cards.
 - **Refresh Prices** — pull live quotes for everything you've imported (shared 15-minute cache with the Portfolio Tracker).
@@ -166,7 +166,7 @@ Click **Tracker** in the sidebar.
 
 ![Portfolio Tracker](screenshots/08-portfolio-tracker.png)
 
-Import a CSV from Fidelity, Schwab, Vanguard, or a generic 3-column format — the same importer logic as the Data Hub, including purchase dates and account names. Prices refresh from Yahoo Finance (cached 15 min). Once you've tagged accounts by tax treatment in the Data Hub (or here directly), a second tile row shows your Taxable / Tax Free / Tax Deferred totals.
+Import a CSV from Fidelity, Schwab, Vanguard, or a generic 3-column format — the same importer logic as the Data Hub, including purchase dates and account names. Positions with several purchase lots show a ▸ toggle on the ticker that expands a per-lot table (date, shares, cost, gain/loss — each editable); the parent row shows the totals and the weighted-average cost. Adding a ticker you already hold in the same account appends a lot instead of a duplicate row. Prices refresh from Yahoo Finance (cached 15 min). Once you've tagged accounts by tax treatment in the Data Hub (or here directly), a second tile row shows your Taxable / Tax Free / Tax Deferred totals.
 
 ### 12. Expense Tracker
 

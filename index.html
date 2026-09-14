@@ -1023,6 +1023,14 @@
       var ann = Math.pow(last / start, 1 / spanYrs) - 1;
       return { ann: ann, factor: last / start };
     }
+    // A position may carry several purchase lots (`h.lots[]`, Phase 13ad —
+    // shares / per-share cost / purchaseDate each; the holding's own fields
+    // are the aggregate). Expand to lots so each enters the charts at ITS
+    // purchase date; a flat holding is one lot.
+    function wsLotsOf(h) {
+      if (Array.isArray(h.lots) && h.lots.length > 1) return h.lots;
+      return [{ shares: Number(h.shares) || 0, costBasis: h.costBasis, purchaseDate: h.purchaseDate || null }];
+    }
     var perfBusy = false, perfLive = false;
     async function refreshPerformance(holdings, basis) {
       if (perfBusy || perfLive) return;
@@ -1048,11 +1056,15 @@
         // (no date = held for the whole period — the pre-purchase-date
         // behavior). Shares are today's counts; a lot enters the chain at
         // the first month boundary on/after its purchase date.
-        var lots = holdings.filter(function (h) { return h.ticker && top.indexOf(h.ticker) >= 0 && Number(h.shares) > 0; })
-          .map(function (h) {
-            var pd = null;
-            if (h.purchaseDate) { var d = new Date(String(h.purchaseDate).slice(0, 10) + 'T00:00:00'); if (!isNaN(d)) pd = d.getTime(); }
-            return { t: h.ticker, sh: Number(h.shares), pd: pd };
+        var lots = [];
+        holdings.filter(function (h) { return h.ticker && top.indexOf(h.ticker) >= 0 && Number(h.shares) > 0; })
+          .forEach(function (h) {
+            wsLotsOf(h).forEach(function (l) {
+              if (!(Number(l.shares) > 0)) return;
+              var pd = null;
+              if (l.purchaseDate) { var d = new Date(String(l.purchaseDate).slice(0, 10) + 'T00:00:00'); if (!isNaN(d)) pd = d.getTime(); }
+              lots.push({ t: h.ticker, sh: Number(l.shares), pd: pd });
+            });
           });
         var anyDates = lots.some(function (l) { return l.pd != null; });
         // month-keyed price maps ('YYYY-MM' → adj close) tolerate small
@@ -1461,9 +1473,18 @@
       if (!holdings.length || !(nwTodayPV > 0)) { if (isLocal()) nullNWChart(); return; } // keep illustrative sample
       var ph = readPH();
       var now = Date.now();
-      var dated = holdings.map(function (h) {
-        if (!h.purchaseDate) return null;
-        var t = new Date(String(h.purchaseDate).slice(0, 10) + 'T12:00:00').getTime();
+      // one entry per purchase lot: {ticker, shares, fallback price}
+      var lotRows = [];
+      holdings.forEach(function (h) {
+        var fb = Number(h.currentPrice) > 0 ? Number(h.currentPrice) : null;
+        wsLotsOf(h).forEach(function (l) {
+          if (!(Number(l.shares) > 0)) return;
+          lotRows.push({ ticker: h.ticker, shares: Number(l.shares), fallback: fb != null ? fb : (Number(l.costBasis) || Number(h.costBasis) || 0), purchaseDate: l.purchaseDate });
+        });
+      });
+      var dated = lotRows.map(function (l) {
+        if (!l.purchaseDate) return null;
+        var t = new Date(String(l.purchaseDate).slice(0, 10) + 'T12:00:00').getTime();
         return isNaN(t) ? null : t;
       });
       var allDated = dated.length && dated.every(function (x) { return x != null; });
@@ -1501,12 +1522,12 @@
       // portfolio value at each point: positions held by then × price
       var vals = pts.map(function (t) {
         var v = 0;
-        holdings.forEach(function (h, i3) {
+        lotRows.forEach(function (l, i3) {
           if (dated[i3] != null && dated[i3] > t) return; // not yet purchased
-          var e3 = ph[h.ticker];
+          var e3 = ph[l.ticker];
           var p = e3 ? priceAt(e3, t) : null;
-          if (p == null) p = Number(h.currentPrice) > 0 ? Number(h.currentPrice) : (Number(h.costBasis) || 0);
-          v += p * Number(h.shares);
+          if (p == null) p = l.fallback;
+          v += p * l.shares;
         });
         return v;
       });

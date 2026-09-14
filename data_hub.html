@@ -212,7 +212,7 @@
 VTI,120,165.34,06/15/2020,Fidelity Brokerage,Taxable
 AAPL,50,142.80,2023-01-10,My Roth IRA,Tax Free
 MSFT,25,310.00,11/20/2023,Schwab 401(k),Tax Deferred"></textarea>
-        <div class="dh-hint" style="line-height:1.5;">Accepted columns: Ticker, Shares, Cost Basis (per share; "…Total" headers auto-divide), Account Name ("Account Number" is never used), Purchase Date ("Acquisition Date" / "Date Acquired" / "Trade Date" — feeds the dashboard Performance table), Account Type ("Tax Treatment": Taxable / Tax Free / Tax Deferred — sets the Accounts Registry). Fidelity / Schwab / Vanguard headers auto-map; extra columns are ignored.</div>
+        <div class="dh-hint" style="line-height:1.5;">Accepted columns: Ticker, Shares, Cost Basis (per share; "…Total" headers auto-divide), Account Name ("Account Number" is never used), Purchase Date ("Acquisition Date" / "Date Acquired" / "Trade Date" — feeds the dashboard Performance table), Account Type ("Tax Treatment": Taxable / Tax Free / Tax Deferred — sets the Accounts Registry). Fidelity / Schwab / Vanguard headers auto-map; extra columns are ignored. One row per purchase lot — rows sharing a ticker and account are combined into one position that keeps every lot (see the Portfolio Tracker's expandable lot table).</div>
       </div>
       <div class="dh-preview" id="dh-preview">
         <div class="dh-empty">Drop or paste a CSV to preview holdings before committing.</div>
@@ -604,25 +604,56 @@ MSFT,25,310.00,11/20/2023,Schwab 401(k),Tax Deferred"></textarea>
       if (n === 'taxable' || n === 'cash') return 'Taxable';
       return null;
     }
+    // Aggregate a position's lots: shares = Σ, costBasis = value-weighted
+    // per-share average over the lots that carry a cost, purchaseDate =
+    // earliest dated lot. The Portfolio Tracker + dashboard mirror this.
+    function aggLots(lots) {
+      var sh = 0, cost = 0, costSh = 0, earliest = null;
+      lots.forEach(function (l) {
+        var n = Number(l.shares) || 0; sh += n;
+        if (n > 0 && Number(l.costBasis) > 0) { cost += n * Number(l.costBasis); costSh += n; }
+        if (l.purchaseDate && (!earliest || l.purchaseDate < earliest)) earliest = l.purchaseDate;
+      });
+      return { shares: sh, costBasis: costSh > 0 ? cost / costSh : null, purchaseDate: earliest };
+    }
+    function lotId() { return 'L-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 7); }
+    // Every CSV row is a purchase LOT. Rows sharing ticker + account name
+    // are grouped into one position (`lots[]` keeps each lot; the
+    // position's shares/costBasis/purchaseDate are the aggregate) — the
+    // old row-per-position merge silently kept only the LAST lot.
     function buildParsed() {
       if (!rawImport || !mapping || mapping.tk < 0) { parsed = []; return; }
       var existing = holdings();
       var acctNames = accounts().map(function (a) { return a.name; });
-      parsed = rawImport.rows.map(function (c) {
-        var ticker = String(c[mapping.tk] || '').toUpperCase();
-        if (!ticker) return null;
-        var account = mapping.ac >= 0 ? (c[mapping.ac] || '') : '';
-        var already = existing.some(function (h) { return h.ticker === ticker && (!account || !h.account || h.account === account); });
-        var status = already ? 'update' : 'new';
-        if (account && acctNames.length && acctNames.indexOf(account) < 0) status = 'warn';
+      var groups = [], byKey = {};
+      rawImport.rows.forEach(function (c) {
+        var ticker = String(c[mapping.tk] || '').toUpperCase().trim();
+        if (!ticker) return;
+        var account = mapping.ac >= 0 ? String(c[mapping.ac] || '').trim() : '';
         var shares = mapping.sh >= 0 ? num(c[mapping.sh]) : 0;
         var rawCost = mapping.cb >= 0 ? num(c[mapping.cb]) : 0;
         var costPerShare = (mapping.costIsTotal && rawCost && shares) ? rawCost / shares : rawCost;
         var purchaseDate = mapping.pd >= 0 ? parseDate(c[mapping.pd]) : null;
         var acctType = mapping.at >= 0 ? normTreatLabel(c[mapping.at]) : null;
-        return { ticker: ticker, shares: shares, costBasis: costPerShare, account: account, purchaseDate: purchaseDate, acctType: acctType, status: status };
-      }).filter(Boolean);
+        var key = ticker + ' ' + account;
+        var g = byKey[key];
+        if (!g) {
+          var already = existing.some(function (h) { return h.ticker === ticker && (!account || !h.account || h.account === account); });
+          var status = already ? 'update' : 'new';
+          if (account && acctNames.length && acctNames.indexOf(account) < 0) status = 'warn';
+          g = byKey[key] = { ticker: ticker, account: account, acctType: acctType, status: status, lots: [] };
+          groups.push(g);
+        }
+        if (!g.acctType && acctType) g.acctType = acctType;
+        g.lots.push({ shares: shares, costBasis: costPerShare || null, purchaseDate: purchaseDate });
+      });
+      parsed = groups.map(function (g) {
+        var a = aggLots(g.lots);
+        g.shares = a.shares; g.costBasis = a.costBasis; g.purchaseDate = a.purchaseDate;
+        return g;
+      });
     }
+    function lotCount(rows) { return rows.reduce(function (n, r) { return n + r.lots.length; }, 0); }
     function mapSelect(field, label) {
       var opts = '<option value="-1"' + (mapping[field] < 0 ? ' selected' : '') + '>— none —</option>';
       rawImport.headers.forEach(function (h, i) {
@@ -635,6 +666,7 @@ MSFT,25,310.00,11/20/2023,Schwab 401(k),Tax Deferred"></textarea>
       if (!rawImport) { host.innerHTML = '<div class="dh-empty">Drop or paste a CSV to preview holdings before committing.</div>'; return; }
       var shown = parsed.slice(0, 6);
       var counts = parsed.reduce(function (a, r) { a[r.status]++; return a; }, { new: 0, update: 0, warn: 0 });
+      var nLots = lotCount(parsed);
       var stLabel = { new: '✓ New', update: '↻ Update', warn: '⚠ Check acct' };
       var stClass = { new: 'dh-st-new', update: 'dh-st-upd', warn: 'dh-st-warn' };
       var mapBadge = mapping.custom
@@ -649,19 +681,21 @@ MSFT,25,310.00,11/20/2023,Schwab 401(k),Tax Deferred"></textarea>
       var rowsHtml = parsed.length
         ? '<div class="dh-prow dh-prow--head"><span class="dh-ph">Ticker</span><span class="dh-ph dh-cell--r">Shares</span><span class="dh-ph dh-cell--r">Cost Basis</span><span class="dh-ph dh-cell--r">Purchase Date</span><span class="dh-ph" style="padding-left:12px;">Account</span><span class="dh-ph dh-cell--r">Status</span></div>' +
           shown.map(function (r) {
-            var costTotal = (r.costBasis && r.shares) ? r.costBasis * r.shares : r.costBasis;
-            return '<div class="dh-prow"><span class="dh-cell--tk">' + esc(r.ticker) + '</span>' +
+            var costTotal = r.lots.reduce(function (t, l) { return t + (Number(l.costBasis) > 0 ? Number(l.costBasis) * (Number(l.shares) || 0) : 0); }, 0);
+            var multi = r.lots.length > 1;
+            var lotTip = multi ? r.lots.map(function (l) { return (l.purchaseDate || 'undated') + ': ' + (Number(l.shares) || 0).toLocaleString('en-US') + ' sh @ ' + (Number(l.costBasis) > 0 ? '$' + Number(l.costBasis).toFixed(2) : '—'); }).join('\n') : '';
+            return '<div class="dh-prow"><span class="dh-cell--tk">' + esc(r.ticker) + (multi ? '<div class="dh-hint" style="margin-top:1px;font-weight:400;" title="' + esc(lotTip) + '">' + r.lots.length + ' lots</div>' : '') + '</span>' +
               '<span class="dh-cell dh-cell--r dh-mono">' + (r.shares ? r.shares.toLocaleString('en-US') : '—') + '</span>' +
               '<span class="dh-cell dh-cell--r dh-mono">' + (costTotal ? fmtFull(costTotal) : '—') + '</span>' +
-              '<span class="dh-cell dh-cell--r dh-mono">' + (r.purchaseDate || '—') + '</span>' +
+              '<span class="dh-cell dh-cell--r dh-mono">' + (r.purchaseDate ? (multi ? 'from ' : '') + r.purchaseDate : '—') + '</span>' +
               '<span class="dh-cell" style="padding-left:12px;">' + (esc(r.account) || '—') + (r.acctType ? '<div class="dh-hint" style="margin-top:1px;">' + esc(r.acctType) + '</div>' : '') + '</span>' +
               '<span class="dh-cell--r ' + stClass[r.status] + '">' + stLabel[r.status] + '</span></div>';
           }).join('') +
-          '<div class="dh-preview__foot"><span class="dh-cell">' + (parsed.length > 6 ? (parsed.length - 6) + ' more rows · ' : '') + counts.new + ' new, ' + counts.update + ' updates' + (counts.warn ? ', ' + counts.warn + ' need review' : '') + '</span>' +
-          '<button class="dh-btn-primary" id="dh-commit" type="button" style="padding:7px 16px;">Commit ' + parsed.length + ' rows</button></div>'
+          '<div class="dh-preview__foot"><span class="dh-cell">' + (parsed.length > 6 ? (parsed.length - 6) + ' more positions · ' : '') + counts.new + ' new, ' + counts.update + ' updates' + (counts.warn ? ', ' + counts.warn + ' need review' : '') + (nLots !== parsed.length ? ' · ' + nLots + ' lots' : '') + '</span>' +
+          '<button class="dh-btn-primary" id="dh-commit" type="button" style="padding:7px 16px;">Commit ' + parsed.length + ' position' + (parsed.length === 1 ? '' : 's') + '</button></div>'
         : '<div class="dh-empty">No rows with this mapping — pick the ticker column under "Edit mapping".</div>';
       host.innerHTML =
-        '<div class="dh-preview__head"><span class="dh-preview__name">Preview · ' + parsed.length + ' rows</span>' +
+        '<div class="dh-preview__head"><span class="dh-preview__name">Preview · ' + parsed.length + ' position' + (parsed.length === 1 ? '' : 's') + (nLots !== parsed.length ? ' · ' + nLots + ' lots' : '') + '</span>' +
         '<span style="display:inline-flex;align-items:center;gap:12px;">' + mapBadge +
         '<button class="dh-maplink" id="dh-map-toggle" type="button">' + (mapOpen ? 'Hide mapping' : 'Edit mapping') + '</button></span></div>' +
         mapPanel + rowsHtml;
@@ -720,13 +754,22 @@ MSFT,25,310.00,11/20/2023,Schwab 401(k),Tax Deferred"></textarea>
         // Backfill: a ticker row with no account yet adopts the CSV's
         // account instead of duplicating the position.
         if (idx < 0 && r.account) idx = hs.findIndex(function (h) { return h.ticker === r.ticker && !h.account; });
+        // A brokerage export is a full snapshot of the position, so its
+        // lots REPLACE the stored lots (re-importing the same file never
+        // doubles a position). Single-lot positions stay flat (no `lots`).
+        var lots = r.lots.map(function (l) { return { id: lotId(), shares: l.shares, costBasis: l.costBasis, purchaseDate: l.purchaseDate || null }; });
         if (idx >= 0) {
           hs[idx].shares = r.shares; hs[idx].costBasis = r.costBasis;
           if (r.account && !hs[idx].account) hs[idx].account = r.account;
           if (r.purchaseDate) hs[idx].purchaseDate = r.purchaseDate;
+          if (lots.length > 1) hs[idx].lots = lots; else delete hs[idx].lots;
         }
         // `id` is required by the Portfolio Tracker (row edit/delete key on it)
-        else hs.push({ id: r.ticker + '-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6), ticker: r.ticker, name: r.ticker, shares: r.shares, costBasis: r.costBasis, account: r.account, purchaseDate: r.purchaseDate || null, assetClass: 'equity', currentPrice: null, priceUpdatedAt: null });
+        else {
+          var nh = { id: r.ticker + '-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6), ticker: r.ticker, name: r.ticker, shares: r.shares, costBasis: r.costBasis, account: r.account, purchaseDate: r.purchaseDate || null, assetClass: 'equity', currentPrice: null, priceUpdatedAt: null };
+          if (lots.length > 1) nh.lots = lots;
+          hs.push(nh);
+        }
       });
       store.set('portfolio.holdings', hs, EDIT);
       // record import + auto-register any unknown accounts referenced,
@@ -747,12 +790,12 @@ MSFT,25,310.00,11/20/2023,Schwab 401(k),Tax Deferred"></textarea>
       });
       store.set('accounts', accts, EDIT);
       recompute();
-      var n = parsed.length;
+      var n = parsed.length, nl = lotCount(parsed);
       parsed = []; rawImport = null; mapping = null; mapOpen = false;
       $('dh-paste-area').value = '';
       renderPreview();
       renderAll();
-      flash('Committed ' + n + ' holding' + (n === 1 ? '' : 's') + ' to the store.');
+      flash('Committed ' + n + ' position' + (n === 1 ? '' : 's') + (nl !== n ? ' (' + nl + ' lots)' : '') + ' to the store.');
     }
 
     // Positional column order assumed when a paste/CSV has no header row
