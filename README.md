@@ -17,7 +17,7 @@ Personal-finance hub that runs **entirely in your browser**. Twelve tools live i
 | Page | What it does |
 |---|---|
 | [Dashboard](https://kkgeek.github.io/tools/index.html) | Net worth (chart rebuilt from real price history, hover crosshair) · portfolio · retirement readiness (1,000-path Monte Carlo fan chart, hover crosshair) · spending vs budget · since-purchase performance vs benchmarks |
-| [Data Hub](https://kkgeek.github.io/tools/data_hub.html) | **All data entry.** Brokerage CSV import (with column-mapping editor + purchase dates) · live price refresh · accounts registry (tax-treatment tracking) · other assets · liabilities · expense CSV import · JSON backup |
+| [Data Hub](https://kkgeek.github.io/tools/data_hub.html) | **All data entry.** Brokerage CSV import (column-mapping editor, purchase dates, multi-lot positions) · live price refresh · accounts registry (tax-treatment tracking) · other assets · liabilities · expense CSV import · JSON backup |
 | [Settings](https://kkgeek.github.io/tools/settings.html) | Household profile (incl. retirement spending + growth assumption) · scenarios · tax profile · theme + accent · alerts · data controls (export / reset / clear chart caches) |
 
 ## Tools
@@ -25,7 +25,7 @@ Personal-finance hub that runs **entirely in your browser**. Twelve tools live i
 | Tool | What it does |
 |---|---|
 | [Net Worth Tracker](https://kkgeek.github.io/tools/net_worth.html) | Assets from the hub + manual entries · liabilities · debt ratio |
-| [Portfolio Tracker](https://kkgeek.github.io/tools/portfolio_tracker.html) | Live prices (self-hosted quote proxy) · CSV import with purchase dates · account + tax-treatment tiles (Taxable/Tax Free/Tax Deferred) · allocation donut · projections |
+| [Portfolio Tracker](https://kkgeek.github.io/tools/portfolio_tracker.html) | Live prices (self-hosted quote proxy) · CSV import with purchase dates · expandable per-lot table for multi-lot positions · account + tax-treatment tiles (Taxable/Tax Free/Tax Deferred) · allocation donut · projections |
 | [Expense Tracker](https://kkgeek.github.io/tools/expenses.html) | Bank CSV import (Chase/Amex/Citi) · auto-categorisation · budgets · trends |
 | [Retirement Master Plan](https://kkgeek.github.io/tools/retirement_master_plan_2.html) | Long-horizon projection · RMD calculator · 3-year buffer · Roth + SS strategy |
 | [Estate Plan](https://kkgeek.github.io/tools/estate_plan.html) | Federal (OBBBA) + WA estate tax · trust strategy · beneficiary audit |

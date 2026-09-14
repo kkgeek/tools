@@ -1253,13 +1253,30 @@ Fetched client-side; no API key required. Cached in
 Quote data (price, day change %) is public market data — no personal
 info leaves the browser.
 
-**Holdings store:** `portfolio.holdings[]` array, each entry:
+**Holdings store:** `portfolio.holdings[]` array — one entry per
+POSITION (ticker + account), each:
 ```js
-{ ticker, name, shares, costBasis, currentPrice, priceUpdatedAt,
+{ id,            // 'TICKER-ts-rand' — tracker keys row edit/delete on it
+  ticker, name, shares, costBasis, currentPrice, priceUpdatedAt,
+  account,       // registry name string (13u) or null; links to accounts[]
   purchaseDate,  // ISO 'YYYY-MM-DD' or null (Phase 13r; feeds the
                  // dashboard Performance table's since-purchase returns)
-  assetClass }   // assetClass: 'equity'|'bond'|'cash'|'other'
+  assetClass,    // 'equity'|'bond'|'cash'|'other'
+  lots }         // Phase 13ad — OPTIONAL, present only when the position
+                 // has >1 purchase lot:
+                 //   [{ id: 'L-…', shares, costBasis /* per-share */,
+                 //      purchaseDate /* ISO or null */ }]
 ```
+**Lot invariants (13ad):** `shares` = Σ lot shares; `costBasis` =
+value-weighted average per share over lots that carry a cost;
+`purchaseDate` = earliest dated lot. Consumers may read the flat fields
+without knowing about lots; anything that WRITES lots must re-derive
+the flat fields (`withLots`/`aggLots` in the tracker and hub). Charts
+that care about entry timing expand via `lotsOf`/`wsLotsOf` (a flat
+holding = one lot). CSV import REPLACES a position's lots (the file is
+a snapshot); the tracker add form APPENDS a lot when ticker + account
+already exist. `costBasis` is per-share at BOTH levels — never a lot
+total.
 
 **Dashboard panels:**
 1. Holdings table — ticker, shares, cost basis, current value,
