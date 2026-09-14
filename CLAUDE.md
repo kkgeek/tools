@@ -24,7 +24,7 @@ the Phase 13 design-handoff arc recorded in detail below.
 | `portfolio_review.html` | Vanilla JS + custom CSS vars | `assets/adapters/portfolio.js` (DOM parse on load; scales Target Allocation table from portAtRetire; updates buffer target from annualExpenses) |
 | `golden_ratio_portfolio_dashboard.html` | Vanilla JS + artifact tokens | `assets/adapters/golden.js` (read-only: seeds sI from portfolio.totalValue, sW from annualExpenses/totalValue) |
 | `roth_conversion.html` | React 18 + Tailwind + Babel inline | `assets/adapters/roth.js` (read-only seed via `window.__rothSeed`) |
-| `portfolio_tracker.html` | React 18 + Tailwind + D3 + Babel inline | `assets/adapters/tracker.js` (store bootstrap; component handles its own reads/writes) |
+| `portfolio_tracker.html` | React 18 + D3 + Babel inline (Material token CSS — no Tailwind since 13ae) | `assets/adapters/tracker.js` (store bootstrap; component handles its own reads/writes) |
 | `social_security.html` | Vanilla JS + Chart.js | `assets/adapters/ss.js` (seeds current age from household.spouses) |
 | `net_worth.html` | Vanilla JS + Chart.js | — (reads/writes store directly; schema v2 liabilities) |
 | `monte_carlo.html` | Vanilla JS + Chart.js | `assets/adapters/mc.js` (seeds sim params from store) |
@@ -1147,6 +1147,64 @@ to the last lot per ticker/account):
   lots, add-form appends a 13th lot / new ticker adds a flat row; NW
   chart with a 2-lot VTI (100 sh −2y, 50 sh −6mo, flat $100 cache) →
   1Y and All deltas exactly +$5K (the second lot's entry).
+
+Phase 13ae (Portfolio Tracker — Material reskin, add-form on top,
+paginated holdings; user request):
+- `portfolio_tracker.html` only (no shared-asset cache-buster bumps).
+  **Tailwind + `tw-reskin.css` + the Inter font are no longer loaded**
+  by this page — its UI is a self-contained `.pt-*` stylesheet inside
+  the page that consumes ONLY theme.css tokens (`--surface/--border/
+  --primary/--pos/--neg/--warn/--cat*`), so light/dark + the Settings
+  accent apply everywhere with no `!important` layer. The 4 remaining
+  Tailwind tools (expenses, TaxEstimatorV5, roth_conversion,
+  TaxAssetCalcv4) still use tw-reskin.css unchanged (its header comment
+  still lists the tracker — stale but harmless; not edited to avoid a
+  4-page cache-buster bump).
+- **Material vocabulary**: page header with logo tile + subtitle and
+  pill buttons (`.pt-btn--filled/--outlined/--text`), KPI tiles
+  (`.pt-kpi`, Roboto Mono figures, `is-pos/is-neg/is-muted`), **primary
+  tabs** (`role="tablist"`, `aria-selected`, underline indicator, count
+  chip, Arrow/Home/End keyboard nav, `aria-controls` → `role="tabpanel"`),
+  section cards (`.pt-card` + `.pt-sechead`), outlined compact inputs
+  (`.pt-input`, `--sm` for in-table). Numeric columns are right-aligned
+  monospace; Day $ / Day % merged into one stacked "Day" column and the
+  gain % sits under the gain $ so all 12 columns fit at 1280px without
+  horizontal scroll (the expanded lot row's colSpan is 12 now).
+- **Add-holding card is the FIRST card of the Holdings tab** (above the
+  table; the old form sat in the table footer). Same fields + behaviour
+  (ticker+account already present → appends a lot and auto-expands);
+  gained an "or import a CSV" text button; the lot-table footer hint
+  now says "in the form above".
+- **Pagination**: holdings render `PAGE_SIZES = [50, 100]` rows per
+  page (50 default). Footer (`.pt-pager`): Rows-per-page select, "1–50
+  of N", first/prev/"Page x of y"/next/last. Page size persists
+  DEVICE-LOCAL at `localStorage['wealthSuite.trackerPageSize']` (like
+  theme/accent — not in the store). `page` is clamped whenever the row
+  count shrinks (delete / re-import); changing the page size keeps the
+  first visible row on screen; adding a holding jumps to the page that
+  shows it (`pageFor(index)`); `expanded` lot state is unaffected by
+  paging. Pagination is purely presentational — the store sync,
+  totals, tiles, and allocation/projection tabs still use ALL holdings.
+- Charts: asset-class colours are now tokens (`ASSET_VARS`: equity
+  `--primary`, bond `--cat4`, cash `--cat3`, other `--cat2`) resolved
+  via `cssVar()` at render time; a MutationObserver on
+  `html[data-theme]` / `style` bumps `themeTick` so the D3 donut +
+  projection repaint on theme/accent changes. Axis/grid/area colours
+  are tokens too.
+- Page wrapper is `padding-top: 24px` (like expenses.html) — standalone
+  top padding comes from suite.js's `body.suite-tool-shell`; embedded
+  the shell zeroes it (verified: no double gap).
+- Verified via the verify-skill harness (32 assertions): 134 seeded
+  holdings → 50 rows / "1–50 of 134" / Page 1 of 3, next/last/first,
+  page size 100 keeps the first visible row (Page 2 of 2) and persists,
+  lot toggle expands (2 lots) on a paged row, add NEWX → last page +
+  store 135 holdings (editedBy tracker, totalValue recomputed), add lot
+  to T005 → page 1 + 3 lots, deleting all page-2 rows clamps to
+  "1–100 of 100", treatment tiles incl. "No Account Set", Allocation
+  donut slices use `--primary`/`--cat4`, ArrowRight → Projections,
+  dark theme → card surface rgb(27,30,32) + chart stroke `#7CC47F`,
+  standalone page still injects the suite topnav. Screenshots light +
+  dark + empty state reviewed.
 
 ## Constraints to preserve
 

@@ -4,21 +4,166 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Portfolio Tracker — Wealth Suite</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
-    <style>body { font-family: 'Inter', sans-serif; }</style>
 
     <!-- Wealth Suite shared shell -->
     <link rel="stylesheet" href="assets/suite.css?v=6">
     <link rel="stylesheet" href="assets/theme.css?v=1">
-    <link rel="stylesheet" href="assets/tw-reskin.css?v=1">
     <script>(function(){try{var p=localStorage.getItem('wealthSuite.themePreference');if(!['system','light','dark'].includes(p))p='system';var r=p==='system'?(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'):p;document.documentElement.setAttribute('data-theme',r);document.documentElement.setAttribute('data-theme-pref',p);}catch(e){}})();</script>
     <script src="assets/suite-state.js?v=8" defer></script>
     <script src="assets/suite.js?v=16" defer></script>
     <script src="assets/adapters/tracker.js?v=1" defer></script>
+
+    <!-- Material (design-handoff tokens) — every colour/surface below is a
+         theme.css token, so light/dark + the Settings accent picker apply
+         with no per-element work. Phase 13ae: this page no longer loads
+         Tailwind / tw-reskin.css. -->
+    <style>
+      body { margin: 0; background: var(--bg); color: var(--text); font-family: 'Roboto', -apple-system, 'Helvetica Neue', Arial, sans-serif; -webkit-font-smoothing: antialiased; }
+      .pt-wrap { max-width: 1180px; margin: 0 auto; padding: 24px 32px 56px; display: flex; flex-direction: column; gap: 20px; }
+      .pt-mono { font-family: 'Roboto Mono', monospace; font-variant-numeric: tabular-nums; }
+      .is-pos { color: var(--pos); } .is-neg { color: var(--neg); } .is-muted { color: var(--text-3); }
+
+      /* ---- page header ---- */
+      .pt-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+      .pt-head__title { display: flex; align-items: center; gap: 10px; }
+      .pt-logo { width: 34px; height: 34px; background: var(--primary); border-radius: 10px; display: flex; align-items: center; justify-content: center; color: var(--on-primary); flex-shrink: 0; }
+      .pt-h1 { font-size: 22px; font-weight: 500; }
+      .pt-sub { font-size: 13px; color: var(--text-2); margin-top: 6px; max-width: 720px; }
+      .pt-headbtns { display: flex; gap: 10px; flex-wrap: wrap; flex-shrink: 0; }
+
+      /* ---- buttons (Material pill) ---- */
+      .pt-btn { display: inline-flex; align-items: center; justify-content: center; gap: 7px; height: 36px; padding: 0 18px; border-radius: 20px; border: 1px solid transparent; font-family: inherit; font-size: 13px; font-weight: 500; cursor: pointer; white-space: nowrap; transition: background-color .15s ease, border-color .15s ease, color .15s ease; }
+      .pt-btn:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+      .pt-btn:disabled { opacity: .55; cursor: default; }
+      .pt-btn--filled { background: var(--primary); color: var(--on-primary); box-shadow: var(--shadow); }
+      .pt-btn--filled:hover:not(:disabled) { background: var(--primary-strong); }
+      .pt-btn--outlined { background: transparent; border-color: var(--border); color: var(--text-2); }
+      .pt-btn--outlined:hover:not(:disabled) { border-color: var(--primary); color: var(--text); }
+      .pt-btn--tonal { background: var(--primary-weak); color: var(--primary-text); }
+      .pt-btn--tonal:hover:not(:disabled) { filter: brightness(.96); }
+      .pt-btn--text { background: transparent; color: var(--primary-text); padding: 0 10px; height: 32px; }
+      .pt-btn--text:hover:not(:disabled) { background: var(--primary-weak); }
+      .pt-iconbtn { width: 30px; height: 30px; border-radius: 50%; border: none; background: transparent; color: var(--text-3); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; font-size: 16px; line-height: 1; font-family: inherit; transition: background-color .15s ease, color .15s ease; }
+      .pt-iconbtn:hover:not(:disabled) { background: var(--surface-2); color: var(--text); }
+      .pt-iconbtn--danger:hover:not(:disabled) { background: var(--neg-weak); color: var(--neg); }
+      .pt-iconbtn:disabled { opacity: .35; cursor: default; }
+      .pt-iconbtn:focus-visible { outline: 2px solid var(--primary); outline-offset: 1px; }
+
+      /* ---- status banner ---- */
+      .pt-status { padding: 10px 14px; border-radius: 12px; font-size: 12.5px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+      .pt-status--ok { background: var(--pos-weak); color: var(--pos); }
+      .pt-status--err { background: var(--neg-weak); color: var(--neg); }
+      .pt-status__hint { color: var(--text-3); font-size: 11px; }
+
+      /* ---- KPI tiles ---- */
+      .pt-kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+      .pt-kpi { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 15px 17px; box-shadow: var(--shadow); min-width: 0; }
+      .pt-kpi__label { font-size: 10.5px; color: var(--text-2); text-transform: uppercase; letter-spacing: .6px; font-weight: 500; margin-bottom: 7px; }
+      .pt-kpi__big { font-size: 22px; font-weight: 500; letter-spacing: -.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      .pt-kpi__note { font-size: 11px; color: var(--text-3); margin-top: 4px; }
+      .pt-kpis--sub .pt-kpi { padding: 12px 17px; }
+      .pt-kpis--sub .pt-kpi__big { font-size: 18px; }
+      .pt-kpis--sub .pt-kpi__label { margin-bottom: 4px; }
+
+      /* ---- Material primary tabs ---- */
+      .pt-tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--border); overflow-x: auto; }
+      .pt-tab { position: relative; background: none; border: none; padding: 12px 18px; font-family: inherit; font-size: 13.5px; font-weight: 500; letter-spacing: .1px; color: var(--text-2); cursor: pointer; border-radius: 8px 8px 0 0; white-space: nowrap; display: inline-flex; align-items: center; gap: 6px; transition: background-color .15s ease, color .15s ease; }
+      .pt-tab:hover { background: var(--surface-2); color: var(--text); }
+      .pt-tab[aria-selected="true"] { color: var(--primary-text); }
+      .pt-tab[aria-selected="true"]::after { content: ''; position: absolute; left: 14px; right: 14px; bottom: -1px; height: 3px; border-radius: 3px 3px 0 0; background: var(--primary); }
+      .pt-tab:focus-visible { outline: 2px solid var(--primary); outline-offset: -2px; }
+      .pt-tab__count { padding: 1px 7px; border-radius: 10px; background: var(--surface-2); color: var(--text-3); font-size: 11px; font-weight: 500; }
+      .pt-tab[aria-selected="true"] .pt-tab__count { background: var(--primary-weak); color: var(--primary-text); }
+      .pt-panel { display: flex; flex-direction: column; gap: 20px; }
+
+      /* ---- cards ---- */
+      .pt-card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; box-shadow: var(--shadow); overflow: hidden; }
+      .pt-card__pad { padding: 20px 24px; }
+      .pt-sechead { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding: 16px 24px 12px; }
+      .pt-sectitle { font-size: 16px; font-weight: 500; display: flex; align-items: center; gap: 9px; }
+      .pt-hint { font-size: 11.5px; color: var(--text-3); }
+
+      /* ---- form fields (outlined, compact) ---- */
+      .pt-form { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; padding: 0 24px 20px; }
+      .pt-field { display: flex; flex-direction: column; gap: 5px; }
+      .pt-field label { font-size: 11px; font-weight: 500; color: var(--text-2); letter-spacing: .3px; }
+      .pt-input { height: 38px; padding: 0 12px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); color: var(--text); font-family: inherit; font-size: 13px; box-sizing: border-box; transition: border-color .15s ease, box-shadow .15s ease; }
+      .pt-input::placeholder { color: var(--text-3); }
+      .pt-input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 2px var(--primary-weak); }
+      .pt-input--sm { height: 30px; padding: 0 8px; font-size: 12.5px; border-radius: 8px; background: var(--surface-2); }
+      .pt-input--warn { border-color: var(--warn); background: var(--warn-weak); }
+      .pt-input.pt-mono { font-size: 12.5px; }
+      select.pt-input { cursor: pointer; }
+      .pt-form__actions { display: flex; gap: 10px; align-items: center; margin-left: auto; }
+
+      /* ---- holdings table ---- */
+      .pt-tablewrap { overflow-x: auto; }
+      .pt-table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 980px; }
+      .pt-table th { text-align: left; padding: 10px 8px; font-size: 10.5px; letter-spacing: .5px; text-transform: uppercase; color: var(--text-2); font-weight: 700; background: var(--surface-2); border-bottom: 1px solid var(--border); white-space: nowrap; }
+      .pt-table td { padding: 8px 8px; border-bottom: 1px solid var(--border); vertical-align: middle; white-space: nowrap; }
+      .pt-table tbody tr.pt-row:hover { background: var(--surface-2); }
+      .pt-table th.pt-num, .pt-table td.pt-num { text-align: right; }
+      .pt-table td.pt-num { font-family: 'Roboto Mono', monospace; font-variant-numeric: tabular-nums; }
+      .pt-table td.pt-num .pt-input { text-align: right; }
+      .pt-ticker { font-family: 'Roboto Mono', monospace; font-weight: 500; font-size: 13px; }
+      .pt-ticker__btn { background: none; border: none; padding: 0; font: inherit; color: inherit; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; }
+      .pt-ticker__btn:hover { color: var(--primary-text); }
+      .pt-caret { display: inline-block; width: 12px; font-size: 11px; color: var(--text-3); }
+      .pt-tdsub { font-size: 11px; color: var(--text-3); margin-top: 2px; font-family: 'Roboto', sans-serif; font-weight: 400; max-width: 140px; overflow: hidden; text-overflow: ellipsis; }
+      .pt-tdsub--indent { padding-left: 16px; }
+      .pt-pctsub { font-size: 11px; opacity: .75; margin-left: 5px; }
+      .pt-pctline { font-size: 11px; opacity: .75; margin-top: 1px; }
+      .pt-avg { font-size: 10.5px; color: var(--text-3); margin-left: 4px; font-family: 'Roboto', sans-serif; }
+      .pt-lotsrow td { background: var(--surface-2); padding: 4px 12px 14px 12px; white-space: normal; }
+      .pt-lots { margin-left: 26px; border: 1px solid var(--border); border-radius: 12px; overflow: hidden; background: var(--surface); }
+      .pt-lots .pt-table { min-width: 640px; font-size: 12px; }
+      .pt-lots .pt-table th { padding: 8px 12px; font-size: 10px; }
+      .pt-lots .pt-table td { padding: 5px 12px; }
+      .pt-lots__foot { padding: 8px 12px; font-size: 11px; color: var(--text-3); border-top: 1px solid var(--border); }
+
+      /* ---- pagination footer ---- */
+      .pt-pager { display: flex; align-items: center; justify-content: flex-end; gap: 18px; flex-wrap: wrap; padding: 10px 16px; border-top: 1px solid var(--border); background: var(--surface); font-size: 12.5px; color: var(--text-2); }
+      .pt-pager__rows { display: flex; align-items: center; gap: 8px; }
+      .pt-pager__rows select { height: 30px; }
+      .pt-pager__range { font-variant-numeric: tabular-nums; }
+      .pt-pager__nav { display: flex; align-items: center; gap: 2px; }
+      .pt-pager__page { padding: 0 8px; font-variant-numeric: tabular-nums; }
+
+      /* ---- empty state ---- */
+      .pt-empty { padding: 48px 16px; text-align: center; color: var(--text-3); font-size: 13px; }
+      .pt-empty__icon { width: 44px; height: 44px; border-radius: 50%; background: var(--primary-weak); color: var(--primary-text); display: inline-flex; align-items: center; justify-content: center; margin-bottom: 10px; }
+      .pt-empty__t { font-size: 14px; font-weight: 500; color: var(--text-2); margin-bottom: 4px; }
+
+      /* ---- allocation ---- */
+      .pt-alloc { display: flex; gap: 32px; align-items: center; flex-wrap: wrap; }
+      .pt-alloc__chart { flex-shrink: 0; min-width: 260px; }
+      .pt-alloc__list { flex: 1; min-width: 240px; display: flex; flex-direction: column; gap: 12px; }
+      .pt-alloc__row { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 5px; }
+      .pt-alloc__name { font-weight: 500; display: inline-flex; align-items: center; gap: 7px; }
+      .pt-swatch { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
+      .pt-bar { height: 8px; background: var(--track); border-radius: 999px; overflow: hidden; }
+      .pt-bar > i { display: block; height: 100%; border-radius: 999px; }
+
+      /* ---- projections ---- */
+      .pt-rates { display: flex; flex-wrap: wrap; gap: 16px; margin-bottom: 20px; }
+      .pt-proj { width: 100%; border-collapse: collapse; font-size: 13px; margin-bottom: 20px; }
+      .pt-proj th { text-align: left; font-size: 10.5px; letter-spacing: .5px; text-transform: uppercase; color: var(--text-2); font-weight: 700; padding: 0 0 8px; border-bottom: 1px solid var(--border); }
+      .pt-proj td { padding: 9px 0; border-bottom: 1px solid var(--border); }
+      .pt-proj th.pt-num, .pt-proj td.pt-num { text-align: right; }
+      .pt-proj td.pt-num { font-family: 'Roboto Mono', monospace; font-variant-numeric: tabular-nums; }
+      .pt-chart { width: 100%; overflow-x: auto; }
+      .pt-chart svg text { font-family: 'Roboto', sans-serif; }
+      .pt-foot { font-size: 11.5px; color: var(--text-3); text-align: center; }
+
+      @media (max-width: 900px) {
+        .pt-wrap { padding: 20px 16px 48px; }
+        .pt-kpis { grid-template-columns: repeat(2, 1fr); }
+        .pt-form__actions { margin-left: 0; }
+      }
+    </style>
 </head>
-<body class="bg-gray-100 min-h-screen">
+<body>
     <div id="root"></div>
 
     <script crossorigin src="https://unpkg.com/react@18.3.1/umd/react.production.min.js"></script>
@@ -29,7 +174,12 @@
     // ── Constants ─────────────────────────────────────────────────────────────
     const ASSET_CLASSES = ['equity', 'bond', 'cash', 'other'];
     const ASSET_LABELS  = { equity: 'Equity', bond: 'Bond', cash: 'Cash', other: 'Other' };
-    const ASSET_COLORS  = { equity: '#3b82f6', bond: '#f59e0b', cash: '#10b981', other: '#8b5cf6' };
+    // Asset-class colours are theme tokens (resolved at render time via
+    // cssVar so D3 gets concrete values that follow light/dark + accent).
+    const ASSET_VARS    = { equity: '--primary', bond: '--cat4', cash: '--cat3', other: '--cat2' };
+    const cssVar = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim() || '#888';
+    const PAGE_SIZES    = [50, 100];               // holdings rows per page (Phase 13ae)
+    const PAGE_SIZE_KEY = 'wealthSuite.trackerPageSize'; // device-local, like theme/accent
     const PROJ_YEARS    = [1, 3, 5, 10, 15];
     const DEFAULT_RATES = { equity: 7, bond: 3.5, cash: 0.5, other: 5 };
     const PRICE_TTL_MS  = 15 * 60 * 1000;  // 15-min sessionStorage cache
@@ -249,6 +399,11 @@
       const [addForm,     setAddForm]     = React.useState({ ticker: '', shares: '', costBasis: '', purchaseDate: '', account: '', assetClass: 'equity' });
       const [accounts,    setAccounts]    = React.useState([]);   // accounts registry (Data Hub owns it)
       const [expanded,    setExpanded]    = React.useState(() => new Set()); // holding ids with the lot table open
+      const [pageSize,    setPageSizeRaw] = React.useState(() => {       // rows per page (50 default, 100 opt-in)
+        try { const n = Number(localStorage.getItem(PAGE_SIZE_KEY)); return PAGE_SIZES.includes(n) ? n : PAGE_SIZES[0]; } catch (_) { return PAGE_SIZES[0]; }
+      });
+      const [page,        setPage]        = React.useState(1);           // 1-based
+      const [themeTick,   setThemeTick]   = React.useState(0);           // bumps when data-theme / accent change → charts repaint
 
       const donutRef = React.useRef(null);
       const projRef  = React.useRef(null);
@@ -367,7 +522,7 @@
       const allocation = ASSET_CLASSES.map(cls => ({
         cls,
         label: ASSET_LABELS[cls],
-        color: ASSET_COLORS[cls],
+        colorVar: ASSET_VARS[cls],
         value: holdings.filter(h => h.assetClass === cls)
                        .reduce((s, h) => s + (h.currentPrice || 0) * (h.shares || 0), 0),
       })).filter(a => a.value > 0).map(a => ({ ...a, pct: totalValue > 0 ? a.value / totalValue : 0 }));
@@ -430,8 +585,10 @@
         if (existing) {
           setHoldings(prev => prev.map(h => h.id === existing.id ? withLots(h, [...lotsOf(h), lot]) : h));
           setExpanded(prev => new Set([...prev, existing.id]));
+          setPage(pageFor(holdings.findIndex(h => h.id === existing.id)));
         } else {
           setHoldings(prev => [...prev, newH]);
+          setPage(pageFor(holdings.length)); // appended at the end → show its page
         }
         if (account) registerAccounts([account]);
         setAddForm({ ticker: '', shares: '', costBasis: '', purchaseDate: '', account: '', assetClass: 'equity' });
@@ -516,468 +673,556 @@
         reader.readAsText(file);
       }
 
+      // ── Pagination (Phase 13ae) ─────────────────────────────────────────────
+      // Holdings render 50 rows per page by default (100 opt-in via the
+      // footer select, persisted device-local). `page` is clamped whenever
+      // the row count shrinks (delete / re-import) so it never points past
+      // the end; adding a holding jumps to the page that shows it.
+      const pageCount = Math.max(1, Math.ceil(holdings.length / pageSize));
+      React.useEffect(() => { if (page > pageCount) setPage(pageCount); }, [page, pageCount]);
+      const pageStart = Math.min(page - 1, pageCount - 1) * pageSize;
+      const visibleHoldings = holdings.slice(pageStart, pageStart + pageSize);
+      function pageFor(index) { return Math.floor(Math.max(0, index) / pageSize) + 1; }
+      function setPageSize(n) {
+        n = PAGE_SIZES.includes(n) ? n : PAGE_SIZES[0];
+        // Keep the first visible row on screen when the page size changes.
+        const firstIdx = (page - 1) * pageSize;
+        setPageSizeRaw(n);
+        setPage(Math.floor(firstIdx / n) + 1);
+        try { localStorage.setItem(PAGE_SIZE_KEY, String(n)); } catch (_) {}
+      }
+
+      // Repaint D3 charts when the theme / accent flips (html[data-theme]
+      // is set by suite.js on change; the inline accent snippet updates
+      // --primary on <html> style).
+      React.useEffect(() => {
+        const mo = new MutationObserver(() => setThemeTick(t => t + 1));
+        mo.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme', 'style'] });
+        return () => mo.disconnect();
+      }, []);
+
       // ── D3 donut ────────────────────────────────────────────────────────────
       React.useEffect(() => {
         if (activeTab !== 'allocation' || !donutRef.current || !allocation.length) return;
         const el = donutRef.current;
         d3.select(el).selectAll('*').remove();
-        const size = Math.min(el.clientWidth, 320);
-        const R = size / 2, r = R * 0.55;
+        const size = Math.min(el.clientWidth || 300, 320);
+        const R = size / 2, r = R * 0.58;
         const svg = d3.select(el).append('svg').attr('width', size).attr('height', size)
           .append('g').attr('transform', `translate(${R},${R})`);
-        const pie = d3.pie().value(d => d.value).sort(null);
-        const arc = d3.arc().innerRadius(r).outerRadius(R - 4);
-        const arcs = svg.selectAll('path').data(pie(allocation)).enter().append('path')
-          .attr('d', arc).attr('fill', d => d.data.color).attr('stroke', '#fff').attr('stroke-width', 2);
+        const pie = d3.pie().value(d => d.value).sort(null).padAngle(0.02);
+        const arc = d3.arc().innerRadius(r).outerRadius(R - 4).cornerRadius(3);
+        svg.selectAll('path').data(pie(allocation)).enter().append('path')
+          .attr('d', arc).attr('fill', d => cssVar(d.data.colorVar)).attr('stroke', cssVar('--surface')).attr('stroke-width', 2);
         svg.append('text').attr('text-anchor', 'middle').attr('dy', '-0.2em')
-          .attr('font-size', 13).attr('fill', '#6b7280').text('Total');
+          .attr('font-size', 12).attr('fill', cssVar('--text-2')).text('Total');
         svg.append('text').attr('text-anchor', 'middle').attr('dy', '1.1em')
-          .attr('font-size', 16).attr('font-weight', '700').attr('fill', '#111827').text(fmt0(totalValue));
-      }, [activeTab, allocation, totalValue]);
+          .attr('font-size', 17).attr('font-weight', '500').attr('fill', cssVar('--text')).text(fmt0(totalValue));
+      }, [activeTab, allocation, totalValue, themeTick]);
 
       // ── D3 projection chart ─────────────────────────────────────────────────
       React.useEffect(() => {
         if (activeTab !== 'projections' || !projRef.current || totalValue === 0) return;
         const el = projRef.current;
         d3.select(el).selectAll('*').remove();
-        const margin = { top: 16, right: 24, bottom: 36, left: 72 };
+        const margin = { top: 20, right: 24, bottom: 36, left: 72 };
         const W = Math.max(260, el.clientWidth - margin.left - margin.right);
         const H = 260 - margin.top - margin.bottom;
+        const cPrimary = cssVar('--primary'), cWeak = cssVar('--primary-weak'), cText = cssVar('--text-2'), cGrid = cssVar('--border'), cSurface = cssVar('--surface');
         const svg = d3.select(el).append('svg')
           .attr('width', W + margin.left + margin.right)
           .attr('height', H + margin.top  + margin.bottom)
           .append('g').attr('transform', `translate(${margin.left},${margin.top})`);
         const x = d3.scaleLinear().domain([0, 15]).range([0, W]);
         const y = d3.scaleLinear().domain([0, d3.max(projWithToday, d => d.value) * 1.08]).range([H, 0]).nice();
-        svg.append('g').call(d3.axisLeft(y).tickFormat(v => '$' + d3.format('.2s')(v)));
-        svg.append('g').attr('transform', `translate(0,${H})`).call(d3.axisBottom(x).tickValues(PROJ_YEARS).tickFormat(d => `${d}yr`));
+        const styleAxis = (g) => { g.selectAll('text').attr('fill', cText).attr('font-size', 11); g.selectAll('line').attr('stroke', cGrid); };
+        svg.append('g').call(d3.axisLeft(y).tickFormat(v => '$' + d3.format('.2s')(v))).call(styleAxis);
+        svg.append('g').attr('transform', `translate(0,${H})`).call(d3.axisBottom(x).tickValues(PROJ_YEARS).tickFormat(d => `${d}yr`)).call(styleAxis);
         svg.append('g').call(d3.axisLeft(y).tickSize(-W).tickFormat(''))
-          .selectAll('line').style('stroke', '#e5e7eb').style('stroke-dasharray', '3,3');
+          .selectAll('line').attr('stroke', cGrid).style('stroke-dasharray', '3,3');
         svg.selectAll('.domain').remove();
         const line = d3.line().x(d => x(d.yr)).y(d => y(d.value)).curve(d3.curveMonotoneX);
         const area = d3.area().x(d => x(d.yr)).y0(H).y1(d => y(d.value)).curve(d3.curveMonotoneX);
-        svg.append('path').datum(projWithToday).attr('fill', '#dbeafe').attr('opacity', 0.6).attr('d', area);
+        svg.append('path').datum(projWithToday).attr('fill', cWeak).attr('d', area);
         svg.append('path').datum(projWithToday).attr('fill', 'none')
-          .attr('stroke', '#3b82f6').attr('stroke-width', 2.5).attr('d', line);
+          .attr('stroke', cPrimary).attr('stroke-width', 2.5).attr('d', line);
         svg.selectAll('circle').data(projWithToday).enter().append('circle')
           .attr('cx', d => x(d.yr)).attr('cy', d => y(d.value)).attr('r', 4)
-          .attr('fill', '#3b82f6').attr('stroke', '#fff').attr('stroke-width', 2);
+          .attr('fill', cPrimary).attr('stroke', cSurface).attr('stroke-width', 2);
         // Value labels on points
         svg.selectAll('.lbl').data(projWithToday).enter().append('text')
           .attr('x', d => x(d.yr)).attr('y', d => y(d.value) - 10)
-          .attr('text-anchor', 'middle').attr('font-size', 10).attr('fill', '#374151')
+          .attr('text-anchor', 'middle').attr('font-size', 10).attr('fill', cText)
           .text(d => '$' + d3.format('.2s')(d.value));
-      }, [activeTab, projWithToday, totalValue]);
+      }, [activeTab, projWithToday, totalValue, themeTick]);
 
       // ── Helpers ─────────────────────────────────────────────────────────────
       const staleThreshold = Date.now() - PRICE_TTL_MS;
       function priceTag(h) {
-        if (pxStatus[h.ticker] === 'loading') return <span className="text-xs text-gray-400 ml-1">…</span>;
+        if (pxStatus[h.ticker] === 'loading') return <span className="is-muted" style={{ marginLeft: 4 }}>…</span>;
         if (pxStatus[h.ticker] === 'error' || (h.priceUpdatedAt && h.priceUpdatedAt < staleThreshold && pxStatus[h.ticker] !== 'ok'))
-          return <span className="text-xs text-amber-500 ml-1" title="Price may be stale">⚠</span>;
+          return <span style={{ color: 'var(--warn)', marginLeft: 4 }} title="Price may be stale">⚠</span>;
         return null;
       }
+      const signed = (n, f) => (n >= 0 ? '+' : '') + f(n);
+      const signCls = (n) => n == null ? 'is-muted' : (n >= 0 ? 'is-pos' : 'is-neg');
+      const TREAT_LABEL = { taxable: 'Taxable', taxFree: 'Tax Free', taxDeferred: 'Tax Deferred' };
+
+      const TABS = [['holdings', 'Holdings'], ['allocation', 'Allocation'], ['projections', 'Projections']];
+      function onTabKey(e) {
+        const i = TABS.findIndex(([id]) => id === activeTab);
+        if (i < 0) return;
+        let next = null;
+        if (e.key === 'ArrowRight') next = (i + 1) % TABS.length;
+        else if (e.key === 'ArrowLeft') next = (i - 1 + TABS.length) % TABS.length;
+        else if (e.key === 'Home') next = 0;
+        else if (e.key === 'End') next = TABS.length - 1;
+        if (next == null) return;
+        e.preventDefault();
+        setActiveTab(TABS[next][0]);
+        const btn = e.currentTarget.querySelector(`[data-tab="${TABS[next][0]}"]`);
+        if (btn) btn.focus();
+      }
+
+      const nLots = lotCount(holdings);
+      const byTreat = { taxable: 0, taxFree: 0, taxDeferred: 0, unassigned: 0 };
+      holdings.forEach(h => { byTreat[treatOf(h)] += (h.currentPrice || h.costBasis || 0) * (h.shares || 0); });
+      const grandTreat = byTreat.taxable + byTreat.taxFree + byTreat.taxDeferred + byTreat.unassigned;
 
       // ── JSX ─────────────────────────────────────────────────────────────────
       return (
-        <div className="max-w-6xl mx-auto px-4 py-8 pt-24">
-          <div className="flex items-center justify-between mb-1 flex-wrap gap-2">
-            <h1 className="text-2xl font-bold text-gray-800">Portfolio Tracker</h1>
-            <div className="flex gap-2 flex-wrap">
-              <button onClick={() => fileRef.current?.click()}
-                className="px-4 py-2 text-sm font-medium bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
+        <div className="pt-wrap">
+          {/* ── Page header ── */}
+          <div className="pt-head">
+            <div>
+              <div className="pt-head__title">
+                <div className="pt-logo" aria-hidden="true">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 17 9 11 13 15 21 7"/><polyline points="15 7 21 7 21 13"/></svg>
+                </div>
+                <span className="pt-h1">Portfolio Tracker</span>
+              </div>
+              <div className="pt-sub">Holdings, allocation and growth projections. Live quotes from Yahoo Finance; everything is stored locally in your browser.</div>
+            </div>
+            <div className="pt-headbtns">
+              <button type="button" className="pt-btn pt-btn--outlined" onClick={() => fileRef.current?.click()}>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
                 Import CSV
               </button>
               <input ref={fileRef} type="file" accept=".csv,text/csv" hidden onChange={handleFile} />
-              <button onClick={refreshAllPrices} disabled={refreshing || holdings.length === 0}
-                className="px-4 py-2 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors">
-                {refreshing ? 'Refreshing…' : '↻ Refresh Prices'}
+              <button type="button" className="pt-btn pt-btn--filled" onClick={refreshAllPrices} disabled={refreshing || holdings.length === 0}>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+                {refreshing ? 'Refreshing…' : 'Refresh Prices'}
               </button>
             </div>
           </div>
 
-          {/* Import status */}
+          {/* ── Import / add status ── */}
           {importMsg && (
-            <div className={`mb-3 px-4 py-2 rounded-lg text-sm ${importMsg.startsWith('Import failed') ? 'bg-red-50 text-red-700' : 'bg-emerald-50 text-emerald-700'}`}>
-              {importMsg}
-              <span className="text-xs text-gray-400 ml-2">Supports: Fidelity, Schwab, Vanguard, Generic (ticker,shares,cost_basis) · optional: Account Name, Purchase Date columns</span>
+            <div className={`pt-status ${importMsg.startsWith('Import failed') ? 'pt-status--err' : 'pt-status--ok'}`} role="status">
+              <span>{importMsg}</span>
+              <span className="pt-status__hint">Supports Fidelity, Schwab, Vanguard, Generic (ticker, shares, cost_basis) · optional Account Name + Purchase Date columns</span>
             </div>
           )}
 
           {/* ── Summary tiles ── */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-            {[
-              { label: 'Portfolio Value',  value: fmt0(totalValue),  sub: null, color: 'text-gray-800' },
-              { label: 'Day P&L',  value: hasDayData ? (totalDayPnL >= 0 ? '+' : '') + fmt0(totalDayPnL) : '—',
-                sub: null, color: hasDayData ? (totalDayPnL >= 0 ? 'text-emerald-600' : 'text-red-500') : 'text-gray-400' },
-              { label: 'Total Gain / Loss',
-                value: totalGain != null ? (totalGain >= 0 ? '+' : '') + fmt0(totalGain) : '—',
-                sub: totalGain != null && totalCost > 0 ? pct1(totalGain / totalCost * 100) : null,
-                color: totalGain != null ? (totalGain >= 0 ? 'text-emerald-600' : 'text-red-500') : 'text-gray-400' },
-              { label: 'Holdings', value: holdings.length, sub: null, color: 'text-gray-700' },
-            ].map(({ label, value, sub, color }) => (
-              <div key={label} className="bg-white rounded-xl shadow-sm p-4">
-                <div className="text-xs text-gray-400 uppercase tracking-wide mb-1">{label}</div>
-                <div className={`text-xl font-bold ${color}`}>{value}</div>
-                {sub && <div className="text-xs text-gray-400 mt-0.5">{sub}</div>}
-              </div>
-            ))}
+          <div className="pt-kpis">
+            <div className="pt-kpi">
+              <div className="pt-kpi__label">Portfolio Value</div>
+              <div className="pt-kpi__big pt-mono">{fmt0(totalValue)}</div>
+              <div className="pt-kpi__note">{holdings.length ? 'at live prices' : 'add holdings to begin'}</div>
+            </div>
+            <div className="pt-kpi">
+              <div className="pt-kpi__label">Day P&amp;L</div>
+              <div className={`pt-kpi__big pt-mono ${hasDayData ? signCls(totalDayPnL) : 'is-muted'}`}>{hasDayData ? signed(totalDayPnL, fmt0) : '—'}</div>
+              <div className="pt-kpi__note">{hasDayData ? 'since previous close' : 'refresh prices for today'}</div>
+            </div>
+            <div className="pt-kpi">
+              <div className="pt-kpi__label">Total Gain / Loss</div>
+              <div className={`pt-kpi__big pt-mono ${signCls(totalGain)}`}>{totalGain != null ? signed(totalGain, fmt0) : '—'}</div>
+              <div className="pt-kpi__note">{totalGain != null && totalCost > 0 ? pct1(totalGain / totalCost * 100) + ' vs cost' : 'needs cost basis'}</div>
+            </div>
+            <div className="pt-kpi">
+              <div className="pt-kpi__label">Positions</div>
+              <div className="pt-kpi__big pt-mono">{holdings.length}</div>
+              <div className="pt-kpi__note">{nLots !== holdings.length ? `${nLots} purchase lots` : 'one lot each'}</div>
+            </div>
           </div>
 
           {/* ── Account tax-treatment tiles ── */}
-          {holdings.length > 0 && (() => {
-            const tileVal = (h) => (h.currentPrice || h.costBasis || 0) * (h.shares || 0);
-            const byTreat = { taxable: 0, taxFree: 0, taxDeferred: 0, unassigned: 0 };
-            holdings.forEach(h => { byTreat[treatOf(h)] += tileVal(h); });
-            const grand = byTreat.taxable + byTreat.taxFree + byTreat.taxDeferred + byTreat.unassigned;
-            const tiles = [
-              { key: 'taxable',     label: 'Taxable' },
-              { key: 'taxFree',     label: 'Tax Free' },
-              { key: 'taxDeferred', label: 'Tax Deferred' },
-              ...(byTreat.unassigned > 0 ? [{ key: 'unassigned', label: 'No Account Set' }] : []),
-            ];
-            return (
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6 -mt-3">
-                {tiles.map(({ key, label }) => (
-                  <div key={key} className="bg-white rounded-xl shadow-sm p-4">
-                    <div className="text-xs text-gray-400 uppercase tracking-wide mb-1">{label}</div>
-                    <div className={`text-xl font-bold ${byTreat[key] > 0 ? 'text-gray-800' : 'text-gray-400'}`}>
-                      {byTreat[key] > 0 ? fmt0(byTreat[key]) : '—'}
-                    </div>
-                    <div className="text-xs text-gray-400 mt-0.5">
-                      {grand > 0 && byTreat[key] > 0 ? pct1(byTreat[key] / grand * 100) + ' of portfolio' : 'by account type'}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            );
-          })()}
+          {holdings.length > 0 && (
+            <div className="pt-kpis pt-kpis--sub">
+              {[
+                { key: 'taxable',     label: 'Taxable' },
+                { key: 'taxFree',     label: 'Tax Free' },
+                { key: 'taxDeferred', label: 'Tax Deferred' },
+                ...(byTreat.unassigned > 0 ? [{ key: 'unassigned', label: 'No Account Set' }] : []),
+              ].map(({ key, label }) => (
+                <div key={key} className="pt-kpi">
+                  <div className="pt-kpi__label">{label}</div>
+                  <div className={`pt-kpi__big pt-mono ${byTreat[key] > 0 ? '' : 'is-muted'}`}>{byTreat[key] > 0 ? fmt0(byTreat[key]) : '—'}</div>
+                  <div className="pt-kpi__note">{grandTreat > 0 && byTreat[key] > 0 ? (byTreat[key] / grandTreat * 100).toFixed(1) + '% of portfolio' : 'by account type'}</div>
+                </div>
+              ))}
+            </div>
+          )}
 
-          {/* ── Tabs ── */}
-          <div className="flex gap-1 mb-4">
-            {[['holdings','Holdings'], ['allocation','Allocation'], ['projections','Projections']].map(([id,label]) => (
-              <button key={id} onClick={() => setActiveTab(id)}
-                className={`px-5 py-2 text-sm font-medium rounded-lg transition-colors ${activeTab === id
-                  ? 'bg-blue-600 text-white shadow-sm'
-                  : 'bg-white text-gray-600 hover:bg-gray-50 border border-gray-200'}`}>
+          {/* ── Tabs (Material primary tabs) ── */}
+          <div className="pt-tabs" role="tablist" aria-label="Portfolio views" onKeyDown={onTabKey}>
+            {TABS.map(([id, label]) => (
+              <button key={id} type="button" role="tab" id={`pt-tab-${id}`} data-tab={id}
+                aria-selected={activeTab === id} aria-controls={`pt-panel-${id}`} tabIndex={activeTab === id ? 0 : -1}
+                className="pt-tab" onClick={() => setActiveTab(id)}>
                 {label}
+                {id === 'holdings' && holdings.length > 0 && <span className="pt-tab__count">{holdings.length}</span>}
               </button>
             ))}
           </div>
 
           {/* ── Holdings tab ── */}
           {activeTab === 'holdings' && (
-            <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-              {holdings.length > 0 ? (
-                <div className="overflow-x-auto">
-                  <table className="min-w-full text-sm">
-                    <thead className="bg-gray-50">
-                      <tr className="text-xs text-gray-400 uppercase">
-                        {['Ticker','Account','Shares','Cost/Share','Purchased','Price','Day $','Day %','Mkt Value','Total Cost','Gain/Loss','Class',''].map(h => (
-                          <th key={h} className="px-3 py-3 text-left font-medium whitespace-nowrap">{h}</th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-50">
-                      {holdings.map(h => {
-                        const mktVal  = (h.currentPrice || 0) * (h.shares || 0);
-                        const totCost = (h.costBasis    || 0) * (h.shares || 0);
-                        const gain    = totCost > 0 ? mktVal - totCost : null;
-                        const gainPct = totCost > 0 ? (mktVal - totCost) / totCost * 100 : null;
-                        const lots    = lotsOf(h);
-                        const multi   = lots.length > 1;
-                        const open    = multi && expanded.has(h.id);
-                        return (
-                          <React.Fragment key={h.id}>
-                          <tr className="hover:bg-gray-50">
-                            <td className="px-3 py-2 font-semibold text-gray-800 whitespace-nowrap">
-                              {multi ? (
-                                <button type="button" onClick={() => toggleExpanded(h.id)} aria-expanded={open}
-                                  title={open ? 'Hide purchase lots' : 'Show purchase lots'}
-                                  className="inline-flex items-center gap-1 text-left hover:text-blue-600">
-                                  <span className="inline-block w-3 text-gray-400 text-xs">{open ? '▾' : '▸'}</span>{h.ticker}
-                                </button>
-                              ) : h.ticker}
-                              {multi && (
-                                <div className="text-xs text-gray-400 font-normal pl-4">{lots.length} lots</div>
-                              )}
-                              {h.name && h.name !== h.ticker && (
-                                <div className="text-xs text-gray-400 font-normal truncate max-w-24">{h.name}</div>
-                              )}
-                            </td>
-                            <td className="px-3 py-2">
-                              <input value={h.account ?? ''} list="ws-acct-list" placeholder="—"
-                                onChange={e => updateHolding(h.id, 'account', e.target.value || null)}
-                                onBlur={e => registerAccounts([e.target.value])}
-                                className="w-32 border border-gray-200 rounded px-2 py-0.5 text-sm" />
-                              {h.account && (
-                                <div className="text-xs text-gray-400 mt-0.5">
-                                  {{ taxable: 'Taxable', taxFree: 'Tax Free', taxDeferred: 'Tax Deferred' }[treatOf(h)]}
-                                </div>
-                              )}
-                            </td>
-                            {multi ? (
-                              /* aggregates — edit the individual lots in the expanded table */
-                              <React.Fragment>
-                                <td className="px-3 py-2 whitespace-nowrap" title="Total of all lots">{Number(h.shares).toLocaleString('en-US', { maximumFractionDigits: 3 })}</td>
-                                <td className="px-3 py-2 whitespace-nowrap" title="Weighted average cost per share">{h.costBasis != null ? fmt2(h.costBasis) : '—'}<span className="text-xs text-gray-400 ml-1">avg</span></td>
-                                <td className="px-3 py-2 whitespace-nowrap text-gray-500" title="Earliest lot">{h.purchaseDate ? 'from ' + h.purchaseDate : '—'}</td>
-                              </React.Fragment>
-                            ) : (
-                              <React.Fragment>
-                            <td className="px-3 py-2">
-                              <input type="number" value={h.shares} min="0" step="0.001"
-                                onChange={e => updateHolding(h.id, 'shares', Number(e.target.value))}
-                                className="w-20 border border-gray-200 rounded px-2 py-0.5 text-sm" />
-                            </td>
-                            <td className="px-3 py-2">
-                              <input type="number" value={h.costBasis ?? ''} min="0" step="0.01" placeholder="—"
-                                onChange={e => updateHolding(h.id, 'costBasis', e.target.value ? Number(e.target.value) : null)}
-                                className="w-24 border border-gray-200 rounded px-2 py-0.5 text-sm" />
-                            </td>
-                            <td className="px-3 py-2">
-                              <input type="date" value={h.purchaseDate ?? ''}
-                                onChange={e => updateHolding(h.id, 'purchaseDate', e.target.value || null)}
-                                className="w-32 border border-gray-200 rounded px-2 py-0.5 text-sm" />
-                            </td>
-                              </React.Fragment>
-                            )}
-                            <td className="px-3 py-2 whitespace-nowrap">
-                              {h.currentPrice ? fmt2(h.currentPrice) : (
-                                <input type="number" placeholder="Enter" min="0" step="0.01"
-                                  onChange={e => updateHolding(h.id, 'currentPrice', e.target.value ? Number(e.target.value) : null)}
-                                  className="w-20 border border-amber-200 bg-amber-50 rounded px-2 py-0.5 text-sm" />
-                              )}
-                              {priceTag(h)}
-                            </td>
-                            <td className={`px-3 py-2 whitespace-nowrap ${h.dayChange != null ? (h.dayChange >= 0 ? 'text-emerald-600' : 'text-red-500') : 'text-gray-300'}`}>
-                              {h.dayChange != null ? (h.dayChange >= 0 ? '+' : '') + fmt2(h.dayChange) : '—'}
-                            </td>
-                            <td className={`px-3 py-2 whitespace-nowrap ${h.dayChangePct != null ? (h.dayChangePct >= 0 ? 'text-emerald-600' : 'text-red-500') : 'text-gray-300'}`}>
-                              {h.dayChangePct != null ? pct1(h.dayChangePct) : '—'}
-                            </td>
-                            <td className="px-3 py-2 whitespace-nowrap font-medium">{mktVal > 0 ? fmt0(mktVal) : '—'}</td>
-                            <td className="px-3 py-2 whitespace-nowrap text-gray-500">{totCost > 0 ? fmt0(totCost) : '—'}</td>
-                            <td className={`px-3 py-2 whitespace-nowrap ${gain != null ? (gain >= 0 ? 'text-emerald-600' : 'text-red-500') : 'text-gray-300'}`}>
-                              {gain != null ? (gain >= 0 ? '+' : '') + fmt0(gain) : '—'}
-                              {gainPct != null && <span className="text-xs ml-1 opacity-70">{pct1(gainPct)}</span>}
-                            </td>
-                            <td className="px-3 py-2">
-                              <select value={h.assetClass} onChange={e => updateHolding(h.id, 'assetClass', e.target.value)}
-                                className="border border-gray-200 rounded px-1 py-0.5 text-xs">
-                                {ASSET_CLASSES.map(c => <option key={c} value={c}>{ASSET_LABELS[c]}</option>)}
-                              </select>
-                            </td>
-                            <td className="px-3 py-2">
-                              <button onClick={() => removeHolding(h.id)} title={multi ? 'Remove this position and all its lots' : 'Remove'}
-                                className="text-gray-300 hover:text-red-400 transition-colors text-lg leading-none">×</button>
-                            </td>
-                          </tr>
-                          {open && (
-                            <tr className="bg-gray-50/70" data-lots-for={h.id}>
-                              <td colSpan={13} className="px-3 pt-1 pb-3">
-                                <div className="ml-6 border border-gray-200 rounded-lg overflow-hidden bg-white">
-                                  <table className="min-w-[640px] text-xs">
-                                    <thead className="bg-gray-50 text-gray-400 uppercase">
-                                      <tr>
-                                        {['Purchased','Shares','Cost/Share','Total Cost','Mkt Value','Gain/Loss',''].map(c => (
-                                          <th key={c} className="px-3 py-2 text-left font-medium whitespace-nowrap">{c}</th>
-                                        ))}
-                                      </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-gray-100">
-                                      {lots.slice().sort((a, b) => String(a.purchaseDate || '9999').localeCompare(String(b.purchaseDate || '9999'))).map(l => {
-                                        const lCost = (l.costBasis || 0) * (l.shares || 0);
-                                        const lVal  = (h.currentPrice || 0) * (l.shares || 0);
-                                        const lGain = lCost > 0 && h.currentPrice ? lVal - lCost : null;
-                                        return (
-                                          <tr key={l.id} className="hover:bg-gray-50">
-                                            <td className="px-3 py-1.5">
-                                              <input type="date" value={l.purchaseDate ?? ''}
-                                                onChange={e => updateLot(h.id, l.id, 'purchaseDate', e.target.value || null)}
-                                                className="w-32 border border-gray-200 rounded px-2 py-0.5 text-xs" />
-                                            </td>
-                                            <td className="px-3 py-1.5">
-                                              <input type="number" value={l.shares} min="0" step="0.001"
-                                                onChange={e => updateLot(h.id, l.id, 'shares', Number(e.target.value))}
-                                                className="w-20 border border-gray-200 rounded px-2 py-0.5 text-xs" />
-                                            </td>
-                                            <td className="px-3 py-1.5">
-                                              <input type="number" value={l.costBasis ?? ''} min="0" step="0.01" placeholder="—"
-                                                onChange={e => updateLot(h.id, l.id, 'costBasis', e.target.value ? Number(e.target.value) : null)}
-                                                className="w-24 border border-gray-200 rounded px-2 py-0.5 text-xs" />
-                                            </td>
-                                            <td className="px-3 py-1.5 whitespace-nowrap text-gray-500">{lCost > 0 ? fmt0(lCost) : '—'}</td>
-                                            <td className="px-3 py-1.5 whitespace-nowrap">{lVal > 0 ? fmt0(lVal) : '—'}</td>
-                                            <td className={`px-3 py-1.5 whitespace-nowrap ${lGain != null ? (lGain >= 0 ? 'text-emerald-600' : 'text-red-500') : 'text-gray-300'}`}>
-                                              {lGain != null ? (lGain >= 0 ? '+' : '') + fmt0(lGain) : '—'}
-                                              {lGain != null && <span className="ml-1 opacity-70">{pct1(lGain / lCost * 100)}</span>}
-                                            </td>
-                                            <td className="px-3 py-1.5">
-                                              <button onClick={() => removeLot(h.id, l.id)} title="Remove this lot"
-                                                className="text-gray-300 hover:text-red-400 transition-colors text-base leading-none">×</button>
-                                            </td>
-                                          </tr>
-                                        );
-                                      })}
-                                    </tbody>
-                                  </table>
-                                  <div className="px-3 py-1.5 text-xs text-gray-400 border-t border-gray-100">
-                                    To add a lot, enter {h.ticker}{h.account ? ` in account "${h.account}"` : ''} in the form below.
-                                  </div>
-                                </div>
-                              </td>
-                            </tr>
-                          )}
-                          </React.Fragment>
-                        );
-                      })}
-                    </tbody>
-                  </table>
+            <div className="pt-panel" role="tabpanel" id="pt-panel-holdings" aria-labelledby="pt-tab-holdings">
+              {/* Add holding — at the top (Phase 13ae) */}
+              <div className="pt-card">
+                <div className="pt-sechead">
+                  <div className="pt-sectitle">Add holding</div>
+                  <div className="pt-hint">Same ticker in the same account adds a purchase lot to that position.</div>
                 </div>
-              ) : (
-                <div className="p-12 text-center text-gray-400">
-                  <div className="text-4xl mb-3">📊</div>
-                  <div className="font-medium text-gray-500 mb-1">No holdings yet</div>
-                  <p className="text-sm">Import a brokerage CSV or add a holding below.</p>
-                </div>
-              )}
-
-              {/* Add holding form */}
-              <div className="border-t border-gray-100 px-4 py-3 bg-gray-50">
-                <form onSubmit={addHolding} className="flex gap-2 flex-wrap items-end">
-                  <div>
-                    <label className="block text-xs text-gray-500 mb-1">Ticker *</label>
-                    <input required value={addForm.ticker} placeholder="AAPL"
+                <form onSubmit={addHolding} className="pt-form">
+                  <div className="pt-field">
+                    <label htmlFor="pt-add-ticker">Ticker *</label>
+                    <input id="pt-add-ticker" required value={addForm.ticker} placeholder="AAPL" autoComplete="off"
                       onChange={e => setAddForm(f => ({ ...f, ticker: e.target.value.toUpperCase() }))}
-                      className="w-20 border border-gray-300 rounded px-2 py-1.5 text-sm uppercase" />
+                      className="pt-input pt-mono" style={{ width: 96, textTransform: 'uppercase' }} />
                   </div>
-                  <div>
-                    <label className="block text-xs text-gray-500 mb-1">Shares *</label>
-                    <input required type="number" value={addForm.shares} placeholder="100" min="0" step="0.001"
+                  <div className="pt-field">
+                    <label htmlFor="pt-add-shares">Shares *</label>
+                    <input id="pt-add-shares" required type="number" value={addForm.shares} placeholder="100" min="0" step="0.001"
                       onChange={e => setAddForm(f => ({ ...f, shares: e.target.value }))}
-                      className="w-24 border border-gray-300 rounded px-2 py-1.5 text-sm" />
+                      className="pt-input pt-mono" style={{ width: 108 }} />
                   </div>
-                  <div>
-                    <label className="block text-xs text-gray-500 mb-1">Cost / Share</label>
-                    <input type="number" value={addForm.costBasis} placeholder="150.00" min="0" step="0.01"
+                  <div className="pt-field">
+                    <label htmlFor="pt-add-cost">Cost / Share</label>
+                    <input id="pt-add-cost" type="number" value={addForm.costBasis} placeholder="150.00" min="0" step="0.01"
                       onChange={e => setAddForm(f => ({ ...f, costBasis: e.target.value }))}
-                      className="w-28 border border-gray-300 rounded px-2 py-1.5 text-sm" />
+                      className="pt-input pt-mono" style={{ width: 120 }} />
                   </div>
-                  <div>
-                    <label className="block text-xs text-gray-500 mb-1">Purchased</label>
-                    <input type="date" value={addForm.purchaseDate}
+                  <div className="pt-field">
+                    <label htmlFor="pt-add-date">Purchased</label>
+                    <input id="pt-add-date" type="date" value={addForm.purchaseDate}
                       onChange={e => setAddForm(f => ({ ...f, purchaseDate: e.target.value }))}
-                      className="w-36 border border-gray-300 rounded px-2 py-1.5 text-sm" />
+                      className="pt-input" style={{ width: 156 }} />
                   </div>
-                  <div>
-                    <label className="block text-xs text-gray-500 mb-1">Account</label>
-                    <input value={addForm.account} list="ws-acct-list" placeholder="Brokerage"
+                  <div className="pt-field">
+                    <label htmlFor="pt-add-account">Account</label>
+                    <input id="pt-add-account" value={addForm.account} list="ws-acct-list" placeholder="Brokerage"
                       onChange={e => setAddForm(f => ({ ...f, account: e.target.value }))}
-                      className="w-36 border border-gray-300 rounded px-2 py-1.5 text-sm" />
+                      className="pt-input" style={{ width: 170 }} />
                   </div>
                   <datalist id="ws-acct-list">
                     {accounts.map(a => <option key={a.id} value={a.name} />)}
                   </datalist>
-                  <div>
-                    <label className="block text-xs text-gray-500 mb-1">Class</label>
-                    <select value={addForm.assetClass} onChange={e => setAddForm(f => ({ ...f, assetClass: e.target.value }))}
-                      className="border border-gray-300 rounded px-2 py-1.5 text-sm">
+                  <div className="pt-field">
+                    <label htmlFor="pt-add-class">Class</label>
+                    <select id="pt-add-class" value={addForm.assetClass} onChange={e => setAddForm(f => ({ ...f, assetClass: e.target.value }))}
+                      className="pt-input">
                       {ASSET_CLASSES.map(c => <option key={c} value={c}>{ASSET_LABELS[c]}</option>)}
                     </select>
                   </div>
-                  <button type="submit"
-                    className="px-4 py-1.5 bg-blue-600 text-white text-sm font-medium rounded hover:bg-blue-700 transition-colors">
-                    + Add
-                  </button>
+                  <div className="pt-form__actions">
+                    <button type="button" className="pt-btn pt-btn--text" onClick={() => fileRef.current?.click()}>or import a CSV</button>
+                    <button type="submit" className="pt-btn pt-btn--filled">+ Add holding</button>
+                  </div>
                 </form>
+              </div>
+
+              {/* Holdings table */}
+              <div className="pt-card">
+                <div className="pt-sechead">
+                  <div className="pt-sectitle">Holdings</div>
+                  <div className="pt-hint">
+                    {holdings.length
+                      ? `${holdings.length} position${holdings.length === 1 ? '' : 's'}${nLots !== holdings.length ? ` · ${nLots} lots` : ''} · click a ticker with lots to expand`
+                      : 'No positions yet'}
+                  </div>
+                </div>
+                {holdings.length > 0 ? (
+                  <React.Fragment>
+                  <div className="pt-tablewrap">
+                    <table className="pt-table">
+                      <thead>
+                        <tr>
+                          {[['Ticker'],['Account'],['Shares','num'],['Cost/Share','num'],['Purchased'],['Price','num'],['Day','num'],['Mkt Value','num'],['Total Cost','num'],['Gain/Loss','num'],['Class'],['']].map(([h, num], i) => (
+                            <th key={i} className={num ? 'pt-num' : ''}>{h}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {visibleHoldings.map(h => {
+                          const mktVal  = (h.currentPrice || 0) * (h.shares || 0);
+                          const totCost = (h.costBasis    || 0) * (h.shares || 0);
+                          const gain    = totCost > 0 ? mktVal - totCost : null;
+                          const gainPct = totCost > 0 ? (mktVal - totCost) / totCost * 100 : null;
+                          const lots    = lotsOf(h);
+                          const multi   = lots.length > 1;
+                          const open    = multi && expanded.has(h.id);
+                          return (
+                            <React.Fragment key={h.id}>
+                            <tr className="pt-row">
+                              <td className="pt-ticker">
+                                {multi ? (
+                                  <button type="button" onClick={() => toggleExpanded(h.id)} aria-expanded={open}
+                                    title={open ? 'Hide purchase lots' : 'Show purchase lots'} className="pt-ticker__btn">
+                                    <span className="pt-caret" aria-hidden="true">{open ? '▾' : '▸'}</span>{h.ticker}
+                                  </button>
+                                ) : h.ticker}
+                                {multi && <div className="pt-tdsub pt-tdsub--indent">{lots.length} lots</div>}
+                                {h.name && h.name !== h.ticker && <div className="pt-tdsub" title={h.name}>{h.name}</div>}
+                              </td>
+                              <td>
+                                <input value={h.account ?? ''} list="ws-acct-list" placeholder="—" aria-label="Account"
+                                  onChange={e => updateHolding(h.id, 'account', e.target.value || null)}
+                                  onBlur={e => registerAccounts([e.target.value])}
+                                  className="pt-input pt-input--sm" style={{ width: 128 }} />
+                                {h.account && <div className="pt-tdsub">{TREAT_LABEL[treatOf(h)]}</div>}
+                              </td>
+                              {multi ? (
+                                /* aggregates — edit the individual lots in the expanded table */
+                                <React.Fragment>
+                                  <td className="pt-num" title="Total of all lots">{Number(h.shares).toLocaleString('en-US', { maximumFractionDigits: 3 })}</td>
+                                  <td className="pt-num" title="Weighted average cost per share">{h.costBasis != null ? fmt2(h.costBasis) : '—'}<span className="pt-avg">avg</span></td>
+                                  <td className="is-muted" title="Earliest lot">{h.purchaseDate ? 'from ' + h.purchaseDate : '—'}</td>
+                                </React.Fragment>
+                              ) : (
+                                <React.Fragment>
+                                  <td className="pt-num">
+                                    <input type="number" value={h.shares} min="0" step="0.001" aria-label="Shares"
+                                      onChange={e => updateHolding(h.id, 'shares', Number(e.target.value))}
+                                      className="pt-input pt-input--sm pt-mono" style={{ width: 78 }} />
+                                  </td>
+                                  <td className="pt-num">
+                                    <input type="number" value={h.costBasis ?? ''} min="0" step="0.01" placeholder="—" aria-label="Cost per share"
+                                      onChange={e => updateHolding(h.id, 'costBasis', e.target.value ? Number(e.target.value) : null)}
+                                      className="pt-input pt-input--sm pt-mono" style={{ width: 88 }} />
+                                  </td>
+                                  <td>
+                                    <input type="date" value={h.purchaseDate ?? ''} aria-label="Purchase date"
+                                      onChange={e => updateHolding(h.id, 'purchaseDate', e.target.value || null)}
+                                      className="pt-input pt-input--sm" style={{ width: 130 }} />
+                                  </td>
+                                </React.Fragment>
+                              )}
+                              <td className="pt-num">
+                                {h.currentPrice ? fmt2(h.currentPrice) : (
+                                  <input type="number" placeholder="Enter" min="0" step="0.01" aria-label="Price"
+                                    onChange={e => updateHolding(h.id, 'currentPrice', e.target.value ? Number(e.target.value) : null)}
+                                    className="pt-input pt-input--sm pt-input--warn pt-mono" style={{ width: 84 }} />
+                                )}
+                                {priceTag(h)}
+                              </td>
+                              <td className={`pt-num ${signCls(h.dayChange)}`}>
+                                {h.dayChange != null ? signed(h.dayChange, fmt2) : '—'}
+                                {h.dayChangePct != null && <div className="pt-pctline">{pct1(h.dayChangePct)}</div>}
+                              </td>
+                              <td className="pt-num" style={{ fontWeight: 500 }}>{mktVal > 0 ? fmt0(mktVal) : '—'}</td>
+                              <td className="pt-num is-muted">{totCost > 0 ? fmt0(totCost) : '—'}</td>
+                              <td className={`pt-num ${signCls(gain)}`}>
+                                {gain != null ? signed(gain, fmt0) : '—'}
+                                {gainPct != null && <div className="pt-pctline">{pct1(gainPct)}</div>}
+                              </td>
+                              <td>
+                                <select value={h.assetClass} onChange={e => updateHolding(h.id, 'assetClass', e.target.value)} aria-label="Asset class"
+                                  className="pt-input pt-input--sm">
+                                  {ASSET_CLASSES.map(c => <option key={c} value={c}>{ASSET_LABELS[c]}</option>)}
+                                </select>
+                              </td>
+                              <td>
+                                <button type="button" onClick={() => removeHolding(h.id)} title={multi ? 'Remove this position and all its lots' : 'Remove'}
+                                  aria-label={`Remove ${h.ticker}`} className="pt-iconbtn pt-iconbtn--danger">×</button>
+                              </td>
+                            </tr>
+                            {open && (
+                              <tr className="pt-lotsrow" data-lots-for={h.id}>
+                                <td colSpan={12}>
+                                  <div className="pt-lots">
+                                    <table className="pt-table">
+                                      <thead>
+                                        <tr>
+                                          {[['Purchased'],['Shares','num'],['Cost/Share','num'],['Total Cost','num'],['Mkt Value','num'],['Gain/Loss','num'],['']].map(([c, num], i) => (
+                                            <th key={i} className={num ? 'pt-num' : ''}>{c}</th>
+                                          ))}
+                                        </tr>
+                                      </thead>
+                                      <tbody>
+                                        {lots.slice().sort((a, b) => String(a.purchaseDate || '9999').localeCompare(String(b.purchaseDate || '9999'))).map(l => {
+                                          const lCost = (l.costBasis || 0) * (l.shares || 0);
+                                          const lVal  = (h.currentPrice || 0) * (l.shares || 0);
+                                          const lGain = lCost > 0 && h.currentPrice ? lVal - lCost : null;
+                                          return (
+                                            <tr key={l.id} className="pt-row">
+                                              <td>
+                                                <input type="date" value={l.purchaseDate ?? ''} aria-label="Lot purchase date"
+                                                  onChange={e => updateLot(h.id, l.id, 'purchaseDate', e.target.value || null)}
+                                                  className="pt-input pt-input--sm" style={{ width: 136 }} />
+                                              </td>
+                                              <td className="pt-num">
+                                                <input type="number" value={l.shares} min="0" step="0.001" aria-label="Lot shares"
+                                                  onChange={e => updateLot(h.id, l.id, 'shares', Number(e.target.value))}
+                                                  className="pt-input pt-input--sm pt-mono" style={{ width: 84 }} />
+                                              </td>
+                                              <td className="pt-num">
+                                                <input type="number" value={l.costBasis ?? ''} min="0" step="0.01" placeholder="—" aria-label="Lot cost per share"
+                                                  onChange={e => updateLot(h.id, l.id, 'costBasis', e.target.value ? Number(e.target.value) : null)}
+                                                  className="pt-input pt-input--sm pt-mono" style={{ width: 96 }} />
+                                              </td>
+                                              <td className="pt-num is-muted">{lCost > 0 ? fmt0(lCost) : '—'}</td>
+                                              <td className="pt-num">{lVal > 0 ? fmt0(lVal) : '—'}</td>
+                                              <td className={`pt-num ${signCls(lGain)}`}>
+                                                {lGain != null ? signed(lGain, fmt0) : '—'}
+                                                {lGain != null && <span className="pt-pctsub">{pct1(lGain / lCost * 100)}</span>}
+                                              </td>
+                                              <td>
+                                                <button type="button" onClick={() => removeLot(h.id, l.id)} title="Remove this lot" aria-label="Remove this lot"
+                                                  className="pt-iconbtn pt-iconbtn--danger">×</button>
+                                              </td>
+                                            </tr>
+                                          );
+                                        })}
+                                      </tbody>
+                                    </table>
+                                    <div className="pt-lots__foot">
+                                      To add a lot, enter {h.ticker}{h.account ? ` in account "${h.account}"` : ''} in the form above.
+                                    </div>
+                                  </div>
+                                </td>
+                              </tr>
+                            )}
+                            </React.Fragment>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                  {/* Pagination footer */}
+                  <div className="pt-pager" data-testid="pt-pager">
+                    <label className="pt-pager__rows">
+                      <span>Rows per page</span>
+                      <select className="pt-input pt-input--sm" value={pageSize} onChange={e => setPageSize(Number(e.target.value))} aria-label="Rows per page">
+                        {PAGE_SIZES.map(n => <option key={n} value={n}>{n}</option>)}
+                      </select>
+                    </label>
+                    <span className="pt-pager__range" aria-live="polite">
+                      {pageStart + 1}–{Math.min(pageStart + pageSize, holdings.length)} of {holdings.length}
+                    </span>
+                    <span className="pt-pager__nav">
+                      <button type="button" className="pt-iconbtn" onClick={() => setPage(1)} disabled={page <= 1} aria-label="First page" title="First page">«</button>
+                      <button type="button" className="pt-iconbtn" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page <= 1} aria-label="Previous page" title="Previous page">‹</button>
+                      <span className="pt-pager__page">Page {Math.min(page, pageCount)} of {pageCount}</span>
+                      <button type="button" className="pt-iconbtn" onClick={() => setPage(p => Math.min(pageCount, p + 1))} disabled={page >= pageCount} aria-label="Next page" title="Next page">›</button>
+                      <button type="button" className="pt-iconbtn" onClick={() => setPage(pageCount)} disabled={page >= pageCount} aria-label="Last page" title="Last page">»</button>
+                    </span>
+                  </div>
+                  </React.Fragment>
+                ) : (
+                  <div className="pt-empty">
+                    <div className="pt-empty__icon" aria-hidden="true">
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 17 9 11 13 15 21 7"/><polyline points="15 7 21 7 21 13"/></svg>
+                    </div>
+                    <div className="pt-empty__t">No holdings yet</div>
+                    <div>Add a holding above or import a brokerage CSV.</div>
+                  </div>
+                )}
               </div>
             </div>
           )}
 
           {/* ── Allocation tab ── */}
           {activeTab === 'allocation' && (
-            <div className="bg-white rounded-xl shadow-sm p-6">
-              {allocation.length > 0 ? (
-                <div className="flex flex-col md:flex-row gap-8 items-center">
-                  <div ref={donutRef} className="flex-shrink-0" style={{ minWidth: 260 }} />
-                  <div className="flex-1 space-y-3">
-                    {allocation.map(a => (
-                      <div key={a.cls}>
-                        <div className="flex justify-between text-sm mb-1">
-                          <span className="font-medium" style={{ color: a.color }}>{a.label}</span>
-                          <span className="text-gray-600">{fmt0(a.value)} · {(a.pct * 100).toFixed(1)}%</span>
-                        </div>
-                        <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-                          <div className="h-full rounded-full" style={{ width: `${(a.pct * 100).toFixed(1)}%`, background: a.color }} />
-                        </div>
-                      </div>
-                    ))}
-                    <p className="text-xs text-gray-400 pt-2">
-                      Asset class is set per holding in the Holdings tab.
-                    </p>
-                  </div>
+            <div className="pt-panel" role="tabpanel" id="pt-panel-allocation" aria-labelledby="pt-tab-allocation">
+              <div className="pt-card">
+                <div className="pt-sechead">
+                  <div className="pt-sectitle">Asset allocation</div>
+                  <div className="pt-hint">Asset class is set per holding in the Holdings tab.</div>
                 </div>
-              ) : (
-                <p className="text-gray-400 text-center py-12">Add holdings to see allocation.</p>
-              )}
+                <div className="pt-card__pad" style={{ paddingTop: 4 }}>
+                  {allocation.length > 0 ? (
+                    <div className="pt-alloc">
+                      <div ref={donutRef} className="pt-alloc__chart" />
+                      <div className="pt-alloc__list">
+                        {allocation.map(a => (
+                          <div key={a.cls}>
+                            <div className="pt-alloc__row">
+                              <span className="pt-alloc__name"><i className="pt-swatch" style={{ background: `var(${a.colorVar})` }} />{a.label}</span>
+                              <span className="pt-mono" style={{ color: 'var(--text-2)' }}>{fmt0(a.value)} · {(a.pct * 100).toFixed(1)}%</span>
+                            </div>
+                            <div className="pt-bar"><i style={{ width: `${(a.pct * 100).toFixed(1)}%`, background: `var(${a.colorVar})` }} /></div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="pt-empty">Add holdings with prices to see allocation.</div>
+                  )}
+                </div>
+              </div>
             </div>
           )}
 
           {/* ── Projections tab ── */}
           {activeTab === 'projections' && (
-            <div className="bg-white rounded-xl shadow-sm p-6">
-              {totalValue > 0 ? (
-                <>
-                  {/* Growth rate inputs */}
-                  <div className="flex flex-wrap gap-4 mb-6">
-                    {ASSET_CLASSES.map(cls => (
-                      <div key={cls}>
-                        <label className="block text-xs font-medium mb-1" style={{ color: ASSET_COLORS[cls] }}>
-                          {ASSET_LABELS[cls]} CAGR (%)
-                        </label>
-                        <input type="number" value={growthRates[cls]} min="0" max="30" step="0.5"
-                          onChange={e => setGrowthRates(r => ({ ...r, [cls]: Number(e.target.value) || 0 }))}
-                          className="w-20 border border-gray-300 rounded px-2 py-1 text-sm" />
-                      </div>
-                    ))}
-                  </div>
-
-                  {/* Projection table */}
-                  <div className="overflow-x-auto mb-6">
-                    <table className="min-w-full text-sm">
-                      <thead>
-                        <tr className="text-xs text-gray-400 uppercase border-b border-gray-100">
-                          <th className="pb-2 pr-8 text-left">Horizon</th>
-                          <th className="pb-2 pr-8 text-right">Projected Value</th>
-                          <th className="pb-2 text-right">Gain</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {projData.map(({ yr, value }) => (
-                          <tr key={yr} className="border-b border-gray-50">
-                            <td className="py-2 pr-8 font-medium">{yr} year{yr > 1 ? 's' : ''}</td>
-                            <td className="py-2 pr-8 text-right font-semibold text-blue-600">{fmt0(value)}</td>
-                            <td className="py-2 text-right text-emerald-600">+{fmt0(value - totalValue)}</td>
-                          </tr>
+            <div className="pt-panel" role="tabpanel" id="pt-panel-projections" aria-labelledby="pt-tab-projections">
+              <div className="pt-card">
+                <div className="pt-sechead">
+                  <div className="pt-sectitle">Growth projections</div>
+                  <div className="pt-hint">Per-holding growth by asset-class CAGR. Not a guarantee of future returns.</div>
+                </div>
+                <div className="pt-card__pad" style={{ paddingTop: 4 }}>
+                  {totalValue > 0 ? (
+                    <React.Fragment>
+                      <div className="pt-rates">
+                        {ASSET_CLASSES.map(cls => (
+                          <div key={cls} className="pt-field">
+                            <label htmlFor={`pt-rate-${cls}`} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                              <i className="pt-swatch" style={{ background: `var(${ASSET_VARS[cls]})` }} />{ASSET_LABELS[cls]} CAGR (%)
+                            </label>
+                            <input id={`pt-rate-${cls}`} type="number" value={growthRates[cls]} min="0" max="30" step="0.5"
+                              onChange={e => setGrowthRates(r => ({ ...r, [cls]: Number(e.target.value) || 0 }))}
+                              className="pt-input pt-mono" style={{ width: 96 }} />
+                          </div>
                         ))}
-                      </tbody>
-                    </table>
-                  </div>
+                      </div>
 
-                  {/* D3 chart */}
-                  <div ref={projRef} className="w-full overflow-x-auto" />
-                  <p className="text-xs text-gray-400 mt-2">
-                    Per-holding growth applied based on asset class CAGR above. Not a guarantee of future returns.
-                  </p>
-                </>
-              ) : (
-                <p className="text-gray-400 text-center py-12">Add holdings with prices to see projections.</p>
-              )}
+                      <div className="pt-tablewrap">
+                        <table className="pt-proj">
+                          <thead>
+                            <tr>
+                              <th>Horizon</th>
+                              <th className="pt-num">Projected Value</th>
+                              <th className="pt-num">Gain</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {projData.map(({ yr, value }) => (
+                              <tr key={yr}>
+                                <td style={{ fontWeight: 500 }}>{yr} year{yr > 1 ? 's' : ''}</td>
+                                <td className="pt-num" style={{ fontWeight: 500, color: 'var(--primary-text)' }}>{fmt0(value)}</td>
+                                <td className="pt-num is-pos">+{fmt0(value - totalValue)}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+
+                      <div ref={projRef} className="pt-chart" />
+                    </React.Fragment>
+                  ) : (
+                    <div className="pt-empty">Add holdings with prices to see projections.</div>
+                  )}
+                </div>
+              </div>
             </div>
           )}
 
-          <p className="text-xs text-gray-400 text-center mt-6 mb-10">
+          <p className="pt-foot">
             Live prices sourced from Yahoo Finance (unofficial, delayed). Holdings stored locally — no data leaves your browser.
           </p>
         </div>
