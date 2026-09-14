@@ -126,6 +126,37 @@
       return null;
     }
 
+    // ── Purchase lots ─────────────────────────────────────────────────────────
+    // A position (ticker + account) may hold several purchase lots:
+    // `h.lots = [{ id, shares, costBasis (per-share), purchaseDate }]`. The
+    // holding's own shares / costBasis / purchaseDate are the AGGREGATE
+    // (Σ shares, value-weighted avg cost over costed lots, earliest date) so
+    // every consumer that reads the flat fields keeps working. Single-lot
+    // positions stay flat (no `lots`). Data Hub + dashboard mirror this.
+    const lotId = () => 'L-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 7);
+    function aggLots(lots) {
+      let sh = 0, cost = 0, costSh = 0, earliest = null;
+      for (const l of lots) {
+        const n = Number(l.shares) || 0; sh += n;
+        if (n > 0 && Number(l.costBasis) > 0) { cost += n * Number(l.costBasis); costSh += n; }
+        if (l.purchaseDate && (!earliest || l.purchaseDate < earliest)) earliest = l.purchaseDate;
+      }
+      return { shares: sh, costBasis: costSh > 0 ? cost / costSh : null, purchaseDate: earliest };
+    }
+    // Normalize a holding around a lot list: >1 lot → keep `lots` + aggregates;
+    // exactly 1 → flatten it into the holding; 0 → shares 0 (caller decides).
+    function withLots(h, lots) {
+      const clean = (lots || []).map(l => ({ id: l.id || lotId(), shares: Number(l.shares) || 0,
+        costBasis: Number(l.costBasis) > 0 ? Number(l.costBasis) : null, purchaseDate: l.purchaseDate || null }));
+      const { lots: _drop, ...rest } = h;
+      if (clean.length > 1) return { ...rest, ...aggLots(clean), lots: clean };
+      if (clean.length === 1) return { ...rest, shares: clean[0].shares, costBasis: clean[0].costBasis, purchaseDate: clean[0].purchaseDate };
+      return { ...rest, shares: 0 };
+    }
+    const lotsOf = (h) => (Array.isArray(h.lots) && h.lots.length > 1) ? h.lots
+      : [{ id: h.id + '-lot', shares: Number(h.shares) || 0, costBasis: h.costBasis ?? null, purchaseDate: h.purchaseDate ?? null }];
+    const lotCount = (hs) => hs.reduce((n, h) => n + lotsOf(h).length, 0);
+
     function parseCSV(text) {
       const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
       // Skip leading non-data lines (Fidelity/Schwab add a preamble)
@@ -169,7 +200,10 @@
         return hLow.findIndex(h => h.includes('account') && !/number|nbr|#/.test(h));
       })();
 
-      const results = [];
+      // Every row is a purchase LOT; rows sharing ticker + account become
+      // one position carrying all its lots (the old row-per-position merge
+      // silently kept only the last lot of a ticker).
+      const results = [], byKey = {};
       for (let i = headerIdx + 1; i < lines.length; i++) {
         const cells = parseRow(lines[i]);
         const ticker = cells[tickerCol]?.toUpperCase();
@@ -181,20 +215,27 @@
         // Fidelity/Schwab cost is per-share; Vanguard is total
         const costPerShare = (fmt === 'vanguard' && costTotal && shares) ? costTotal / shares : costTotal;
         const priceFromValue = mktValue && shares ? mktValue / shares : null;
-        results.push({
-          id: `${ticker}-${Date.now()}-${i}`,
-          ticker, name: ticker, shares,
-          costBasis: costPerShare,
-          purchaseDate: dateCol >= 0 ? parseDateISO(cells[dateCol]) : null,
-          account: acctCol >= 0 ? (cells[acctCol] || null) : null,
-          currentPrice: priceFromValue,
-          prevClose: null, dayChange: null, dayChangePct: null,
-          priceUpdatedAt: priceFromValue ? Date.now() : null,
-          assetClass: 'equity',
-        });
+        const account = acctCol >= 0 ? ((cells[acctCol] || '').trim() || null) : null;
+        const lot = { id: lotId(), shares, costBasis: costPerShare, purchaseDate: dateCol >= 0 ? parseDateISO(cells[dateCol]) : null };
+        const key = ticker + ' ' + (account || '').toLowerCase();
+        let g = byKey[key];
+        if (!g) {
+          g = byKey[key] = {
+            id: `${ticker}-${Date.now()}-${i}`,
+            ticker, name: ticker, shares: 0, costBasis: null, purchaseDate: null, account,
+            currentPrice: priceFromValue,
+            prevClose: null, dayChange: null, dayChangePct: null,
+            priceUpdatedAt: priceFromValue ? Date.now() : null,
+            assetClass: 'equity', lots: [],
+          };
+          results.push(g);
+        }
+        if (g.currentPrice == null && priceFromValue) { g.currentPrice = priceFromValue; g.priceUpdatedAt = Date.now(); }
+        g.lots.push(lot);
       }
       if (!results.length) throw new Error('No valid holdings rows found');
-      return { holdings: results, format: fmt };
+      const holdingsOut = results.map(g => withLots(g, g.lots));
+      return { holdings: holdingsOut, format: fmt, lots: lotCount(holdingsOut) };
     }
 
     // ── Main component ────────────────────────────────────────────────────────
@@ -207,6 +248,7 @@
       const [importMsg,   setImportMsg]   = React.useState('');
       const [addForm,     setAddForm]     = React.useState({ ticker: '', shares: '', costBasis: '', purchaseDate: '', account: '', assetClass: 'equity' });
       const [accounts,    setAccounts]    = React.useState([]);   // accounts registry (Data Hub owns it)
+      const [expanded,    setExpanded]    = React.useState(() => new Set()); // holding ids with the lot table open
 
       const donutRef = React.useRef(null);
       const projRef  = React.useRef(null);
@@ -369,20 +411,31 @@
         const ticker = addForm.ticker.trim().toUpperCase();
         const shares = Number(addForm.shares);
         if (!ticker || !shares || shares <= 0) return;
-        const newH = {
+        const account = addForm.account.trim() || null;
+        const lot = { id: lotId(), shares, costBasis: Number(addForm.costBasis) || null, purchaseDate: addForm.purchaseDate || null };
+        // Same ticker in the same account = another purchase lot of the
+        // existing position, not a duplicate row.
+        const existing = holdings.find(h => h.ticker === ticker && acctKey(h.account) === acctKey(account));
+        const newH = existing ? null : {
           id: `${ticker}-${Date.now()}`,
           ticker, name: ticker, shares,
-          costBasis:      Number(addForm.costBasis) || null,
-          purchaseDate:   addForm.purchaseDate || null,
-          account:        addForm.account.trim() || null,
+          costBasis:      lot.costBasis,
+          purchaseDate:   lot.purchaseDate,
+          account,
           currentPrice:   null, prevClose: null,
           dayChange: null, dayChangePct: null,
           priceUpdatedAt: null,
           assetClass:     addForm.assetClass,
         };
-        setHoldings(prev => [...prev, newH]);
-        if (newH.account) registerAccounts([newH.account]);
+        if (existing) {
+          setHoldings(prev => prev.map(h => h.id === existing.id ? withLots(h, [...lotsOf(h), lot]) : h));
+          setExpanded(prev => new Set([...prev, existing.id]));
+        } else {
+          setHoldings(prev => [...prev, newH]);
+        }
+        if (account) registerAccounts([account]);
         setAddForm({ ticker: '', shares: '', costBasis: '', purchaseDate: '', account: '', assetClass: 'equity' });
+        if (existing) { setImportMsg(`Added a lot to ${ticker}${account ? ' · ' + account : ''}.`); return; }
         // Try fetching price immediately
         setPxStatus(s => ({ ...s, [ticker]: 'loading' }));
         try {
@@ -401,6 +454,19 @@
       function updateHolding(id, field, value) {
         setHoldings(prev => prev.map(h => h.id === id ? { ...h, [field]: value } : h));
       }
+      function updateLot(hid, lid, field, value) {
+        setHoldings(prev => prev.map(h => h.id === hid ? withLots(h, lotsOf(h).map(l => l.id === lid ? { ...l, [field]: value } : l)) : h));
+      }
+      function removeLot(hid, lid) {
+        setHoldings(prev => prev.flatMap(h => {
+          if (h.id !== hid) return [h];
+          const rest = lotsOf(h).filter(l => l.id !== lid);
+          return rest.length ? [withLots(h, rest)] : [];
+        }));
+      }
+      function toggleExpanded(id) {
+        setExpanded(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
+      }
 
       // ── CSV import ──────────────────────────────────────────────────────────
       function handleFile(e) {
@@ -411,7 +477,7 @@
         const reader = new FileReader();
         reader.onload = () => {
           try {
-            const { holdings: parsed, format } = parseCSV(String(reader.result));
+            const { holdings: parsed, format, lots: nLots } = parseCSV(String(reader.result));
             // Merge: update existing tickers, append new ones. When the CSV
             // names an account, match on ticker+account (same key as the
             // Data Hub) so the same ticker can live in several accounts.
@@ -424,10 +490,17 @@
                   (p.account == null || (h.account || '') === p.account));
                 if (idx < 0 && p.account) idx = merged.findIndex(h => h.ticker === p.ticker && !h.account);
                 if (idx >= 0) {
-                  merged[idx] = { ...merged[idx], shares: p.shares, costBasis: p.costBasis ?? merged[idx].costBasis,
-                    purchaseDate: p.purchaseDate ?? merged[idx].purchaseDate,
-                    account: p.account ?? merged[idx].account,
+                  // A brokerage export is a full snapshot of the position:
+                  // its lots REPLACE the stored lots (re-importing the same
+                  // file never doubles a position). A single undated,
+                  // uncosted CSV lot keeps the stored cost/date as before.
+                  const base = { ...merged[idx], account: p.account ?? merged[idx].account,
                     currentPrice: p.currentPrice ?? merged[idx].currentPrice };
+                  const pl = lotsOf(p);
+                  const lots = (pl.length === 1)
+                    ? [{ ...pl[0], costBasis: pl[0].costBasis ?? merged[idx].costBasis, purchaseDate: pl[0].purchaseDate ?? merged[idx].purchaseDate }]
+                    : pl;
+                  merged[idx] = withLots(base, lots);
                 } else {
                   merged.push(p);
                 }
@@ -435,7 +508,7 @@
               return merged;
             });
             registerAccounts(parsed.map(p => p.account));
-            setImportMsg(`Imported ${parsed.length} holdings from ${format} CSV.`);
+            setImportMsg(`Imported ${parsed.length} position${parsed.length === 1 ? '' : 's'}${nLots !== parsed.length ? ` (${nLots} lots)` : ''} from ${format} CSV.`);
           } catch (err) {
             setImportMsg(`Import failed: ${err.message}`);
           }
@@ -611,10 +684,23 @@
                         const totCost = (h.costBasis    || 0) * (h.shares || 0);
                         const gain    = totCost > 0 ? mktVal - totCost : null;
                         const gainPct = totCost > 0 ? (mktVal - totCost) / totCost * 100 : null;
+                        const lots    = lotsOf(h);
+                        const multi   = lots.length > 1;
+                        const open    = multi && expanded.has(h.id);
                         return (
-                          <tr key={h.id} className="hover:bg-gray-50">
+                          <React.Fragment key={h.id}>
+                          <tr className="hover:bg-gray-50">
                             <td className="px-3 py-2 font-semibold text-gray-800 whitespace-nowrap">
-                              {h.ticker}
+                              {multi ? (
+                                <button type="button" onClick={() => toggleExpanded(h.id)} aria-expanded={open}
+                                  title={open ? 'Hide purchase lots' : 'Show purchase lots'}
+                                  className="inline-flex items-center gap-1 text-left hover:text-blue-600">
+                                  <span className="inline-block w-3 text-gray-400 text-xs">{open ? '▾' : '▸'}</span>{h.ticker}
+                                </button>
+                              ) : h.ticker}
+                              {multi && (
+                                <div className="text-xs text-gray-400 font-normal pl-4">{lots.length} lots</div>
+                              )}
                               {h.name && h.name !== h.ticker && (
                                 <div className="text-xs text-gray-400 font-normal truncate max-w-24">{h.name}</div>
                               )}
@@ -630,6 +716,15 @@
                                 </div>
                               )}
                             </td>
+                            {multi ? (
+                              /* aggregates — edit the individual lots in the expanded table */
+                              <React.Fragment>
+                                <td className="px-3 py-2 whitespace-nowrap" title="Total of all lots">{Number(h.shares).toLocaleString('en-US', { maximumFractionDigits: 3 })}</td>
+                                <td className="px-3 py-2 whitespace-nowrap" title="Weighted average cost per share">{h.costBasis != null ? fmt2(h.costBasis) : '—'}<span className="text-xs text-gray-400 ml-1">avg</span></td>
+                                <td className="px-3 py-2 whitespace-nowrap text-gray-500" title="Earliest lot">{h.purchaseDate ? 'from ' + h.purchaseDate : '—'}</td>
+                              </React.Fragment>
+                            ) : (
+                              <React.Fragment>
                             <td className="px-3 py-2">
                               <input type="number" value={h.shares} min="0" step="0.001"
                                 onChange={e => updateHolding(h.id, 'shares', Number(e.target.value))}
@@ -645,6 +740,8 @@
                                 onChange={e => updateHolding(h.id, 'purchaseDate', e.target.value || null)}
                                 className="w-32 border border-gray-200 rounded px-2 py-0.5 text-sm" />
                             </td>
+                              </React.Fragment>
+                            )}
                             <td className="px-3 py-2 whitespace-nowrap">
                               {h.currentPrice ? fmt2(h.currentPrice) : (
                                 <input type="number" placeholder="Enter" min="0" step="0.01"
@@ -672,10 +769,67 @@
                               </select>
                             </td>
                             <td className="px-3 py-2">
-                              <button onClick={() => removeHolding(h.id)}
+                              <button onClick={() => removeHolding(h.id)} title={multi ? 'Remove this position and all its lots' : 'Remove'}
                                 className="text-gray-300 hover:text-red-400 transition-colors text-lg leading-none">×</button>
                             </td>
                           </tr>
+                          {open && (
+                            <tr className="bg-gray-50/70" data-lots-for={h.id}>
+                              <td colSpan={13} className="px-3 pt-1 pb-3">
+                                <div className="ml-6 border border-gray-200 rounded-lg overflow-hidden bg-white">
+                                  <table className="min-w-[640px] text-xs">
+                                    <thead className="bg-gray-50 text-gray-400 uppercase">
+                                      <tr>
+                                        {['Purchased','Shares','Cost/Share','Total Cost','Mkt Value','Gain/Loss',''].map(c => (
+                                          <th key={c} className="px-3 py-2 text-left font-medium whitespace-nowrap">{c}</th>
+                                        ))}
+                                      </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-100">
+                                      {lots.slice().sort((a, b) => String(a.purchaseDate || '9999').localeCompare(String(b.purchaseDate || '9999'))).map(l => {
+                                        const lCost = (l.costBasis || 0) * (l.shares || 0);
+                                        const lVal  = (h.currentPrice || 0) * (l.shares || 0);
+                                        const lGain = lCost > 0 && h.currentPrice ? lVal - lCost : null;
+                                        return (
+                                          <tr key={l.id} className="hover:bg-gray-50">
+                                            <td className="px-3 py-1.5">
+                                              <input type="date" value={l.purchaseDate ?? ''}
+                                                onChange={e => updateLot(h.id, l.id, 'purchaseDate', e.target.value || null)}
+                                                className="w-32 border border-gray-200 rounded px-2 py-0.5 text-xs" />
+                                            </td>
+                                            <td className="px-3 py-1.5">
+                                              <input type="number" value={l.shares} min="0" step="0.001"
+                                                onChange={e => updateLot(h.id, l.id, 'shares', Number(e.target.value))}
+                                                className="w-20 border border-gray-200 rounded px-2 py-0.5 text-xs" />
+                                            </td>
+                                            <td className="px-3 py-1.5">
+                                              <input type="number" value={l.costBasis ?? ''} min="0" step="0.01" placeholder="—"
+                                                onChange={e => updateLot(h.id, l.id, 'costBasis', e.target.value ? Number(e.target.value) : null)}
+                                                className="w-24 border border-gray-200 rounded px-2 py-0.5 text-xs" />
+                                            </td>
+                                            <td className="px-3 py-1.5 whitespace-nowrap text-gray-500">{lCost > 0 ? fmt0(lCost) : '—'}</td>
+                                            <td className="px-3 py-1.5 whitespace-nowrap">{lVal > 0 ? fmt0(lVal) : '—'}</td>
+                                            <td className={`px-3 py-1.5 whitespace-nowrap ${lGain != null ? (lGain >= 0 ? 'text-emerald-600' : 'text-red-500') : 'text-gray-300'}`}>
+                                              {lGain != null ? (lGain >= 0 ? '+' : '') + fmt0(lGain) : '—'}
+                                              {lGain != null && <span className="ml-1 opacity-70">{pct1(lGain / lCost * 100)}</span>}
+                                            </td>
+                                            <td className="px-3 py-1.5">
+                                              <button onClick={() => removeLot(h.id, l.id)} title="Remove this lot"
+                                                className="text-gray-300 hover:text-red-400 transition-colors text-base leading-none">×</button>
+                                            </td>
+                                          </tr>
+                                        );
+                                      })}
+                                    </tbody>
+                                  </table>
+                                  <div className="px-3 py-1.5 text-xs text-gray-400 border-t border-gray-100">
+                                    To add a lot, enter {h.ticker}{h.account ? ` in account "${h.account}"` : ''} in the form below.
+                                  </div>
+                                </div>
+                              </td>
+                            </tr>
+                          )}
+                          </React.Fragment>
                         );
                       })}
                     </tbody>

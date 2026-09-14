@@ -1,8 +1,8 @@
 # Wealth Suite — Backlog
 
-*Updated 2026-09-07, after Phase 13ac (Portfolio Review + Tax Estimator
-adapters no longer populate an empty store on a page visit; see CLAUDE.md
-Phase 13 log). This file is the resume point: pick the top
+*Updated 2026-09-14, after Phase 13ad (purchase lots: CSV rows sharing a
+ticker + account are kept as `holding.lots[]`; see CLAUDE.md Phase 13
+log). This file is the resume point: pick the top
 unchecked item unless directed otherwise.*
 
 ## Up next (roughly by value)
@@ -36,6 +36,13 @@ unchecked item unless directed otherwise.*
 - **TaxAssetCalcv4 renders blank in *headless* Chrome** (Babel+D3 vs virtual-time). Fine in real browsers since the 7.29.7 pin. Don't chase it in headless tests.
 - **Babel pin**: every React page must use `@babel/standalone@7.29.7` (Babel 8 rejects raw `>` in JSX text → blank page).
 - `holding.costBasis` is **per-share** everywhere. Never write lot totals.
+- **`holding.lots[]`** (Phase 13ad) holds a position's purchase lots
+  (`{id, shares, costBasis per-share, purchaseDate}`) — present only when
+  there is more than one. The holding's flat `shares`/`costBasis`/
+  `purchaseDate` are ALWAYS the aggregate (Σ / weighted avg / earliest);
+  keep them in sync when writing lots (use the page's `withLots`/
+  `aggLots`). CSV import REPLACES a position's lots (snapshot semantics);
+  the tracker add form APPENDS one. Dashboard charts expand lots.
 - `holding.purchaseDate` is ISO `YYYY-MM-DD` or null. Null = "held forever"
   in the dashboard Performance table (full-period return) and in the NW
   Growth chart (Phase 13w — the lot is treated as always-held).
@@ -60,6 +67,14 @@ unchecked item unless directed otherwise.*
 - Cloudflare Pages + Access privacy migration (see memory: quote-infra-and-privacy-plan)
 
 ## Done recently (context for resuming)
+- Phase 13ad: purchase lots — both CSV importers grouped rows by ticker +
+  account but overwrote shares row-by-row, so only the LAST lot of a
+  ticker survived. Rows now accumulate into `holding.lots[]` with the
+  holding carrying the aggregate; Data Hub preview shows per-position lot
+  counts; Portfolio Tracker rows gained a ▸ toggle that expands an
+  editable per-lot table (add form appends a lot to an existing
+  ticker+account); dashboard Performance table + NW Growth chart enter
+  each lot at its own purchase date.
 - Phase 13ac: critical — visiting Portfolio Review wrote its static
   "$1,250,000" header into an empty store (adapter now read-only), and
   the Tax Estimator's mount-time save mirrored default/stale inputs into

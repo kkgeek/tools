@@ -1102,6 +1102,52 @@ Phase 13ac (critical bug — a page visit populated an empty store):
   tax key from suite with no mirror; tax-owned store still re-syncs on
   load; post-Reset visit with saved inputs stays empty.
 
+Phase 13ad (purchase lots — user-reported: multi-lot CSV rows collapsed
+to the last lot per ticker/account):
+- **`holding.lots[]` added** (additive, no schema bump): `[{ id, shares,
+  costBasis (PER-SHARE), purchaseDate }]`, present only when a position
+  (ticker + account) has >1 lot. The holding's own `shares` /
+  `costBasis` / `purchaseDate` are the AGGREGATE (Σ shares, value-weighted
+  average cost over costed lots, earliest dated lot) so every consumer
+  that reads the flat fields — net_worth, holdingsByTreatment, estate,
+  hub valuations, KPI tiles — keeps working unchanged. Single-lot
+  positions stay flat. Helpers (`aggLots` / `withLots` / `lotsOf`) are
+  duplicated per page (tracker JSX, hub vanilla, index.html `wsLotsOf`)
+  because index.html doesn't load suite.js and tools must run standalone.
+- **Both importers group rows by ticker + account into lots**
+  (`data_hub.html` `buildParsed`/`commit`; `portfolio_tracker.html`
+  `parseCSV`/`handleFile`). Previously each row overwrote the previous
+  row's shares for the same key, so only the last lot survived.
+  **Replace semantics:** a CSV is a full snapshot of the position, so its
+  lots REPLACE the stored lots on Update (re-importing the same file
+  never doubles). Hub preview shows one line per position with an
+  "N lots" sublabel + tooltip, "from <earliest date>", and lot-summed
+  cost; header/footer/commit button count positions and lots.
+- **Tracker UX**: multi-lot rows show "N lots" + a ▸/▾ toggle on the
+  ticker (`aria-expanded`); the parent's Shares / Cost/Share ("avg") /
+  Purchased ("from …") cells are read-only aggregates; the expanded
+  `tr[data-lots-for]` holds a nested table (Purchased / Shares /
+  Cost/Share / Total Cost / Mkt Value / Gain/Loss / ×) sorted
+  oldest→newest with editable inputs (`updateLot` re-aggregates;
+  `removeLot` flattens at 1 lot, drops the position at 0). The add form
+  APPENDS a lot when ticker + account (case-insensitive) already exist
+  and auto-expands that row. `expanded` is component state (not
+  persisted).
+- **Dashboard is lot-aware**: the Performance table's chain-linked TWR
+  and the NW Growth chart both expand holdings via `wsLotsOf`, so each
+  lot enters at ITS purchase date (previously the whole position entered
+  at the earliest date).
+- Verified via the verify-skill harness (47 assertions): the user's
+  34-row sample → 11 positions / 34 lots (MSFT vk-fid-rsu 12 lots,
+  45.288 sh, avg $385.11, from 2024-06-28; kk-fid-rsu 3 lots; AMZN 11;
+  FDGRX flat in two 401k accounts), 5 accounts registered with CSV
+  treatments; hub re-paste → 0 new / 11 updates, no doubling; tracker
+  renders 11 rows, expands 12 sorted lot rows, lot edit → parent 46.288
+  + store sync, lot delete → 11 lots, tracker file re-import replaces
+  lots, add-form appends a 13th lot / new ticker adds a flat row; NW
+  chart with a 2-lot VTI (100 sh −2y, 50 sh −6mo, flat $100 cache) →
+  1Y and All deltas exactly +$5K (the second lot's entry).
+
 ## Constraints to preserve
 
 - **Zero build step.** No Vite/Webpack until scope demands it.
