@@ -746,6 +746,24 @@ MSFT,25,310.00,11/20/2023,Schwab 401(k),Tax Deferred"></textarea>
       });
       if (changed) store.set('accounts', a, EDIT);
     }
+    // Heal cash positions that were quoted as Pathward Financial before
+    // 13af (price != $1, the quote's name, or the equity import default).
+    function healCashHoldings() {
+      var hs = holdings(), changed = false;
+      hs.forEach(function (h) {
+        if (!isCash(h.ticker)) return;
+        if (Number(h.currentPrice) !== 1) { h.currentPrice = 1; changed = true; }
+        if (h.name && h.name !== 'Cash' && h.name !== h.ticker) { h.name = 'Cash'; changed = true; }
+        if (h.assetClass === 'equity') { h.assetClass = 'cash'; changed = true; }
+        if (h.dayChange != null && Number(h.dayChange) !== 0) { h.dayChange = 0; h.dayChangePct = 0; changed = true; }
+      });
+      if (changed) {
+        CASH_TICKERS.forEach(function (t) { try { sessionStorage.removeItem('yf_' + t); } catch (_) {} });
+        store.set('portfolio.holdings', hs, EDIT);
+        recompute();
+      }
+    }
+
     function commit() {
       if (!parsed.length) return;
       var hs = holdings();
@@ -766,7 +784,8 @@ MSFT,25,310.00,11/20/2023,Schwab 401(k),Tax Deferred"></textarea>
         }
         // `id` is required by the Portfolio Tracker (row edit/delete key on it)
         else {
-          var nh = { id: r.ticker + '-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6), ticker: r.ticker, name: r.ticker, shares: r.shares, costBasis: r.costBasis, account: r.account, purchaseDate: r.purchaseDate || null, assetClass: 'equity', currentPrice: null, priceUpdatedAt: null };
+          var cashRow = isCash(r.ticker);
+          var nh = { id: r.ticker + '-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6), ticker: r.ticker, name: cashRow ? 'Cash' : r.ticker, shares: r.shares, costBasis: r.costBasis, account: r.account, purchaseDate: r.purchaseDate || null, assetClass: cashRow ? 'cash' : 'equity', currentPrice: cashRow ? 1 : null, priceUpdatedAt: cashRow ? Date.now() : null };
           if (lots.length > 1) nh.lots = lots;
           hs.push(nh);
         }
@@ -1026,7 +1045,14 @@ MSFT,25,310.00,11/20/2023,Schwab 401(k),Tax Deferred"></textarea>
     // the browser — never holdings data.
     var PRICE_TTL_MS = 15 * 60 * 1000;
     var QUOTE_WORKER = 'https://wealth-suite-quotes.kn2v.workers.dev';
+    // "CASH" is also a real NASDAQ ticker (Pathward Financial) — quoting it
+    // priced cash balances at Pathward's share price. These symbols mean
+    // dollars: never quoted, pinned at $1.00, asset class `cash`.
+    // Mirrored in portfolio_tracker.html and index.html (Phase 13af).
+    var CASH_TICKERS = ['CASH', '$$', '$', 'USD', 'USD CASH', 'CASH&MMF'];
+    function isCash(t) { return CASH_TICKERS.indexOf(String(t == null ? '' : t).trim().toUpperCase()) >= 0; }
     async function fetchQuote(ticker) {
+      if (isCash(ticker)) return { currentPrice: 1, prevClose: 1, dayChange: 0, dayChangePct: 0, name: 'Cash' };
       var key = 'yf_' + ticker.toUpperCase();
       try {
         var cached = sessionStorage.getItem(key);
@@ -1090,7 +1116,8 @@ MSFT,25,310.00,11/20/2023,Schwab 401(k),Tax Deferred"></textarea>
           if (!q) return;
           h.currentPrice = q.currentPrice;
           h.priceUpdatedAt = now;
-          if (q.name && (!h.name || h.name === h.ticker)) h.name = q.name;
+          if (isCash(h.ticker)) { h.name = 'Cash'; h.dayChange = 0; h.dayChangePct = 0; }
+          else if (q.name && (!h.name || h.name === h.ticker)) h.name = q.name;
         });
         store.set('portfolio.holdings', hs, EDIT);
         recompute();
@@ -1196,6 +1223,7 @@ MSFT,25,310.00,11/20/2023,Schwab 401(k),Tax Deferred"></textarea>
     $('dh-lastimport').textContent = holdings().length ? (holdings().length + ' holdings on file') : 'No imports yet';
 
     healAutoRegistered();
+    healCashHoldings();
     store.subscribe('', renderAll);
     renderAll();
   }

@@ -1206,6 +1206,64 @@ paginated holdings; user request):
   standalone page still injects the suite topnav. Screenshots light +
   dark + empty state reviewed.
 
+Phase 13af (cash positions + sortable holdings table):
+- **Bug: ticker `CASH` was quoted as Pathward Financial, Inc.** — `CASH`
+  is a real NASDAQ symbol, so a cash balance imported as `CASH` was
+  valued at Pathward's share price (a 7,124-share cash position became
+  ~$560K of phantom net worth) and took its name and day move.
+  **Convention:** `CASH_TICKERS` = `CASH`, `$$`, `$`, `USD`, `USD CASH`,
+  `CASH&MMF` mean dollars, never a security — never quoted, price pinned
+  at `$1.00`, `assetClass: 'cash'`, name `Cash`, day change `0`. Real
+  money-market FUNDS (SPAXX/FDRXX/VMFXX/SWVXX…) are NOT in the list: they
+  are securities whose quotes are already correct.
+  - `portfolio_tracker.html`: `isCash()` / `CASH_QUOTE` / `normalizeCash()`;
+    `fetchQuote` short-circuits before the cache read and before any
+    network call; CSV import + the add form normalize; the price cell
+    renders fixed `$1.00` (never the "Enter" input).
+  - `data_hub.html`: same short-circuit, Refresh Prices keeps `Cash` /
+    `$1` / zero day move, and a CSV-committed cash row lands on the
+    convention.
+  - `index.html`: cash is never fetched into `priceHist` (the NW Growth
+    chart values it from the holding's own $1 fallback) and `fetchSeries`
+    returns a **synthetic flat-$1 monthly series** so the Performance
+    table keeps cash's real 0% return — and its drag on the blend —
+    instead of Pathward's.
+  - **Self-heal on load** (tracker mount + hub init, same precedent as the
+    13u account heal): a stored cash row with price ≠ 1, a quote name, the
+    `equity` import default, or a non-zero day move is corrected and the
+    stale `yf_CASH` sessionStorage quote + any `priceHist.CASH` series are
+    purged. `assetClass` is only coerced while it is still `equity`, so a
+    deliberate re-class in the table survives. Shares, cost basis, account
+    and purchase date are never touched.
+- **Sortable Holdings table**: every column except the actions column is a
+  header button — click cycles **ascending → descending → store order**,
+  with `aria-sort` on the `th`, an arrow on the active column, and an
+  underline on hover. Two-number columns sort by the headline figure
+  (Day → day %, Gain/Loss → gain $); **blanks always sort last in both
+  directions**; ties fall back to store order (stable). `Class` sorts in
+  the `ASSET_CLASSES` order, not alphabetically.
+  - Sorting is **presentational only, exactly like pagination** — the
+    store keeps its own order, and the tiles / allocation / projections
+    still read ALL holdings. Sort feeds pagination (`sortedHoldings` →
+    `visibleHoldings`), changing the sort resets to page 1, and a newly
+    added row is found via a `jumpToId` effect that resolves its page
+    *after* the sort is applied (the old `pageFor(holdings.length)` assumed
+    appends land last).
+  - **The arrow renders only on the active column.** An always-present
+    `⇅` on all 11 sortable headers pushed the table 3px past the 1280px
+    no-horizontal-scroll budget set in 13ae (measured 0px → 3px); with the
+    arrow scoped to the active column every sort state measures 0px.
+- Verified via the verify-skill harness (64 assertions across two runs):
+  a poisoned CASH row heals to $1.00 / "Cash" / cash class with shares
+  intact, market value $7,124 and `totalValue` $45,124; Refresh Prices and
+  a hub CSV commit both keep it clean; the hub heals on load and purges the
+  session quote; `priceHist.CASH` is dropped on the dashboard. Sorting: all
+  11 columns asc/desc/off, blanks last both ways for Purchased / Account /
+  Price / Day / Gain-Loss, `Class` in class order, store order preserved
+  while sorted, editing a sorted row updates the right holding, 120-row
+  pagination keeps the sorted sequence across pages and resets to page 1,
+  multi-lot rows still expand (colSpan 12) directly beneath their own row.
+
 ## Constraints to preserve
 
 - **Zero build step.** No Vite/Webpack until scope demands it.
@@ -1335,6 +1393,14 @@ holding = one lot). CSV import REPLACES a position's lots (the file is
 a snapshot); the tracker add form APPENDS a lot when ticker + account
 already exist. `costBasis` is per-share at BOTH levels — never a lot
 total.
+
+**Cash positions (13af):** a holding whose ticker is one of `CASH`, `$$`,
+`$`, `USD`, `USD CASH`, `CASH&MMF` is dollars, not a security. It is never
+quoted (`CASH` is also Pathward Financial's real ticker), its
+`currentPrice` is always `1`, its `name` is `Cash`, its day change is `0`,
+and its `assetClass` is `cash`. The tracker and the Data Hub heal stored
+cash rows that predate this on load. Money-market funds (SPAXX, VMFXX, …)
+are ordinary securities and are deliberately NOT on that list.
 
 **Dashboard panels:**
 1. Holdings table — ticker, shares, cost basis, current value,
