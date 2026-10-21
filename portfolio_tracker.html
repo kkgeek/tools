@@ -104,6 +104,16 @@
       .pt-table td { padding: 8px 8px; border-bottom: 1px solid var(--border); vertical-align: middle; white-space: nowrap; }
       .pt-table tbody tr.pt-row:hover { background: var(--surface-2); }
       .pt-table th.pt-num, .pt-table td.pt-num { text-align: right; }
+      /* Sortable headers (Phase 13af) — the whole label is the control. */
+      .pt-sortbtn { display: inline-flex; align-items: center; gap: 4px; padding: 0; border: none; background: none; cursor: pointer;
+        font: inherit; letter-spacing: inherit; text-transform: inherit; color: inherit; }
+      .pt-table th.pt-num .pt-sortbtn { flex-direction: row-reverse; }
+      .pt-sortbtn:hover { color: var(--text); }
+      .pt-sortbtn.is-active { color: var(--primary); }
+      .pt-sortbtn:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; border-radius: 3px; }
+      .pt-sortarrow { font-size: 9px; }
+      /* Hover affordance without reserving width: an underline, not a glyph. */
+      .pt-sortbtn:hover { text-decoration: underline; text-underline-offset: 3px; }
       .pt-table td.pt-num { font-family: 'Roboto Mono', monospace; font-variant-numeric: tabular-nums; }
       .pt-table td.pt-num .pt-input { text-align: right; }
       .pt-ticker { font-family: 'Roboto Mono', monospace; font-weight: 500; font-size: 13px; }
@@ -178,6 +188,32 @@
     // cssVar so D3 gets concrete values that follow light/dark + accent).
     const ASSET_VARS    = { equity: '--primary', bond: '--cat4', cash: '--cat3', other: '--cat2' };
     const cssVar = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim() || '#888';
+    // ── Cash positions (Phase 13af) ───────────────────────────────────────────
+    // "CASH" is ALSO a real NASDAQ ticker (Pathward Financial), so quoting it
+    // priced a cash balance at Pathward's share price and named it
+    // "Pathward Financial, Inc.". These symbols mean dollars, never a
+    // security: they are never quoted, their price is pinned at $1.00, and
+    // they belong to the `cash` asset class. Mirrored in data_hub.html and
+    // index.html (no suite.js — each page carries its own copy).
+    const CASH_TICKERS = ['CASH', '$$', '$', 'USD', 'USD CASH', 'CASH&MMF'];
+    const isCash = (t) => CASH_TICKERS.indexOf(String(t || '').trim().toUpperCase()) >= 0;
+    const CASH_QUOTE = { currentPrice: 1, prevClose: 1, dayChange: 0, dayChangePct: 0, name: 'Cash' };
+    // Force a cash holding onto the convention. `assetClass` is only coerced
+    // while it is still the import default ('equity') so a deliberate
+    // re-class in the table is preserved (same spirit as `curated` accounts).
+    function normalizeCash(h) {
+      if (!h || !isCash(h.ticker)) return h;
+      const next = { ...h, ...CASH_QUOTE, priceUpdatedAt: h.priceUpdatedAt || Date.now() };
+      if (!h.assetClass || h.assetClass === 'equity') next.assetClass = 'cash';
+      return next;
+    }
+    // True when a stored cash holding still carries quote data (Pathward's
+    // price/name) or the equity default — i.e. it needs healing on load.
+    const cashNeedsHeal = (h) => isCash(h.ticker) &&
+      (Number(h.currentPrice) !== 1 || h.assetClass === 'equity' ||
+       (h.name && h.name !== 'Cash' && h.name !== h.ticker) ||
+       (h.dayChange != null && Number(h.dayChange) !== 0));
+
     const PAGE_SIZES    = [50, 100];               // holdings rows per page (Phase 13ae)
     const PAGE_SIZE_KEY = 'wealthSuite.trackerPageSize'; // device-local, like theme/accent
     const PROJ_YEARS    = [1, 3, 5, 10, 15];
@@ -189,6 +225,60 @@
     // 'https://wealth-suite-quotes.<subdomain>.workers.dev'
     const QUOTE_WORKER  = 'https://wealth-suite-quotes.kn2v.workers.dev';
 
+    // ── Holdings sorting (Phase 13af) ─────────────────────────────────────────
+    // Presentational only, exactly like pagination: the store keeps its own
+    // order, and the tiles / allocation / projections still read ALL
+    // holdings. Columns showing two numbers sort by the headline figure
+    // (Day → day %, Gain/Loss → gain $); blanks always sort last.
+    const hShares = (h) => Number(h.shares) || 0;
+    const hPrice  = (h) => (h.currentPrice == null ? null : Number(h.currentPrice));
+    const hMktVal = (h) => (Number(h.currentPrice) || 0) * hShares(h);
+    const hCost   = (h) => (Number(h.costBasis) || 0) * hShares(h);
+    const hGain   = (h) => (hCost(h) > 0 ? hMktVal(h) - hCost(h) : null);
+    const SORT_ACCESSORS = {
+      ticker:       (h) => h.ticker || '',
+      account:      (h) => h.account || '',
+      shares:       hShares,
+      costBasis:    (h) => (h.costBasis == null ? null : Number(h.costBasis)),
+      purchaseDate: (h) => h.purchaseDate || '',
+      price:        hPrice,
+      day:          (h) => (h.dayChangePct == null ? null : Number(h.dayChangePct)),
+      mktValue:     (h) => (hMktVal(h) || null),
+      totalCost:    (h) => (hCost(h) || null),
+      gain:         hGain,
+      assetClass:   (h) => { const i = ASSET_CLASSES.indexOf(h.assetClass); return i < 0 ? ASSET_CLASSES.length : i; },
+    };
+    // [label, numeric?, sortKey (null = not sortable), tooltip]
+    const HOLDING_COLS = [
+      ['Ticker', '', 'ticker'],
+      ['Account', '', 'account'],
+      ['Shares', 'num', 'shares'],
+      ['Cost/Share', 'num', 'costBasis', 'Sort by cost per share'],
+      ['Purchased', '', 'purchaseDate', 'Sort by purchase date (earliest lot)'],
+      ['Price', 'num', 'price'],
+      ['Day', 'num', 'day', 'Sort by day change %'],
+      ['Mkt Value', 'num', 'mktValue'],
+      ['Total Cost', 'num', 'totalCost'],
+      ['Gain/Loss', 'num', 'gain', 'Sort by gain/loss $'],
+      ['Class', '', 'assetClass'],
+      ['', '', null],
+    ];
+    const isBlank = (v) => v == null || v === '' || (typeof v === 'number' && !Number.isFinite(v));
+    function sortHoldings(list, key, dir) {
+      const get = key && SORT_ACCESSORS[key];
+      if (!get) return list;                       // unsorted → store order
+      const mul = dir === 'desc' ? -1 : 1;
+      return list.map((h, i) => ({ h, i })).sort((x, y) => {
+        const a = get(x.h), b = get(y.h);
+        const ab = isBlank(a), bb = isBlank(b);
+        if (ab || bb) return (ab && bb) ? x.i - y.i : (ab ? 1 : -1);   // blanks last both ways
+        let c;
+        if (typeof a === 'number' && typeof b === 'number') c = a - b;
+        else c = String(a).localeCompare(String(b), 'en', { sensitivity: 'base', numeric: true });
+        return c !== 0 ? c * mul : x.i - y.i;      // stable tiebreak on store order
+      }).map(x => x.h);
+    }
+
     // ── Formatters ────────────────────────────────────────────────────────────
     const usd0 = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 });
     const usd2 = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -198,6 +288,8 @@
 
     // ── Price fetch (Yahoo Finance v8 chart, unofficial, best-effort) ─────────
     async function fetchQuote(ticker) {
+      // Cash is dollars, not a security — never quote it (see CASH_TICKERS).
+      if (isCash(ticker)) return { ...CASH_QUOTE, stale: false };
       const key = `yf_${ticker.toUpperCase()}`;
       try {
         const cached = sessionStorage.getItem(key);
@@ -384,7 +476,7 @@
         g.lots.push(lot);
       }
       if (!results.length) throw new Error('No valid holdings rows found');
-      const holdingsOut = results.map(g => withLots(g, g.lots));
+      const holdingsOut = results.map(g => normalizeCash(withLots(g, g.lots)));
       return { holdings: holdingsOut, format: fmt, lots: lotCount(holdingsOut) };
     }
 
@@ -403,6 +495,8 @@
         try { const n = Number(localStorage.getItem(PAGE_SIZE_KEY)); return PAGE_SIZES.includes(n) ? n : PAGE_SIZES[0]; } catch (_) { return PAGE_SIZES[0]; }
       });
       const [page,        setPage]        = React.useState(1);           // 1-based
+      const [sortBy,      setSortBy]      = React.useState({ key: null, dir: 'asc' }); // null = store order
+      const [jumpToId,    setJumpToId]    = React.useState(null);       // scroll a new/changed row into view
       const [themeTick,   setThemeTick]   = React.useState(0);           // bumps when data-theme / accent change → charts repaint
 
       const donutRef = React.useRef(null);
@@ -415,7 +509,19 @@
         if (!store) return;
         const s = store.export();
         const h = s.portfolio?.holdings;
-        if (Array.isArray(h) && h.length > 0) setHoldings(h);
+        if (Array.isArray(h) && h.length > 0) {
+          // Heal cash positions quoted as Pathward Financial (ticker CASH)
+          // before 13af: pin $1.00, drop the quote name/day move, and clear
+          // the stale sessionStorage quote so a refresh can't re-poison it.
+          if (h.some(cashNeedsHeal)) {
+            const healed = h.map(x => (isCash(x.ticker) ? normalizeCash({ ...x, name: 'Cash', priceUpdatedAt: Date.now() }) : x));
+            setHoldings(healed);
+            CASH_TICKERS.forEach(t => { try { sessionStorage.removeItem('yf_' + t); } catch (_) {} });
+            store.set('portfolio.holdings', healed, { editedBy: 'tracker' });
+          } else {
+            setHoldings(h);
+          }
+        }
         if (Array.isArray(s.accounts)) {
           // Heal pre-13u-fix auto-registrations: strongly-named accounts
           // ("… Tax Free …") stuck on the old Taxable default get
@@ -571,28 +677,30 @@
         // Same ticker in the same account = another purchase lot of the
         // existing position, not a duplicate row.
         const existing = holdings.find(h => h.ticker === ticker && acctKey(h.account) === acctKey(account));
-        const newH = existing ? null : {
+        const cash = isCash(ticker);
+        const newH = existing ? null : normalizeCash({
           id: `${ticker}-${Date.now()}`,
-          ticker, name: ticker, shares,
+          ticker, name: cash ? 'Cash' : ticker, shares,
           costBasis:      lot.costBasis,
           purchaseDate:   lot.purchaseDate,
           account,
           currentPrice:   null, prevClose: null,
           dayChange: null, dayChangePct: null,
           priceUpdatedAt: null,
-          assetClass:     addForm.assetClass,
-        };
+          assetClass:     cash ? 'cash' : addForm.assetClass,
+        });
         if (existing) {
           setHoldings(prev => prev.map(h => h.id === existing.id ? withLots(h, [...lotsOf(h), lot]) : h));
           setExpanded(prev => new Set([...prev, existing.id]));
-          setPage(pageFor(holdings.findIndex(h => h.id === existing.id)));
+          setJumpToId(existing.id);
         } else {
           setHoldings(prev => [...prev, newH]);
-          setPage(pageFor(holdings.length)); // appended at the end → show its page
+          setJumpToId(newH.id);              // sort decides where it lands
         }
         if (account) registerAccounts([account]);
         setAddForm({ ticker: '', shares: '', costBasis: '', purchaseDate: '', account: '', assetClass: 'equity' });
         if (existing) { setImportMsg(`Added a lot to ${ticker}${account ? ' · ' + account : ''}.`); return; }
+        if (cash) return;                       // cash never needs a quote
         // Try fetching price immediately
         setPxStatus(s => ({ ...s, [ticker]: 'loading' }));
         try {
@@ -678,11 +786,27 @@
       // footer select, persisted device-local). `page` is clamped whenever
       // the row count shrinks (delete / re-import) so it never points past
       // the end; adding a holding jumps to the page that shows it.
+      const sortedHoldings = React.useMemo(
+        () => sortHoldings(holdings, sortBy.key, sortBy.dir), [holdings, sortBy.key, sortBy.dir]);
       const pageCount = Math.max(1, Math.ceil(holdings.length / pageSize));
       React.useEffect(() => { if (page > pageCount) setPage(pageCount); }, [page, pageCount]);
       const pageStart = Math.min(page - 1, pageCount - 1) * pageSize;
-      const visibleHoldings = holdings.slice(pageStart, pageStart + pageSize);
+      const visibleHoldings = sortedHoldings.slice(pageStart, pageStart + pageSize);
       function pageFor(index) { return Math.floor(Math.max(0, index) / pageSize) + 1; }
+      // Jump to whichever page now shows a just-added row — its position
+      // depends on the active sort, so resolve it after the state settles.
+      React.useEffect(() => {
+        if (!jumpToId) return;
+        const i = sortedHoldings.findIndex(h => h.id === jumpToId);
+        if (i >= 0) setPage(pageFor(i));
+        setJumpToId(null);
+      }, [jumpToId, sortedHoldings]);
+      // Header click cycles ascending → descending → store order.
+      function toggleSort(key) {
+        setSortBy(prev => prev.key !== key ? { key, dir: 'asc' }
+          : prev.dir === 'asc' ? { key, dir: 'desc' } : { key: null, dir: 'asc' });
+        setPage(1);
+      }
       function setPageSize(n) {
         n = PAGE_SIZES.includes(n) ? n : PAGE_SIZES[0];
         // Keep the first visible row on screen when the page size changes.
@@ -941,7 +1065,7 @@
                   <div className="pt-sectitle">Holdings</div>
                   <div className="pt-hint">
                     {holdings.length
-                      ? `${holdings.length} position${holdings.length === 1 ? '' : 's'}${nLots !== holdings.length ? ` · ${nLots} lots` : ''} · click a ticker with lots to expand`
+                      ? `${holdings.length} position${holdings.length === 1 ? '' : 's'}${nLots !== holdings.length ? ` · ${nLots} lots` : ''} · click a column to sort · click a ticker with lots to expand`
                       : 'No positions yet'}
                   </div>
                 </div>
@@ -951,9 +1075,22 @@
                     <table className="pt-table">
                       <thead>
                         <tr>
-                          {[['Ticker'],['Account'],['Shares','num'],['Cost/Share','num'],['Purchased'],['Price','num'],['Day','num'],['Mkt Value','num'],['Total Cost','num'],['Gain/Loss','num'],['Class'],['']].map(([h, num], i) => (
-                            <th key={i} className={num ? 'pt-num' : ''}>{h}</th>
-                          ))}
+                          {HOLDING_COLS.map(([label, num, key, tip], i) => {
+                            const active = key && sortBy.key === key;
+                            return (
+                              <th key={i} className={num ? 'pt-num' : ''}
+                                aria-sort={active ? (sortBy.dir === 'asc' ? 'ascending' : 'descending') : 'none'}>
+                                {key ? (
+                                  <button type="button" className={`pt-sortbtn${active ? ' is-active' : ''}`}
+                                    onClick={() => toggleSort(key)}
+                                    title={tip || `Sort by ${label.toLowerCase()}`}>
+                                    {label}
+                                    {active && <span className="pt-sortarrow" aria-hidden="true">{sortBy.dir === 'asc' ? '▲' : '▼'}</span>}
+                                  </button>
+                                ) : label}
+                              </th>
+                            );
+                          })}
                         </tr>
                       </thead>
                       <tbody>

@@ -188,3 +188,28 @@ honestly-labeled sample explaining exactly which input is missing.
   next/last controls, "1–50 of N" range, page clamps when rows are
   deleted, and adding a holding jumps to its page.
 
+## Cash positions + sortable holdings (13af, 2026-10-20)
+- **Bug:** `CASH` is also a real NASDAQ ticker (Pathward Financial), so a
+  cash balance imported as `CASH` was priced at that stock's share price
+  and renamed "Pathward Financial, Inc." — inflating the portfolio value,
+  the net-worth KPI, the Net Worth tracker and the Growth chart, and
+  attributing Pathward's returns to the user's cash.
+- **Convention:** `CASH`, `$$`, `$`, `USD`, `USD CASH` and `CASH&MMF` mean
+  dollars, never a security. They are never quoted, their price is pinned
+  at `$1.00`, their name is `Cash`, their day change is `0`, and they sit
+  in the `cash` asset class. Money-market funds (SPAXX, VMFXX, …) are
+  ordinary securities and keep their real quotes.
+- Applied in all three places that read or write prices: the Portfolio
+  Tracker (quotes, CSV import, add form), the Data Hub (quotes, Refresh
+  Prices, CSV commit), and the dashboard (no price history for cash; a
+  synthetic flat-$1 series keeps cash's 0% return in the Performance
+  table). Stored rows from before the fix heal on load, and the stale
+  cached quote and price history are purged.
+- **Sortable Holdings table:** every column except the actions column
+  sorts — click cycles ascending → descending → store order, with
+  `aria-sort` and an arrow on the active column. Blanks always sort last,
+  two-number columns sort by the headline figure, and `Class` follows the
+  equity/bond/cash/other order. Sorting is presentational, layered over
+  the 13ae pagination: the store keeps its own order, changing the sort
+  returns to page 1, and a newly added row still jumps into view.
+

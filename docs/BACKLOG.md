@@ -1,9 +1,13 @@
 # Wealth Suite — Backlog
 
-*Updated 2026-09-14, after Phase 13ae (Portfolio Tracker Material
-reskin + add-form on top + paginated holdings; see CLAUDE.md Phase 13
-log). This file is the resume point: pick the top
-unchecked item unless directed otherwise.*
+*Updated 2026-10-20, after Phase 13af (cash positions pinned at $1 and
+a sortable Holdings table; see CLAUDE.md Phase 13 log).*
+
+*Previously: Phase 13ae (Portfolio Tracker Material reskin + add-form on
+top + paginated holdings).*
+
+*This file is the resume point: pick the top unchecked item unless
+directed otherwise.*
 
 ## Up next (roughly by value)
 
@@ -36,6 +40,17 @@ unchecked item unless directed otherwise.*
 - **TaxAssetCalcv4 renders blank in *headless* Chrome** (Babel+D3 vs virtual-time). Fine in real browsers since the 7.29.7 pin. Don't chase it in headless tests.
 - **Babel pin**: every React page must use `@babel/standalone@7.29.7` (Babel 8 rejects raw `>` in JSX text → blank page).
 - `holding.costBasis` is **per-share** everywhere. Never write lot totals.
+- **Cash tickers are never quoted** (Phase 13af): `CASH`, `$$`, `$`, `USD`,
+  `USD CASH`, `CASH&MMF` mean dollars — price pinned at `$1.00`, name
+  `Cash`, `assetClass: 'cash'`, day change `0`. `CASH` is also Pathward
+  Financial's real NASDAQ ticker, which is how cash balances got valued at
+  a share price. The list is duplicated in `portfolio_tracker.html`,
+  `data_hub.html` and `index.html` (no suite.js on the dashboard) — extend
+  all three together. Money-market FUNDS (SPAXX/VMFXX/…) stay quoted.
+- **Tracker sorting and pagination are presentational only** — the store
+  keeps its own holdings order; tiles, allocation and projections read all
+  holdings. The sort arrow renders only on the active column so the table
+  stays inside its 1280px no-horizontal-scroll budget.
 - **`holding.lots[]`** (Phase 13ad) holds a position's purchase lots
   (`{id, shares, costBasis per-share, purchaseDate}`) — present only when
   there is more than one. The holding's flat `shares`/`costBasis`/
@@ -72,6 +87,14 @@ unchecked item unless directed otherwise.*
 - Cloudflare Pages + Access privacy migration (see memory: quote-infra-and-privacy-plan)
 
 ## Done recently (context for resuming)
+- Phase 13af: ticker `CASH` was being quoted as Pathward Financial, so a
+  cash balance was valued at that stock's share price across the tracker,
+  Net Worth, the dashboard KPI and the NW Growth chart. Cash symbols are
+  now pinned at $1.00 and never quoted (tracker, Data Hub and dashboard),
+  with a self-heal for stored rows and a synthetic flat-$1 series so the
+  Performance table keeps cash's 0% return. The Holdings table also gained
+  click-to-sort on every column (ascending → descending → store order,
+  blanks last, `aria-sort`), layered over the existing pagination.
 - Phase 13ae: Portfolio Tracker modernized to the Material token look
   (page header, KPI tiles, primary tabs with keyboard nav, section
   cards, outlined inputs; dark mode + accent via tokens; D3 charts

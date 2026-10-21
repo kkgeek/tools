@@ -956,6 +956,7 @@
       } catch (e) {}
     }
     async function fetchSeries(t) {
+      if (isCashTicker(t)) return cashSeries();
       var key = 'wsPerf_' + t;
       try {
         var c = JSON.parse(sessionStorage.getItem(key) || 'null');
@@ -1027,6 +1028,21 @@
     // shares / per-share cost / purchaseDate each; the holding's own fields
     // are the aggregate). Expand to lots so each enters the charts at ITS
     // purchase date; a flat holding is one lot.
+    // "CASH" is also a real NASDAQ ticker (Pathward Financial), so fetching
+    // price history for it charted Pathward's share price as the user's cash
+    // and gave the Performance table Pathward's returns. These symbols mean
+    // dollars: no history is fetched and the price is a flat $1.00.
+    // Mirrored in portfolio_tracker.html and data_hub.html (Phase 13af).
+    var CASH_TICKERS = ['CASH', '$$', '$', 'USD', 'USD CASH', 'CASH&MMF'];
+    function isCashTicker(t) { return CASH_TICKERS.indexOf(String(t == null ? '' : t).trim().toUpperCase()) >= 0; }
+    // Flat $1 monthly series so cash still carries its real 0% return (and
+    // its drag on the blended figure) in the Performance table.
+    function cashSeries() {
+      var ts = [], px = [], d = new Date();
+      d.setHours(12, 0, 0, 0); d.setDate(1);
+      for (var i = 360; i >= 0; i--) { var m = new Date(d); m.setMonth(m.getMonth() - i); ts.push(m.getTime()); px.push(1); }
+      return { ts: ts, px: px };
+    }
     function wsLotsOf(h) {
       if (Array.isArray(h.lots) && h.lots.length > 1) return h.lots;
       return [{ shares: Number(h.shares) || 0, costBasis: h.costBasis, purchaseDate: h.purchaseDate || null }];
@@ -1397,8 +1413,11 @@
     var phBusy = false;
     function ensurePriceHist(tickers) {
       var ph = readPH();
-      // deleted positions → drop their cached series
-      Object.keys(ph).forEach(function (t) { if (tickers.indexOf(t) < 0) { delete ph[t]; savePH(ph); } });
+      // deleted positions → drop their cached series; cash is never charted
+      // from quotes (its price is a flat $1 — the holding's own fallback),
+      // so purge any Pathward-era CASH series cached before 13af.
+      Object.keys(ph).forEach(function (t) { if (tickers.indexOf(t) < 0 || isCashTicker(t)) { delete ph[t]; savePH(ph); } });
+      tickers = tickers.filter(function (t) { return !isCashTicker(t); });
       if (phBusy) return;
       var stale = tickers.filter(function (t) { var e = ph[t]; return !e || !(Date.now() - e.fetchedAt < PH_TTL); });
       if (!stale.length) return;

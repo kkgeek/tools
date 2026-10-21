@@ -25,7 +25,7 @@ Personal-finance hub that runs **entirely in your browser**. Twelve tools live i
 | Tool | What it does |
 |---|---|
 | [Net Worth Tracker](https://kkgeek.github.io/tools/net_worth.html) | Assets from the hub + manual entries · liabilities · debt ratio |
-| [Portfolio Tracker](https://kkgeek.github.io/tools/portfolio_tracker.html) | Live prices (self-hosted quote proxy) · CSV import with purchase dates · expandable per-lot table for multi-lot positions · paginated holdings (50/100 per page) · account + tax-treatment tiles (Taxable/Tax Free/Tax Deferred) · allocation donut · projections |
+| [Portfolio Tracker](https://kkgeek.github.io/tools/portfolio_tracker.html) | Live prices (self-hosted quote proxy) · CSV import with purchase dates · expandable per-lot table for multi-lot positions · sortable, paginated holdings (50/100 per page) · cash pinned at $1 · account + tax-treatment tiles (Taxable/Tax Free/Tax Deferred) · allocation donut · projections |
 | [Expense Tracker](https://kkgeek.github.io/tools/expenses.html) | Bank CSV import (Chase/Amex/Citi) · auto-categorisation · budgets · trends |
 | [Retirement Master Plan](https://kkgeek.github.io/tools/retirement_master_plan_2.html) | Long-horizon projection · RMD calculator · 3-year buffer · Roth + SS strategy |
 | [Estate Plan](https://kkgeek.github.io/tools/estate_plan.html) | Federal (OBBBA) + WA estate tax · trust strategy · beneficiary audit |
